@@ -1,1 +1,10 @@
+.DS_Store
+__pycache__/
+
+wandb/
+result/
+lightning_logs/
+
 data/
+*.root
+*.hdf5
