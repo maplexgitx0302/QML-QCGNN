@@ -8,3 +8,5 @@ lightning_logs/
 data/
 *.root
 *.hdf5
+
+slurm*
