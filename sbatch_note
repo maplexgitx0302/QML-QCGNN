@@ -1,1 +1,2 @@
-sbatch sbatch_job_qml.sh -p large
+sbatch -p large sbatch_job_qml.sh
+sbatch -p large -c 10 sbatch_job_qml.sh
