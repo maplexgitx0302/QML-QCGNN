@@ -1,6 +1,7 @@
 # %%
 # basic packages
-import os, time
+import os, time, sys
+import argparse
 from itertools import product
 import matplotlib.pyplot as plt
 
@@ -47,6 +48,14 @@ root_dir = f"./result"
 if os.path.isdir(root_dir) == False:
     os.makedirs(root_dir)
 
+# argparser
+parser = argparse.ArgumentParser(description='Determine the structure of the quantum model.')
+parser.add_argument('--model_class', type=str, help='Quantum gnn model class')
+parser.add_argument('--gnn_layers', type=int, help='Quantum gnn layers')
+parser.add_argument('--gnn_reupload', type=int, help='Quantum gnn reupload')
+parser.add_argument('--rnd_seed', type=int, help='Random seed')
+parse_args = parser.parse_args()
+
 # %%
 # global settings
 cf = {}
@@ -55,12 +64,12 @@ cf["wandb"]    = True # <-----------------------------------------------
 cf["project"]  = "g_vz_eflow_2pcgnn_slurm"
 
 # training configuration
-cf["num_rnd_round"]     = 1 # <-----------------------------------------------
+cf["rnd_seed"]          = parse_args.rnd_seed
 cf["num_train_ratio"]   = 0.8
-cf["num_bin_data"]      = 256 # <-----------------------------------------------
+cf["num_bin_data"]      = 1500 # <-----------------------------------------------
 cf["batch_size"]        = 64 # <-----------------------------------------------
 cf["num_workers"]       = 0
-cf["max_epochs"]        = 3 # <-----------------------------------------------
+cf["max_epochs"]        = 50 # <-----------------------------------------------
 cf["accelerator"]       = "cpu"
 cf["fast_dev_run"]      = False
 cf["log_every_n_steps"] = cf["batch_size"] // 2
@@ -209,84 +218,46 @@ data_info = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "cut": (800, 1000), "bin
 sig_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["sig"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"])
 bkg_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["bkg"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"])
 
-for rnd_seed in range(cf["num_rnd_round"]):
-    L.seed_everything(rnd_seed)
-    sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"])
-    bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"])
-    data_suffix = f"{data_info['sig']}_{data_info['bkg']}_cut{data_info['cut']}_bin{data_info['bin']}-{data_info['num_bin_data']}_R{data_info['subjet_radius']}"
+L.seed_everything(cf["rnd_seed"])
+sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"])
+bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"])
+data_suffix = f"{data_info['sig']}_{data_info['bkg']}_cut{data_info['cut']}_bin{data_info['bin']}-{data_info['num_bin_data']}_R{data_info['subjet_radius']}"
 
-    # # classical ML only
-    # for p_mode, go, gh, gl in product(["", "normalize"], [6,18], [12,48], range(4)):
-    #     preprocess_mode = p_mode
-    #     gnn_in, gnn_out, gnn_hidden, gnn_layers = 6, go, gh, gl
-    #     model = Classical2PCGNN(gnn_in=gnn_in, gnn_out=gnn_out, gnn_hidden=gnn_hidden, gnn_layers=gnn_layers)
-    #     data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
-    #     train_info = {
-    #         "rnd_seed":rnd_seed, "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode,
-    #         "gnn_hidden":gh, "gnn_layers":gl, "gnn_out":gnn_out, "mlp_hidden":0, "mlp_layers":0,
-    #         }
-    #     train_info["group_rnd"] = f"{model.__class__.__name__}_{preprocess_mode}_go{gnn_out}_gh{gnn_hidden}_gl{gnn_layers}_mh0_ml0 | {data_suffix}"
-    #     train_info.update(data_info)
-    #     train(model, data_module, train_info)
+def train_classical(model_class, preprocess_mode, gnn_in, gnn_out, gnn_hidden, gnn_layers):
+    model = model_class(gnn_in=gnn_in, gnn_out=gnn_out, gnn_hidden=gnn_hidden, gnn_layers=gnn_layers)
+    data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
+    train_info = {
+        "rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode,
+        "gnn_in":gnn_in, "gnn_out":gnn_out, "gnn_hidden":gnn_hidden, "gnn_layers":gnn_layers, 
+        "mlp_hidden":0, "mlp_layers":0,
+        }
+    train_info["group_rnd"] = f"{model.__class__.__name__}_{preprocess_mode}_go{gnn_out}_gh{gnn_hidden}_gl{gnn_layers}_mh0_ml0 | {data_suffix}"
+    train_info.update(data_info)
+    train(model, data_module, train_info)
 
-    # QML involved
-    for gnn_measurements_basis in ["Z"]:
-        # quantum angle encoding
-        preprocess_mode = "normalize"
-        for gl, gr in [(0,1)]:
-            gnn_qubits, gnn_layers, gnn_reupload = 6, gl, gr
-            gnn_measurements = list(product(range(gnn_qubits), gnn_measurements_basis))
-            model = QuantumAngle2PCGNN(gnn_qubits=gnn_qubits, gnn_layers=gnn_layers, gnn_reupload=gnn_reupload, gnn_measurements=gnn_measurements)
-            data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
-            train_info = {
-                "rnd_seed":rnd_seed, "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode,
-                "gnn_layer":gl, "gnn_reupload":gr, "gnn_out":len(gnn_measurements), "mlp_hidden":0, "mlp_layers":0,
-                }
-            train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_{gnn_measurements_basis}_q{gnn_qubits}_gl{gnn_layers}_gr{gnn_reupload} | {data_suffix}"
-            train_info.update(data_info)
-            train(model, data_module, train_info)
+def train_quantum(model_class, preprocess_mode, gnn_qubits, gnn_layers, gnn_reupload, gnn_measurements_basis):
+    gnn_measurements = list(product(range(gnn_qubits), gnn_measurements_basis))
+    model = model_class(gnn_qubits=gnn_qubits, gnn_layers=gnn_layers, gnn_reupload=gnn_reupload, gnn_measurements=gnn_measurements)
+    data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
+    train_info = {
+        "rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode,
+        "gnn_qubits":gnn_qubits, "gnn_layer":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_out":len(gnn_measurements), 
+        "mlp_hidden":0, "mlp_layers":0,
+        }
+    train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_{gnn_measurements_basis}_q{gnn_qubits}_gl{gnn_layers}_gr{gnn_reupload} | {data_suffix}"
+    train_info.update(data_info)
+    train(model, data_module, train_info)
 
-        # # quantum angle encoding with elementwise linear
-        # preprocess_mode = "normalize"
-        # for gl, gr in [(1,2), (0,1)]:
-        #     gnn_qubits, gnn_layers, gnn_reupload = 6, gl, gr
-        #     gnn_measurements = list(product(range(gnn_qubits), gnn_measurements_basis))
-        #     model = QuantumElementwiseAngle2PCGNN(gnn_qubits=gnn_qubits, gnn_layers=gnn_layers, gnn_reupload=gnn_reupload, gnn_measurements=gnn_measurements)
-        #     data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
-        #     train_info = {
-        #         "rnd_seed":rnd_seed, "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode,
-        #         "gnn_layer":gl, "gnn_reupload":gr, "gnn_out":len(gnn_measurements), "mlp_hidden":0, "mlp_layers":0,
-        #         }
-        #     train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_{gnn_measurements_basis}_q{gnn_qubits}_gl{gnn_layers}_gr{gnn_reupload} | {data_suffix}"
-        #     train_info.update(data_info)
-        #     train(model, data_module, train_info)
+# # classical ML only
+# for p_mode, go, gh, gl in product(["", "normalize"], [6,18], [12,48], range(4)):
+#     train_classical(model_class=Classical2PCGNN, preprocess_mode=p_mode, 
+#                     gnn_in=6, gnn_out=go, gnn_hidden=gh, gnn_layers=gl)
 
-        # # quantum IQP encoding
-        # preprocess_mode = "normalize"
-        # for gl, gr in [(1,2), (0,1)]:
-        #     gnn_qubits, gnn_layers, gnn_reupload = 6, gl, gr
-        #     gnn_measurements = list(product(range(gnn_qubits), gnn_measurements_basis))
-        #     model = QuantumIQP2PCGNN(gnn_qubits=gnn_qubits, gnn_layers=gnn_layers, gnn_reupload=gnn_reupload, gnn_measurements=gnn_measurements)
-        #     data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
-        #     train_info = {
-        #         "rnd_seed":rnd_seed, "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode,
-        #         "gnn_layer":gl, "gnn_reupload":gr, "gnn_out":len(gnn_measurements), "mlp_hidden":0, "mlp_layers":0,
-        #         }
-        #     train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_{gnn_measurements_basis}_q{gnn_qubits}_gl{gnn_layers}_gr{gnn_reupload} | {data_suffix}"
-        #     train_info.update(data_info)
-        #     train(model, data_module, train_info)
-
-        # # quantum IQP encoding with elementwise linear
-        # preprocess_mode = "normalize"
-        # for gl, gr in [(1,2), (0,1)]:
-        #     gnn_qubits, gnn_layers, gnn_reupload = 6, gl, gr
-        #     gnn_measurements = list(product(range(gnn_qubits), gnn_measurements_basis))
-        #     model = QuantumElementwiseIQP2PCGNN(gnn_qubits=gnn_qubits, gnn_layers=gnn_layers, gnn_reupload=gnn_reupload, gnn_measurements=gnn_measurements)
-        #     data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
-        #     train_info = {
-        #         "rnd_seed":rnd_seed, "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode,
-        #         "gnn_layer":gl, "gnn_reupload":gr, "gnn_out":len(gnn_measurements), "mlp_hidden":0, "mlp_layers":0,
-        #         }
-        #     train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_{gnn_measurements_basis}_q{gnn_qubits}_gl{gnn_layers}_gr{gnn_reupload} | {data_suffix}"
-        #     train_info.update(data_info)
-        #     train(model, data_module, train_info)
+# QML involved
+preprocess_mode = "normalize"
+gnn_qubits      = 6
+model_class     = getattr(sys.modules[__name__], parse_args.model_class)
+gnn_layers      = parse_args.gnn_layers if parse_args.gnn_layers is not None else 1
+gnn_reupload    = parse_args.gnn_reupload if parse_args.gnn_reupload is not None else 0
+gnn_measurements_basis = "Z"
+train_quantum(model_class, preprocess_mode, gnn_qubits, gnn_layers, gnn_reupload, gnn_measurements_basis)

@@ -1,5 +1,4 @@
 #!/bin/bash
 
-echo date = $(date +%F)
-date_time=$(date +%F)
-echo $date_time
+# gnn_layers, gnn_reupload, model_class
+sbatch -p large sbatch_job_qml.sh 1 0 QuantumAngle2PCGNN

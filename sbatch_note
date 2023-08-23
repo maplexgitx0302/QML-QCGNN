@@ -1,2 +1,3 @@
 sbatch -p large sbatch_job_qml.sh
 sbatch -p large -c 10 sbatch_job_qml.sh
+sbatch -p large --array=0-47 sbatch_job_qml.sh
