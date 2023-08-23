@@ -9,4 +9,5 @@ data/
 *.root
 *.hdf5
 
+slurm_out
 slurm*

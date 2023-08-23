@@ -50,6 +50,7 @@ if os.path.isdir(root_dir) == False:
 
 # argparser
 parser = argparse.ArgumentParser(description='Determine the structure of the quantum model.')
+parser.add_argument('--date_time', type=str, help='Date time in format Ymd_HMS')
 parser.add_argument('--model_class', type=str, help='Quantum gnn model class')
 parser.add_argument('--gnn_layers', type=int, help='Quantum gnn layers')
 parser.add_argument('--gnn_reupload', type=int, help='Quantum gnn reupload')
@@ -59,7 +60,8 @@ parse_args = parser.parse_args()
 # %%
 # global settings
 cf = {}
-cf["time"]     = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+# cf["time"]     = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+cf["time"]     = parse_args.date_time
 cf["wandb"]    = True # <-----------------------------------------------
 cf["project"]  = "g_vz_eflow_2pcgnn_slurm"
 
@@ -203,7 +205,7 @@ def train(model, data_module, train_info):
         max_epochs        = cf["max_epochs"],
         fast_dev_run      = cf["fast_dev_run"],
         log_every_n_steps = cf["log_every_n_steps"],
-        callbacks         = [TQDMProgressBar(refresh_rate=0)],
+        # callbacks         = [TQDMProgressBar(refresh_rate=0)],
         )
     litmodel = m_lightning.BinaryLitModel(model, graph=True)
     trainer.fit(litmodel, datamodule=data_module)

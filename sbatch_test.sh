@@ -1,4 +1,8 @@
 #!/bin/bash
 
-# gnn_layers, gnn_reupload, model_class
-sbatch -p large sbatch_job_qml.sh 1 0 QuantumAngle2PCGNN
+date_time="$(date +"%Y%m%d_%H%M%S")"
+echo $date_time
+
+sleep 3
+
+echo $date_time
