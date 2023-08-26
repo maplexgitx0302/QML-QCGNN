@@ -1,6 +1,14 @@
 #!/bin/bash
+#SBATCH --array=0-3
+#SBATCH --exclusive
 
-date_time="20230823_183900" # <---------------------------------------------------------------------
+rnd_seed=0 # <---------------------------------------------------------------------
+date_time="20230826_120000" # <---------------------------------------------------------------------
+# model_class=QuantumAngle2PCGNN
+# model_class=QuantumElementwiseAngle2PCGNN
+model_class=QuantumIQP2PCGNN
+# model_class=QuantumElementwiseIQP2PCGNN
+
 echo $date_time
 
 echo
@@ -16,17 +24,6 @@ echo
 if [ "$python_version" = "$required_version" ]; then
     echo "Python 3.9.12 detected"
     
-    # determine different model structure
-    rnd_seed=0 # <---------------------------------------------------------------------
-    if [ $(expr $SLURM_ARRAY_TASK_ID / 4) -eq 0 ]; then
-        model_class=QuantumAngle2PCGNN
-    elif [ $(expr $SLURM_ARRAY_TASK_ID / 4) -eq 1 ]; then
-        model_class=QuantumElementwiseAngle2PCGNN
-    elif [ $(expr $SLURM_ARRAY_TASK_ID / 4) -eq 2 ]; then
-        model_class=QuantumIQP2PCGNN
-    elif [ $(expr $SLURM_ARRAY_TASK_ID / 4) -eq 3 ]; then
-        model_class=QuantumElementwiseIQP2PCGNN
-    fi
     if [ $(expr $SLURM_ARRAY_TASK_ID % 4) -eq 0 ]; then
         gnn_layers=1
         gnn_reupload=0

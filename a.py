@@ -66,12 +66,13 @@ cf["wandb"]    = True # <-----------------------------------------------
 cf["project"]  = "g_vz_eflow_2pcgnn_slurm"
 
 # training configuration
+cf["lr"]                = 1E-2
 cf["rnd_seed"]          = parse_args.rnd_seed
 cf["num_train_ratio"]   = 0.8
-cf["num_bin_data"]      = 1500 # <-----------------------------------------------
+cf["num_bin_data"]      = 400 # <-----------------------------------------------
 cf["batch_size"]        = 64 # <-----------------------------------------------
 cf["num_workers"]       = 0
-cf["max_epochs"]        = 50 # <-----------------------------------------------
+cf["max_epochs"]        = 30 # <-----------------------------------------------
 cf["accelerator"]       = "cpu"
 cf["fast_dev_run"]      = False
 cf["log_every_n_steps"] = cf["batch_size"] // 2
@@ -207,7 +208,7 @@ def train(model, data_module, train_info):
         log_every_n_steps = cf["log_every_n_steps"],
         # callbacks         = [TQDMProgressBar(refresh_rate=0)],
         )
-    litmodel = m_lightning.BinaryLitModel(model, graph=True)
+    litmodel = m_lightning.BinaryLitModel(model, lr=cf["lr"], graph=True)
     trainer.fit(litmodel, datamodule=data_module)
     trainer.test(litmodel, datamodule=data_module)
 

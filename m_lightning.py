@@ -6,7 +6,7 @@ from sklearn import metrics
 
 # Binary classification of graph data
 class BinaryLitModel(L.LightningModule):
-    def __init__(self, model, lr=1E-3, optimizer=None, loss_func=None, graph=False):
+    def __init__(self, model, lr, optimizer=None, loss_func=None, graph=False):
         super().__init__()
         # self.save_hyperparameters(ignore=['model'])
         self.model     = model
