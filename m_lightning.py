@@ -14,7 +14,7 @@ class BinaryLitModel(L.LightningModule):
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr) if optimizer is None else optimizer
         self.loss_func = torch.nn.BCEWithLogitsLoss() if loss_func is None else loss_func
 
-    def forward(self, data):
+    def forward(self, data, mode):
         # predict y
         if self.graph == True:
             x, edge_index, batch = data.x, data.edge_index, data.batch
@@ -31,8 +31,15 @@ class BinaryLitModel(L.LightningModule):
 
         # calculate auc
         y_score = torch.sigmoid(x).detach() # because we use BCEWithLogitsLoss
-        self.y_true_buffer  = torch.cat((self.y_true_buffer, y_true))
-        self.y_score_buffer = torch.cat((self.y_score_buffer, y_score))
+        if mode == "train":
+            self.y_train_true_buffer  = torch.cat((self.y_train_true_buffer, y_true))
+            self.y_train_score_buffer = torch.cat((self.y_train_score_buffer, y_score))
+        elif mode == "valid":
+            self.y_valid_true_buffer  = torch.cat((self.y_valid_true_buffer, y_true))
+            self.y_valid_score_buffer = torch.cat((self.y_valid_score_buffer, y_score))
+        elif mode == "test":
+            self.y_test_true_buffer  = torch.cat((self.y_test_true_buffer, y_true))
+            self.y_test_score_buffer = torch.cat((self.y_test_score_buffer, y_score))
         return loss, acc
 
     def configure_optimizers(self):
@@ -40,42 +47,48 @@ class BinaryLitModel(L.LightningModule):
 
     def on_train_epoch_start(self):
         self.start_time     = time.time()
-        self.y_true_buffer  = torch.tensor([])
-        self.y_score_buffer = torch.tensor([])
+        self.y_train_true_buffer  = torch.tensor([])
+        self.y_train_score_buffer = torch.tensor([])
 
     def on_train_epoch_end(self):
         self.end_time = time.time()
         delta_time    = self.end_time - self.start_time
-        roc_auc       = metrics.roc_auc_score(self.y_true_buffer, self.y_score_buffer)
+        roc_auc       = metrics.roc_auc_score(self.y_train_true_buffer, self.y_train_score_buffer)
         self.log("epoch_time", delta_time, on_step=False, on_epoch=True)
         self.log("train_roc_auc", roc_auc, on_step=False, on_epoch=True)
+        del self.y_train_true_buffer
+        del self.y_train_score_buffer
 
     def training_step(self, data, batch_idx):
-        loss, acc = self.forward(data)
+        loss, acc = self.forward(data, mode="train")
         self.log("train_loss", loss, on_step=True, on_epoch=True, batch_size=len(data.x))
         self.log("train_acc", acc, on_step=True, on_epoch=True, batch_size=len(data.x))
         return loss
     
     def on_validation_epoch_start(self):
-        self.y_true_buffer  = torch.tensor([])
-        self.y_score_buffer = torch.tensor([])
+        self.y_valid_true_buffer  = torch.tensor([])
+        self.y_valid_score_buffer = torch.tensor([])
 
     def on_validation_epoch_end(self):
-        roc_auc = metrics.roc_auc_score(self.y_true_buffer, self.y_score_buffer)
+        roc_auc = metrics.roc_auc_score(self.y_valid_true_buffer, self.y_valid_score_buffer)
         self.log("val_roc_auc", roc_auc, on_step=False, on_epoch=True)
+        del self.y_valid_true_buffer
+        del self.y_valid_score_buffer
 
     def validation_step(self, data, batch_idx):
-        _, acc = self.forward(data)
+        _, acc = self.forward(data, mode="valid")
         self.log("valid_acc", acc, on_step=True, on_epoch=True, batch_size=len(data.x))
 
     def on_test_epoch_start(self):
-        self.y_true_buffer  = torch.tensor([])
-        self.y_score_buffer = torch.tensor([])
+        self.y_test_true_buffer  = torch.tensor([])
+        self.y_test_score_buffer = torch.tensor([])
 
     def on_test_epoch_end(self):
-        roc_auc = metrics.roc_auc_score(self.y_true_buffer, self.y_score_buffer)
+        roc_auc = metrics.roc_auc_score(self.y_test_true_buffer, self.y_test_score_buffer)
         self.log("test_roc_auc", roc_auc, on_step=False, on_epoch=True)
+        del self.y_test_true_buffer
+        del self.y_test_score_buffer
 
     def test_step(self, data, batch_idx):
-        _, acc = self.forward(data)
+        _, acc = self.forward(data, mode="test")
         self.log("test_acc", acc, on_step=True, on_epoch=True, batch_size=len(data.x))

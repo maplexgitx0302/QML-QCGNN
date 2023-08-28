@@ -25,20 +25,20 @@ if [ "$python_version" = "$required_version" ]; then
     echo "Python 3.9.12 detected"
     
     if [ $(expr $SLURM_ARRAY_TASK_ID % 4) -eq 0 ]; then
-        gnn_layers=1
-        gnn_reupload=0
+        q_gnn_layers=1
+        q_gnn_reupload=0
     elif [ $(expr $SLURM_ARRAY_TASK_ID % 4) -eq 1 ]; then
-        gnn_layers=2
-        gnn_reupload=0
+        q_gnn_layers=2
+        q_gnn_reupload=0
     elif [ $(expr $SLURM_ARRAY_TASK_ID % 4) -eq 2 ]; then
-        gnn_layers=1
-        gnn_reupload=1
+        q_gnn_layers=1
+        q_gnn_reupload=1
     elif [ $(expr $SLURM_ARRAY_TASK_ID % 4) -eq 3 ]; then
-        gnn_layers=2
-        gnn_reupload=1
+        q_gnn_layers=2
+        q_gnn_reupload=1
     fi
-    echo running model_class = $model_class, gnn_layers = $gnn_layers, gnn_reupload = $gnn_reupload, rnd_seed = $rnd_seed
-    python a.py --date_time $date_time --model_class $model_class --gnn_layers $gnn_layers --gnn_reupload $gnn_reupload --rnd_seed $rnd_seed
+    echo running model_class = $model_class, q_gnn_layers = $q_gnn_layers, q_gnn_reupload = $q_gnn_reupload, rnd_seed = $rnd_seed
+    python a.py --date_time $date_time --model_class $model_class --q_gnn_layers $q_gnn_layers --q_gnn_reupload $q_gnn_reupload --rnd_seed $rnd_seed
 else
     echo "Python 3.9.12 not detected"
 fi
