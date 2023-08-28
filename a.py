@@ -3,6 +3,7 @@
 import os, time, sys
 import argparse
 from itertools import product
+from collections import namedtuple
 import matplotlib.pyplot as plt
 
 # model template
@@ -49,30 +50,42 @@ if os.path.isdir(root_dir) == False:
     os.makedirs(root_dir)
 
 # argparser
-parser = argparse.ArgumentParser(description='Determine the structure of the quantum model.')
-parser.add_argument('--date_time', type=str, help='Date time in format Ymd_HMS')
-parser.add_argument('--model_class', type=str, help='Quantum gnn model class')
-parser.add_argument('--gnn_layers', type=int, help='Quantum gnn layers')
-parser.add_argument('--gnn_reupload', type=int, help='Quantum gnn reupload')
-parser.add_argument('--rnd_seed', type=int, help='Random seed')
-parse_args = parser.parse_args()
+use_parser = False
+if use_parser:
+    parser = argparse.ArgumentParser(description='Determine the structure of the quantum model.')
+    parser.add_argument('--date_time', type=str, help='Date time in format Ymd_HMS')
+    parser.add_argument('--model_class', type=str, help='Quantum gnn model class')
+    parser.add_argument('--q_gnn_layers', type=int, help='Quantum gnn layers')
+    parser.add_argument('--q_gnn_reupload', type=int, help='Quantum gnn reupload')
+    parser.add_argument('--rnd_seed', type=int, help='Random seed')
+    parse_args = parser.parse_args()
+else:
+    parse_fields = ["date_time", "model_class", "q_gnn_layers", "q_gnn_reupload", "rnd_seed"]
+    parse_tuple  = namedtuple('parse_tuple', " ".join(parse_fields))
+    parse_args   = parse_tuple(
+        date_time      = time.strftime("%Y%m%d_%H%M%S", time.localtime()),
+        model_class    = "QuantumAngle2PCGNN",
+        rnd_seed       = 0,
+        q_gnn_layers   = 1,
+        q_gnn_reupload = 0,
+    )
+    
 
 # %%
 # global settings
 cf = {}
-# cf["time"]     = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 cf["time"]     = parse_args.date_time
-cf["wandb"]    = True # <-----------------------------------------------
+cf["wandb"]    = False # <-----------------------------------------------
 cf["project"]  = "g_vz_eflow_2pcgnn_slurm"
 
 # training configuration
 cf["lr"]                = 1E-2
 cf["rnd_seed"]          = parse_args.rnd_seed
 cf["num_train_ratio"]   = 0.8
-cf["num_bin_data"]      = 400 # <-----------------------------------------------
+cf["num_bin_data"]      = 500 # <-----------------------------------------------
 cf["batch_size"]        = 64 # <-----------------------------------------------
 cf["num_workers"]       = 0
-cf["max_epochs"]        = 30 # <-----------------------------------------------
+cf["max_epochs"]        = 5 # <-----------------------------------------------
 cf["accelerator"]       = "cpu"
 cf["fast_dev_run"]      = False
 cf["log_every_n_steps"] = cf["batch_size"] // 2
@@ -116,6 +129,9 @@ class JetDataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         return DataLoader(self.train_dataset, batch_size=cf["batch_size"], shuffle=True)
+
+    def val_dataloader(self):
+        return DataLoader(self.test_dataset, batch_size=cf["batch_size"], shuffle=False)
 
     def test_dataloader(self):
         return DataLoader(self.test_dataset, batch_size=cf["batch_size"], shuffle=False)
@@ -201,15 +217,33 @@ def train(model, data_module, train_info):
     # start lightning training
     logger  = wandb_logger if cf["wandb"] else None
     trainer = L.Trainer(
-        logger            = logger, 
-        accelerator       = cf["accelerator"],
-        max_epochs        = cf["max_epochs"],
-        fast_dev_run      = cf["fast_dev_run"],
-        log_every_n_steps = cf["log_every_n_steps"],
-        # callbacks         = [TQDMProgressBar(refresh_rate=0)],
+        logger               = logger, 
+        accelerator          = cf["accelerator"],
+        max_epochs           = cf["max_epochs"],
+        fast_dev_run         = cf["fast_dev_run"],
+        log_every_n_steps    = cf["log_every_n_steps"],
+        num_sanity_val_steps = 0,
         )
     litmodel = m_lightning.BinaryLitModel(model, lr=cf["lr"], graph=True)
-    trainer.fit(litmodel, datamodule=data_module)
+
+    # load ckpt file if exists
+    try:
+        ckpt_dir = f"result/{cf['project']}/{wandb_info['id']}/checkpoints"
+        for _file in os.listdir(ckpt_dir):
+            if _file.endswith("ckpt"):
+                ckpt_path = f"{ckpt_dir}/{_file}"
+    except:
+        ckpt_path = None
+
+    # print information
+    print("-------------------- Training information --------------------\n")
+    print("model:", model.__class__.__name__, model, "")
+    print("config:", cf, "")
+    print("train_info:", train_info, "")
+    print("wandb_info:", wandb_info, "")
+    print("--------------------------------------------------------------\n")
+    
+    trainer.fit(litmodel, datamodule=data_module, ckpt_path=ckpt_path)
     trainer.test(litmodel, datamodule=data_module)
 
     # finish wandb monitoring
@@ -251,6 +285,11 @@ def train_quantum(model_class, preprocess_mode, gnn_qubits, gnn_layers, gnn_reup
     train_info.update(data_info)
     train(model, data_module, train_info)
 
+# min classical ML only
+# for p_mode, go, gh, gl in product(["normalize"], [6], [6], [1,2]):
+#     train_classical(model_class=Classical2PCGNN, preprocess_mode=p_mode, 
+#                     gnn_in=6, gnn_out=go, gnn_hidden=gh, gnn_layers=gl)
+
 # # classical ML only
 # for p_mode, go, gh, gl in product(["", "normalize"], [6,18], [12,48], range(4)):
 #     train_classical(model_class=Classical2PCGNN, preprocess_mode=p_mode, 
@@ -260,7 +299,7 @@ def train_quantum(model_class, preprocess_mode, gnn_qubits, gnn_layers, gnn_reup
 preprocess_mode = "normalize"
 gnn_qubits      = 6
 model_class     = getattr(sys.modules[__name__], parse_args.model_class)
-gnn_layers      = parse_args.gnn_layers if parse_args.gnn_layers is not None else 1
-gnn_reupload    = parse_args.gnn_reupload if parse_args.gnn_reupload is not None else 0
+gnn_layers      = parse_args.q_gnn_layers
+gnn_reupload    = parse_args.q_gnn_reupload
 gnn_measurements_basis = "Z"
 train_quantum(model_class, preprocess_mode, gnn_qubits, gnn_layers, gnn_reupload, gnn_measurements_basis)
