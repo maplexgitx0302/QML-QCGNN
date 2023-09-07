@@ -21,6 +21,7 @@ from pennylane import numpy as np
 # pytorch
 import torch
 import torch.nn as nn
+from torch.utils.data import DataLoader as TorchDataLoader
 
 # pytorch_lightning
 import lightning as L
@@ -30,7 +31,7 @@ from lightning.pytorch.callbacks import TQDMProgressBar
 # pytorch_geometric
 import torch_geometric.nn as geom_nn
 from torch_geometric.data import Data
-from torch_geometric.loader import DataLoader
+from torch_geometric.loader import DataLoader as GeoDataLoader
 from torch_geometric.nn import MessagePassing
 
 # wandb
@@ -75,8 +76,8 @@ else:
 # global settings
 cf = {}
 cf["time"]     = parse_args.date_time
-cf["wandb"]    = False # <-----------------------------------------------
-cf["project"]  = "g_vz_eflow_2pcgnn_slurm"
+cf["wandb"]    = True # <-----------------------------------------------
+cf["project"]  = "g_eflow_QFCGNN"
 
 # training configuration
 cf["lr"]                = 1E-2
@@ -85,25 +86,41 @@ cf["num_train_ratio"]   = 0.8
 cf["num_bin_data"]      = 500 # <-----------------------------------------------
 cf["batch_size"]        = 64 # <-----------------------------------------------
 cf["num_workers"]       = 0
-cf["max_epochs"]        = 5 # <-----------------------------------------------
+cf["max_epochs"]        = 30 # <-----------------------------------------------
 cf["accelerator"]       = "cpu"
 cf["fast_dev_run"]      = False
 cf["log_every_n_steps"] = cf["batch_size"] // 2
 
 # %%
+class TorchDataset(torch.utils.data.Dataset):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    def __len__(self):
+        return len(self.y)
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx]
+
 class JetDataModule(pl.LightningDataModule):
-    def __init__(self, sig_events, bkg_events, mode=None):
+    def __init__(self, sig_events, bkg_events, mode=None, graph=True):
         super().__init__()
+        # whether transform to torch_geometric graph data
+        self.graph = graph
+
         # jet events
-        sig_events = self._preprocess(sig_events, 1, mode)
-        bkg_events = self._preprocess(bkg_events, 0, mode)
+        self.max_num_ptcs = max(
+            max(ak.count(sig_events["fast_pt"], axis=1)),
+            max(ak.count(bkg_events["fast_pt"], axis=1)))
+        sig_events = self._preprocess(sig_events, mode)
+        bkg_events = self._preprocess(bkg_events, mode)
+        print(f"\nDataLog: Max number of particles = {self.max_num_ptcs}\n")
 
         # prepare dataset for dataloader
         train_idx = int(cf["num_train_ratio"] * len(sig_events))
-        self.train_dataset = sig_events[:train_idx] + bkg_events[:train_idx]
-        self.test_dataset  = sig_events[train_idx:] + bkg_events[train_idx:]
+        self.train_dataset = self._dataset(sig_events[:train_idx], 1) + self._dataset(bkg_events[:train_idx], 0)
+        self.test_dataset  = self._dataset(sig_events[train_idx:], 1) + self._dataset(bkg_events[train_idx:], 0)
 
-    def _preprocess(self, events, y, mode):
+    def _preprocess(self, events, mode):
         # "_" prefix means that it is a fastjet feature
         if mode == "normalize":
             f1 = np.arctan(events["fast_pt"] / events["fatjet_pt"])
@@ -115,26 +132,40 @@ class JetDataModule(pl.LightningDataModule):
             f3 = events["fast_delta_phi"]
         arrays = ak.zip([f1, f2, f3])
         arrays = arrays.to_list()
-        events = [torch.tensor(arrays[i], dtype=torch.float32) for i in range(len(arrays))]
+        events = [torch.tensor(arrays[i], dtype=torch.float32, requires_grad=False) for i in range(len(arrays))]
+        return events
 
-        # create pytorch_geometric "Data" object
-        data_list = []
-        for i in range(len(events)):
-            x = events[i]
-            edge_index = list(product(range(len(x)), range(len(x))))
-            edge_index = torch.tensor(edge_index).transpose(0, 1)
-            x.requires_grad, edge_index.requires_grad = False, False
-            data_list.append(Data(x=x, edge_index=edge_index, y=y))
-        return data_list
+    def _dataset(self, events, y):
+        if self.graph == True:
+            # create pytorch_geometric "Data" object
+            dataset = []
+            for i in range(len(events)):
+                x = events[i]
+                edge_index = list(product(range(len(x)), range(len(x))))
+                edge_index = torch.tensor(edge_index, requires_grad=False).transpose(0, 1)
+                dataset.append(Data(x=x, edge_index=edge_index, y=y))
+        else:
+            pad     = lambda x: torch.nn.functional.pad(x, (0,0,0,self.max_num_ptcs-len(x)), mode="constant", value=0)
+            dataset = TorchDataset(x=[pad(events[i]) for i in range(len(events))], y=[y]*len(events))
+        return dataset
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=cf["batch_size"], shuffle=True)
+        if self.graph == True:
+            return GeoDataLoader(self.train_dataset, batch_size=cf["batch_size"], shuffle=True)
+        else:
+            return TorchDataLoader(self.train_dataset, batch_size=cf["batch_size"], shuffle=True)
 
     def val_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=cf["batch_size"], shuffle=False)
+        if self.graph == True:
+            return GeoDataLoader(self.test_dataset, batch_size=cf["batch_size"], shuffle=False)
+        else:
+            return TorchDataLoader(self.test_dataset, batch_size=cf["batch_size"], shuffle=False)
 
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=cf["batch_size"], shuffle=False)
+        if self.graph == True:
+            return GeoDataLoader(self.test_dataset, batch_size=cf["batch_size"], shuffle=False)
+        else:
+            return TorchDataLoader(self.test_dataset, batch_size=cf["batch_size"], shuffle=False)
 
 # %%
 class MessagePassing(MessagePassing):
@@ -196,11 +227,23 @@ class QuantumElementwiseIQP2PCGNN(Graph2PCGNN):
         mlp = m_nn.ClassicalMLP(in_channel=len(gnn_measurements), out_channel=1, hidden_channel=0, num_layers=0)
         super().__init__(phi, mlp)
 
+class QuantumFCGNN(nn.Module):
+    def __init__(self, gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload):
+        super().__init__()
+        self.phi = m_nn.QuantumDisorderedRotFCGraph(num_idx_qubits=gnn_idx_qubits, num_nn_qubits=gnn_nn_qubits, num_layers=gnn_layers, num_reupload=gnn_reupload)
+        self.mlp = m_nn.ClassicalMLP(in_channel=gnn_nn_qubits, out_channel=1, hidden_channel=0, num_layers=0)
+    def forward(self, x):
+        # inputs should be 1-dim for each data, otherwise it would be confused with batch shape
+        x = torch.flatten(x, start_dim=-2, end_dim=-1)
+        x = self.phi(x)
+        x = self.mlp(x)
+        return x
+
 # %%
-def train(model, data_module, train_info):
+def train(model, data_module, train_info, graph=True):
     # setup wandb logger
+    wandb_info = {}
     if cf["wandb"]:
-        wandb_info = {}
         wandb_info["project"]  = cf["project"]
         wandb_info["group"]    = f"{train_info['sig']}_{train_info['bkg']}"
         wandb_info["name"]     = f"{train_info['group_rnd']} | {cf['time']}_{train_info['rnd_seed']}"
@@ -224,7 +267,7 @@ def train(model, data_module, train_info):
         log_every_n_steps    = cf["log_every_n_steps"],
         num_sanity_val_steps = 0,
         )
-    litmodel = m_lightning.BinaryLitModel(model, lr=cf["lr"], graph=True)
+    litmodel = m_lightning.BinaryLitModel(model, lr=cf["lr"], graph=graph)
 
     # load ckpt file if exists
     try:
@@ -285,21 +328,43 @@ def train_quantum(model_class, preprocess_mode, gnn_qubits, gnn_layers, gnn_reup
     train_info.update(data_info)
     train(model, data_module, train_info)
 
+def train_qfcgnn(preprocess_mode, gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload):
+    model = QuantumFCGNN(gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload)
+    data_module = JetDataModule(sig_events, bkg_events, preprocess_mode, graph=False)
+    train_info = {
+        "rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode,
+        "gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":gnn_nn_qubits, "gnn_layer":gnn_layers, "gnn_reupload":gnn_reupload, 
+        "mlp_hidden":0, "mlp_layers":0,
+        }
+    train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_qidx{gnn_idx_qubits}_qnn{gnn_nn_qubits}_gl{gnn_layers}_gr{gnn_reupload} | {data_suffix}"
+    train_info.update(data_info)
+    train(model, data_module, train_info, graph=False)
+
 # min classical ML only
-# for p_mode, go, gh, gl in product(["normalize"], [6], [6], [1,2]):
-#     train_classical(model_class=Classical2PCGNN, preprocess_mode=p_mode, 
-#                     gnn_in=6, gnn_out=go, gnn_hidden=gh, gnn_layers=gl)
+for p_mode, go, gh, gl in product(["normalize"], [6], [6], [1,2]):
+    train_classical(model_class=Classical2PCGNN, preprocess_mode=p_mode, 
+                    gnn_in=6, gnn_out=go, gnn_hidden=gh, gnn_layers=gl)
 
 # # classical ML only
 # for p_mode, go, gh, gl in product(["", "normalize"], [6,18], [12,48], range(4)):
 #     train_classical(model_class=Classical2PCGNN, preprocess_mode=p_mode, 
 #                     gnn_in=6, gnn_out=go, gnn_hidden=gh, gnn_layers=gl)
 
-# QML involved
+# # QML involved
+# preprocess_mode = "normalize"
+# gnn_qubits      = 6
+# model_class     = getattr(sys.modules[__name__], parse_args.model_class)
+# gnn_layers      = parse_args.q_gnn_layers
+# gnn_reupload    = parse_args.q_gnn_reupload
+# gnn_measurements_basis = "Z"
+# train_quantum(model_class, preprocess_mode, gnn_qubits, gnn_layers, gnn_reupload, gnn_measurements_basis)
+
+# Quantum Fully Connected Graph
 preprocess_mode = "normalize"
-gnn_qubits      = 6
-model_class     = getattr(sys.modules[__name__], parse_args.model_class)
-gnn_layers      = parse_args.q_gnn_layers
-gnn_reupload    = parse_args.q_gnn_reupload
-gnn_measurements_basis = "Z"
-train_quantum(model_class, preprocess_mode, gnn_qubits, gnn_layers, gnn_reupload, gnn_measurements_basis)
+gnn_idx_qubits  = int(np.ceil(np.log2(max(
+    max(ak.count(sig_fatjet_events.events["fast_pt"], axis=1)), 
+    max(ak.count(bkg_fatjet_events.events["fast_pt"], axis=1))))))
+gnn_nn_qubits   = 3
+gnn_layers      = 2
+gnn_reupload    = 0
+train_qfcgnn(preprocess_mode, gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload)

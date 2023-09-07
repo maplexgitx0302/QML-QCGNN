@@ -27,7 +27,7 @@ class FatJetEvents:
         else:
             # read MadGraph5 root file through 'uproot'
             dir_path  = f"{os.path.dirname(__file__)}/data"
-            root_path = f"{dir_path}/Events/run_01/tag_1_delphes_events.root"
+            root_path = f"{dir_path}/{channel}/Events/run_01/tag_1_delphes_events.root"
             events    = uproot.open(root_path + ":Delphes;1")
             self.keys = events.keys()
 
@@ -69,7 +69,7 @@ class FatJetEvents:
 
             # finish loading fatjet events
             self.events  = events
-            print(f"DataLog: Successfully create {channel} with {len(events)} events.")
+            print(f"\nDataLog: Successfully create {channel} with {len(events)} events.\n")
 
             # reclustering fastjet events
             if subjet_radius is not None:
@@ -77,7 +77,7 @@ class FatJetEvents:
 
     def generate_fastjet_events(self, subjet_radius, algorithm=fastjet.antikt_algorithm):
         # start reclustering particles into subjets
-        print(f"DataLog: Start reclustering {self.channel} with radius {subjet_radius}")
+        print(f"\nDataLog: Start reclustering {self.channel} with radius {subjet_radius}")
         fastjet_list = []
         for event in self.events:
             four_momentums = ak.Array({
@@ -104,7 +104,7 @@ class FatJetEvents:
         # finish reclustering and merge with original events
         for field in fastjet_events.fields:
             self.events[f"fast_{field}"] = fastjet_events[field]
-        print(f"DataLog: Finish reclustering {self.channel} with radius {subjet_radius}")
+        print(f"DataLog: Finish reclustering {self.channel} with radius {subjet_radius}\n")
     
     def generate_uniform_pt_events(self, bin, num_bin_data):
         # determine the lower and upper limits of pt

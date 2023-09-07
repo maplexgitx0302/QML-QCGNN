@@ -1,7 +1,10 @@
 import d_mg5_data
 
+generate_new_h5py_file = False
+subjet_radius = 0.4
 channels = ["VzToZhToVevebb", "VzToQCD"]
 
-for channel in channels:
-    events = d_mg5_data.FatJetEvents(channel=channel, cut_pt=(800, 1000), subjet_radius=0.1)
-    d_mg5_data.save_h5py(channel_info=f"{channel}_c{800}_{1000}_r_{0.1}", ak_array=events.events)
+if generate_new_h5py_file:
+    for channel in channels:
+        events = d_mg5_data.FatJetEvents(channel=channel, cut_pt=(800, 1000), subjet_radius=subjet_radius, check_hdf5=False)
+        d_mg5_data.save_hdf5(channel=channel, data_info=f"c{800}_{1000}_r{subjet_radius}", ak_array=events.events)

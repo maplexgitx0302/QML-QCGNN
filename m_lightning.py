@@ -19,15 +19,16 @@ class BinaryLitModel(L.LightningModule):
         if self.graph == True:
             x, edge_index, batch = data.x, data.edge_index, data.batch
             x = self.model(x, edge_index, batch)
+            y_true = data.y
         else:
-            x = self.model(data)
+            x, y_true = data
+            x = self.model(x)
         x = x.squeeze(dim=-1)
 
         # calculate loss and accuracy
         y_pred = x > 0
-        y_true = data.y
         loss   = self.loss_func(x, y_true.float())
-        acc    = (y_pred == data.y).float().mean()
+        acc    = (y_pred == y_true).float().mean()
 
         # calculate auc
         y_score = torch.sigmoid(x).detach() # because we use BCEWithLogitsLoss
@@ -60,9 +61,10 @@ class BinaryLitModel(L.LightningModule):
         del self.y_train_score_buffer
 
     def training_step(self, data, batch_idx):
+        batch_size = len(data.x) if self.graph is True else len(data[0])
         loss, acc = self.forward(data, mode="train")
-        self.log("train_loss", loss, on_step=True, on_epoch=True, batch_size=len(data.x))
-        self.log("train_acc", acc, on_step=True, on_epoch=True, batch_size=len(data.x))
+        self.log("train_loss", loss, on_step=True, on_epoch=True, batch_size=batch_size)
+        self.log("train_acc", acc, on_step=True, on_epoch=True, batch_size=batch_size)
         return loss
     
     def on_validation_epoch_start(self):
@@ -76,8 +78,9 @@ class BinaryLitModel(L.LightningModule):
         del self.y_valid_score_buffer
 
     def validation_step(self, data, batch_idx):
+        batch_size = len(data.x) if self.graph is True else len(data[0])
         _, acc = self.forward(data, mode="valid")
-        self.log("valid_acc", acc, on_step=True, on_epoch=True, batch_size=len(data.x))
+        self.log("valid_acc", acc, on_step=True, on_epoch=True, batch_size=batch_size)
 
     def on_test_epoch_start(self):
         self.y_test_true_buffer  = torch.tensor([])
@@ -90,5 +93,6 @@ class BinaryLitModel(L.LightningModule):
         del self.y_test_score_buffer
 
     def test_step(self, data, batch_idx):
+        batch_size = len(data.x) if self.graph is True else len(data[0])
         _, acc = self.forward(data, mode="test")
-        self.log("test_acc", acc, on_step=True, on_epoch=True, batch_size=len(data.x))
+        self.log("test_acc", acc, on_step=True, on_epoch=True, batch_size=batch_size)
