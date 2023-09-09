@@ -120,7 +120,7 @@ class QuantumDisorderedRotFCGraph(nn.Module):
         @qml.qnode(qml.device(device, wires=num_qubits), diff_method=diff_method)
         def circuit(inputs, weights):
             # the inputs is flattened due to torch confusing batch and features
-            inputs = inputs.reshape(-1, num_nn_qubits)
+            inputs = inputs.reshape(-1, 3)
             # constructing controlled encoding gates
             control_wires = list(range(num_idx_qubits))
             target_wires  = list(range(num_idx_qubits, num_qubits))
@@ -132,6 +132,8 @@ class QuantumDisorderedRotFCGraph(nn.Module):
                     # perform RY angle encoding for each feature
                     encoding_matrix = [torch.tensor([[torch.cos(inputs[j][k]), -torch.sin(inputs[j][k])], [torch.sin(inputs[j][k]), torch.cos(inputs[j][k])]]) for k in range(len(inputs[j]))]
                     encoding_matrix = reduce(lambda x, y: torch.kron(x, y), encoding_matrix)
+                    if num_nn_qubits > 3:
+                        encoding_matrix = torch.kron(encoding_matrix, torch.eye(2**(num_nn_qubits-3)))
                     qml.ControlledQubitUnitary(base=encoding_matrix, control_wires=control_wires, wires=target_wires, control_values=control_values)
                 # add simple qml layer
                 qml.StronglyEntanglingLayers(weights=weights[i], wires=target_wires)
