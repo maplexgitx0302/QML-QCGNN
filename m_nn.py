@@ -130,8 +130,8 @@ class QuantumDisorderedRotFCGraph(nn.Module):
                     control_values  = "0"*(num_idx_qubits-len(control_basis)) + control_basis
                     control_values  = list(map(int, control_values))
                     # perform RY angle encoding for each feature
-                    encoding_matrix = [np.array([[np.cos(inputs[j][k]), -np.sin(inputs[j][k])], [np.sin(inputs[j][k]), np.cos(inputs[j][k])]]) for k in range(len(inputs[j]))]
-                    encoding_matrix = reduce(lambda x, y: np.kron(x, y), encoding_matrix)
+                    encoding_matrix = [torch.tensor([[torch.cos(inputs[j][k]), -torch.sin(inputs[j][k])], [torch.sin(inputs[j][k]), torch.cos(inputs[j][k])]]) for k in range(len(inputs[j]))]
+                    encoding_matrix = reduce(lambda x, y: torch.kron(x, y), encoding_matrix)
                     qml.ControlledQubitUnitary(base=encoding_matrix, control_wires=control_wires, wires=target_wires, control_values=control_values)
                 # add simple qml layer
                 qml.StronglyEntanglingLayers(weights=weights[i], wires=target_wires)
