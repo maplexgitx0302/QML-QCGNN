@@ -3,11 +3,7 @@
 #SBATCH --exclusive
 
 rnd_seed=0 # <---------------------------------------------------------------------
-date_time="20230826_120000" # <---------------------------------------------------------------------
-# model_class=QuantumAngle2PCGNN
-# model_class=QuantumElementwiseAngle2PCGNN
-model_class=QuantumIQP2PCGNN
-# model_class=QuantumElementwiseIQP2PCGNN
+date_time="20230909_120000" # <---------------------------------------------------------------------
 
 echo $date_time
 
@@ -37,8 +33,8 @@ if [ "$python_version" = "$required_version" ]; then
         q_gnn_layers=2
         q_gnn_reupload=1
     fi
-    echo running model_class = $model_class, q_gnn_layers = $q_gnn_layers, q_gnn_reupload = $q_gnn_reupload, rnd_seed = $rnd_seed
-    python a.py --date_time $date_time --model_class $model_class --q_gnn_layers $q_gnn_layers --q_gnn_reupload $q_gnn_reupload --rnd_seed $rnd_seed
+    echo running q_gnn_layers = $q_gnn_layers, q_gnn_reupload = $q_gnn_reupload, rnd_seed = $rnd_seed
+    python a.py --date_time $date_time --q_gnn_layers $q_gnn_layers --q_gnn_reupload $q_gnn_reupload --rnd_seed $rnd_seed
 else
     echo "Python 3.9.12 not detected"
 fi
