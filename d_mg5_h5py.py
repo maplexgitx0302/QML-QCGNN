@@ -1,7 +1,8 @@
 import d_mg5_data
 
 generate_new_h5py_file = False
-subjet_radius = 0.4
+subjet_radius = 0.25
+# channels = ["VzToQCD"]
 channels = ["VzToZhToVevebb", "VzToQCD"]
 
 if generate_new_h5py_file:
