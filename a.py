@@ -65,16 +65,16 @@ else:
     parse_args   = parse_tuple(
         date_time      = time.strftime("%Y%m%d_%H%M%S", time.localtime()),
         rnd_seed       = 0,
-        q_gnn_layers   = 1,
+        q_gnn_layers   = 2,
         q_gnn_reupload = 1,
-        q_gnn_num_qnn  = 2,
+        q_gnn_num_qnn  = 1,
     )
     
 
 # %%
 # global settings
 cf = {}
-cf["time"]     = parse_args.date_time
+cf["time"]     = input("Type a date time or leave it space to use default date time: ") or parse_args.date_time
 cf["wandb"]    = True # <-----------------------------------------------
 cf["project"]  = "g_eflow_QFCGNN"
 
@@ -125,11 +125,35 @@ class JetDataModule(pl.LightningDataModule):
             f1 = np.arctan(events["fast_pt"] / events["fatjet_pt"])
             f2 = events["fast_delta_eta"]
             f3 = events["fast_delta_phi"]
+            arrays = ak.zip([f1, f2, f3])
+        elif mode == "normalize_pi":
+            fatjet_radius = 0.8
+            f1 = np.arctan(events["fast_pt"] / events["fatjet_pt"])
+            f2 = events["fast_delta_eta"] / fatjet_radius * (np.pi/2)
+            f3 = events["fast_delta_phi"] / fatjet_radius * (np.pi/2)
+            arrays = ak.zip([f1, f2, f3])
+        elif mode == "tri_eflow":
+            f1_s = np.sin(np.arctan(events["fast_pt"] / events["fatjet_pt"])/2)
+            f1_c = np.cos(np.arctan(events["fast_pt"] / events["fatjet_pt"])/2)
+            f2_s = np.sin(events["fast_delta_eta"]/2)
+            f2_c = np.cos(events["fast_delta_eta"]/2)
+            f3_s = np.sin(events["fast_delta_phi"]/2)
+            f3_c = np.cos(events["fast_delta_phi"]/2)
+            arrays = ak.zip([f1_s, f1_c, f2_s, f2_c, f3_s, f3_c])
+        elif mode == "tri_eflow_pi":
+            fatjet_radius = 0.8
+            f1_s = np.sin(np.arctan(events["fast_pt"] / events["fatjet_pt"]) / 2)
+            f1_c = np.cos(np.arctan(events["fast_pt"] / events["fatjet_pt"]) / 2)
+            f2_s = np.sin((events["fast_delta_eta"] / fatjet_radius * (np.pi/2)) / 2)
+            f2_c = np.cos((events["fast_delta_eta"] / fatjet_radius * (np.pi/2)) / 2)
+            f3_s = np.sin((events["fast_delta_phi"] / fatjet_radius * (np.pi/2)) / 2)
+            f3_c = np.cos((events["fast_delta_phi"] / fatjet_radius * (np.pi/2)) / 2)
+            arrays = ak.zip([f1_s, f1_c, f2_s, f2_c, f3_s, f3_c])
         elif mode == "":
             f1 = events["fast_pt"]
             f2 = events["fast_delta_eta"]
             f3 = events["fast_delta_phi"]
-        arrays = ak.zip([f1, f2, f3])
+            arrays = ak.zip([f1, f2, f3])
         arrays = arrays.to_list()
         events = [torch.tensor(arrays[i], dtype=torch.float32, requires_grad=False) for i in range(len(arrays))]
         return events
@@ -296,16 +320,16 @@ def train(model, data_module, train_info, graph=True):
         wandb.finish()
 
 # %%
-for R, rnd_seed in product([0.1, 0.2, 0.25, 0.3, 0.4], range(5)):
-    cf["rnd_seed"] = rnd_seed
-    
-    data_info = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "cut": (800, 1000), "bin":10, "subjet_radius":R, "num_bin_data":cf["num_bin_data"]}
-    sig_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["sig"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"])
-    bkg_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["bkg"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"])
+data_info = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "cut": (800, 1000), "bin":10, "subjet_radius":0.2, "num_bin_data":cf["num_bin_data"], "num_ptcs_limit":16}
+sig_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["sig"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"])
+bkg_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["bkg"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"])
 
+for rnd_seed in range(1):
+    cf["rnd_seed"] = rnd_seed
     L.seed_everything(cf["rnd_seed"])
-    sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"])
-    bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"])
+
+    sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
+    bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
     data_suffix = f"{data_info['sig']}_{data_info['bkg']}_cut{data_info['cut']}_bin{data_info['bin']}-{data_info['num_bin_data']}_R{data_info['subjet_radius']}"
 
     def train_classical(preprocess_mode, model_dict):
@@ -331,18 +355,22 @@ for R, rnd_seed in product([0.1, 0.2, 0.25, 0.3, 0.4], range(5)):
         train_info.update(data_info)
         train(model, data_module, train_info, graph=False)
 
-    # classical ML only
-    for p_mode, go, gh, gl in product(["normalize"], [6], [6], [1,2]):
-        model_dict = {"gnn_in":6, "gnn_out":go, "gnn_hidden":gh, "gnn_layers":gl, "mlp_hidden":0, "mlp_layers":0}
-        train_classical(preprocess_mode=p_mode, model_dict=model_dict)
+    # # classical ML only
+    # for p_mode, go, gh, gl in product(["", "normalize", "normalize_pi", "tri_eflow"], [6], [6], [0,1,2]):
+    #     if p_mode in ["", "normalize", "normalize_pi"]:
+    #         gnn_in = 6
+    #     elif p_mode in ["tri_eflow"]:
+    #         gnn_in = 12
+    #     model_dict = {"gnn_in":gnn_in, "gnn_out":go, "gnn_hidden":gh, "gnn_layers":gl, "mlp_hidden":0, "mlp_layers":0}
+    #     train_classical(preprocess_mode=p_mode, model_dict=model_dict)
 
-# # Quantum Fully Connected Graph
-# gnn_idx_qubits  = int(np.ceil(np.log2(max(
-#     max(ak.count(sig_fatjet_events.events["fast_pt"], axis=1)), 
-#     max(ak.count(bkg_fatjet_events.events["fast_pt"], axis=1))))))
-# preprocess_mode = "normalize"
-# gnn_layers      = parse_args.q_gnn_layers
-# gnn_reupload    = parse_args.q_gnn_reupload
-# gnn_num_qnn     = parse_args.q_gnn_num_qnn
-# model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":3, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
-# train_qfcgnn(preprocess_mode, model_dict)
+    # Quantum Fully Connected Graph
+    gnn_idx_qubits  = int(np.ceil(np.log2(max(
+        max(ak.count(sig_events["fast_pt"], axis=1)), 
+        max(ak.count(bkg_events["fast_pt"], axis=1))))))
+    preprocess_mode = "normalize_pi"
+    gnn_layers      = parse_args.q_gnn_layers
+    gnn_reupload    = parse_args.q_gnn_reupload
+    gnn_num_qnn     = parse_args.q_gnn_num_qnn
+    model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":3, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
+    train_qfcgnn(preprocess_mode, model_dict)

@@ -100,13 +100,14 @@ class FatJetEvents:
         fastjet_events["phi"]   = np.arctan2(fastjet_events["py"], fastjet_events["px"])
         fastjet_events["delta_eta"] = fastjet_events["eta"] - self.events[f"fatjet_eta"]
         fastjet_events["delta_phi"] = fastjet_events["phi"] - self.events[f"fatjet_phi"]
+        fastjet_events["delta_phi"] = np.mod(fastjet_events["delta_phi"] + np.pi, 2*np.pi) - np.pi
         
         # finish reclustering and merge with original events
         for field in fastjet_events.fields:
             self.events[f"fast_{field}"] = fastjet_events[field]
         print(f"DataLog: Finish reclustering {self.channel} with radius {subjet_radius}\n")
     
-    def generate_uniform_pt_events(self, bin, num_bin_data):
+    def generate_uniform_pt_events(self, bin, num_bin_data, num_ptcs_limit=None):
         # determine the lower and upper limits of pt
         cut_pt = self.cut_pt if self.cut_pt is not None else (min(self.events['fatjet_pt']), max(self.events['fatjet_pt']))
         bin_interval = (max(cut_pt) - min(cut_pt)) / bin
@@ -117,6 +118,9 @@ class FatJetEvents:
             bin_lower    = min(cut_pt) + bin_interval * i
             bin_upper    = min(cut_pt) + bin_interval * (i+1)
             bin_selected = (self.events['fatjet_pt'] >= bin_lower) * (self.events['fatjet_pt'] < bin_upper)
+            # whether select events with num_ptcs <= num_ptcs_limit
+            if num_ptcs_limit is not None:
+                bin_selected = bin_selected * (ak.num(self.events["fast_pt"]) <= num_ptcs_limit)
             bin_events   = self.events[bin_selected]
             
             # randomly select uniform events
@@ -131,11 +135,13 @@ class FatJetEvents:
     
 def save_hdf5(channel, data_info, ak_array):
     # see https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#saving-awkward-arrays-to-hdf5
+    print(f"DataLog: Start creating {channel}|{data_info}.hdf5 file")
     hdf5_file  = h5py.File(f"{os.path.dirname(__file__)}/data/{channel}|{data_info}.hdf5", "w")
     hdf5_group = hdf5_file.create_group(channel)
     form, length, container    = ak.to_buffers(ak.to_packed(ak_array), container=hdf5_group)
     hdf5_group.attrs["form"]   = form.to_json()
     hdf5_group.attrs["length"] = json.dumps(length)
+    print(f"DataLog: Successfully creating {channel}|{data_info}.hdf5 file")
 
 def load_hdf5(channel, data_info):
     # see https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#reading-awkward-arrays-from-hdf5
