@@ -83,13 +83,13 @@ cf["wandb"]    = True # <-----------------------------------------------
 cf["project"]  = "g_eflow_QFCGNN"
 
 # training configuration
-cf["lr"]                = 1E-2
+cf["lr"]                = 1E-3
 cf["rnd_seed"]          = parse_args.rnd_seed
 cf["num_train_ratio"]   = 0.8
 cf["num_bin_data"]      = 500 # <-----------------------------------------------
 cf["batch_size"]        = 64 # <-----------------------------------------------
 cf["num_workers"]       = 0
-cf["max_epochs"]        = 30 # <-----------------------------------------------
+cf["max_epochs"]        = 20 # <-----------------------------------------------
 cf["accelerator"]       = "cpu"
 cf["fast_dev_run"]      = False
 cf["log_every_n_steps"] = cf["batch_size"] // 2
@@ -269,10 +269,11 @@ class QuantumRyFCGNN(QuantumFCGNN):
 class QuantumRotFCGNN(QuantumFCGNN):
     def __init__(self, gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload, gnn_num_qnn, **kwargs):
         def ctrl_enc_operator(_input, control, control_values):
+            qml.Hadamard(wires=gnn_idx_qubits)
             ctrl = qml.ctrl(qml.Rot, control=control, control_values=control_values)
-            ctrl(*_input, wires=gnn_idx_qubits)
+            ctrl(theta=_input[0], phi=_input[1], omega=_input[2], wires=gnn_idx_qubits)
         super().__init__(gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload, gnn_num_qnn, ctrl_enc_operator, **kwargs)
-    
+
 # class QuantumAmpFCGNN(QuantumFCGNN):
 #     def __init__(self, gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload, gnn_num_qnn, **kwargs):
 #         def ctrl_enc_operator(_input, control, control_values):
@@ -345,9 +346,9 @@ def train(model, data_module, train_info, graph=True):
 """
 
 # %%
-data_info = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "cut": (800, 1000), "bin":10, "subjet_radius":0.2, "num_bin_data":cf["num_bin_data"], "num_ptcs_limit":16}
-sig_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["sig"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"])
-bkg_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["bkg"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"])
+data_info = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "cut": (800, 1000), "bin":10, "subjet_radius":0.2, "num_bin_data":cf["num_bin_data"], "num_ptcs_limit":None, "num_pt_ptcs":2}
+sig_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["sig"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"], num_pt_ptcs=data_info["num_pt_ptcs"])
+bkg_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["bkg"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"], num_pt_ptcs=data_info["num_pt_ptcs"])
 
 for rnd_seed in range(1):
     cf["rnd_seed"] = rnd_seed
@@ -355,7 +356,7 @@ for rnd_seed in range(1):
 
     sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
     bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
-    data_suffix = f"{data_info['sig']}_{data_info['bkg']}_cut{data_info['cut']}_bin{data_info['bin']}-{data_info['num_bin_data']}_R{data_info['subjet_radius']}"
+    data_suffix = f"cut{data_info['cut']}_ptc{data_info['num_pt_ptcs']}_bin{data_info['bin']}-{data_info['num_bin_data']}_R{data_info['subjet_radius']}"
 
     def train_classical(preprocess_mode, model_dict):
         data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
@@ -390,13 +391,14 @@ for rnd_seed in range(1):
     #     train_classical(preprocess_mode=p_mode, model_dict=model_dict)
 
     # Quantum Fully Connected Graph
-    model_class     = QuantumRotFCGNN
-    gnn_idx_qubits  = int(np.ceil(np.log2(max(
-        max(ak.count(sig_events["fast_pt"], axis=1)), 
-        max(ak.count(bkg_events["fast_pt"], axis=1))))))
-    preprocess_mode = "normalize_pi"
-    gnn_layers      = parse_args.q_gnn_layers
-    gnn_reupload    = parse_args.q_gnn_reupload
-    gnn_num_qnn     = parse_args.q_gnn_num_qnn
-    model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":6, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
-    train_qfcgnn(preprocess_mode, model_class, model_dict)
+    for gnn_layers, gnn_reupload, gnn_nn_qubits in product((1,2), (0,1), (1,2)):
+        model_class     = QuantumRotFCGNN
+        gnn_idx_qubits  = int(np.ceil(np.log2(max(
+            max(ak.count(sig_events["fast_pt"], axis=1)), 
+            max(ak.count(bkg_events["fast_pt"], axis=1))))))
+        preprocess_mode = "normalize_pi"
+        # gnn_layers      = parse_args.q_gnn_layers
+        # gnn_reupload    = parse_args.q_gnn_reupload
+        gnn_num_qnn     = parse_args.q_gnn_num_qnn
+        model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":gnn_nn_qubits, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
+        train_qfcgnn(preprocess_mode, model_class, model_dict)

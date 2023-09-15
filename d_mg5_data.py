@@ -13,11 +13,12 @@ _array   = ak.Array([{"px": 0.1, "py": 0.2, "pz": 0.3, "E": 0.4},])
 fastjet.ClusterSequence(_array, _jet_def)
 
 class FatJetEvents:
-    def __init__(self, channel:str, cut_pt:tuple[float,float]=None, subjet_radius:float=None, check_hdf5:bool=True):
+    def __init__(self, channel:str, cut_pt:tuple[float,float]=None, subjet_radius:float=None, num_pt_ptcs:int=None, check_hdf5:bool=True):
         '''Construct mg5 fatjet events with energy flow information'''
         self.channel       = channel
         self.cut_pt        = cut_pt
         self.subjet_radius = subjet_radius
+        self.num_pt_ptcs   = num_pt_ptcs
         
         if check_hdf5 == True:
             data_info   = f"c{cut_pt[0]}_{cut_pt[1]}_r{subjet_radius}"
@@ -74,6 +75,9 @@ class FatJetEvents:
             # reclustering fastjet events
             if subjet_radius is not None:
                 self.generate_fastjet_events(subjet_radius)
+        
+        if num_pt_ptcs is not None:
+            self.generate_max_pt_events()
 
     def generate_fastjet_events(self, subjet_radius, algorithm=fastjet.antikt_algorithm):
         # start reclustering particles into subjets
@@ -132,6 +136,14 @@ class FatJetEvents:
             print(f"DataLog: Generate uniform Pt events ({i+1}/{bin}) | number of bin events = {num_bin_data}/{len(bin_events)}")
         
         return ak.concatenate(bin_list)
+    
+    def generate_max_pt_events(self):
+        max_arg = ak.argsort(self.events["fast_pt"], ascending=False, axis=1)
+        max_arg = max_arg[:, :self.num_pt_ptcs]
+        for field in self.events.fields:
+            if "fast_" in field:
+                self.events[field] = self.events[field][max_arg]
+        
     
 def save_hdf5(channel, data_info, ak_array):
     # see https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#saving-awkward-arrays-to-hdf5
