@@ -98,8 +98,8 @@ class QuantumSphericalIQP(nn.Module):
 
 
 # Quantum Fully Conneted Graph (disordered rotation encoding)
-class QuantumDisorderedRotFCGraph(nn.Module):
-    def __init__(self, num_idx_qubits, num_nn_qubits, num_layers, num_reupload, device='default.qubit', diff_method="best"):
+class QuantumDisorderedFCGraph(nn.Module):
+    def __init__(self, num_idx_qubits, num_nn_qubits, num_layers, num_reupload, ctrl_enc_operator, device='default.qubit', diff_method="best"):
         super().__init__()
         self.num_idx_qubits = num_idx_qubits
         self.num_nn_qubits  = num_nn_qubits
@@ -122,26 +122,20 @@ class QuantumDisorderedRotFCGraph(nn.Module):
             # the inputs is flattened due to torch confusing batch and features
             inputs = inputs.reshape(-1, 3)
             # constructing controlled encoding gates
-            control_wires = list(range(num_idx_qubits))
-            target_wires  = list(range(num_idx_qubits, num_qubits))
             for i in range(num_reupload+1):
                 for j in range(len(inputs)):
-                    control_basis   = np.binary_repr(j)[::-1]
-                    control_values  = "0"*(num_idx_qubits-len(control_basis)) + control_basis
-                    control_values  = list(map(int, control_values))
-                    # perform RY angle encoding for each feature
-                    encoding_matrix = [torch.tensor([[torch.cos(inputs[j][k]), -torch.sin(inputs[j][k])], [torch.sin(inputs[j][k]), torch.cos(inputs[j][k])]]) for k in range(len(inputs[j]))]
-                    encoding_matrix = reduce(lambda x, y: torch.kron(x, y), encoding_matrix)
-                    if num_nn_qubits > 3:
-                        encoding_matrix = torch.kron(encoding_matrix, torch.eye(2**(num_nn_qubits-3)))
-                    qml.ControlledQubitUnitary(base=encoding_matrix, control_wires=control_wires, wires=target_wires, control_values=control_values)
+                    control_basis  = np.binary_repr(j)[::-1]
+                    control_values = "0"*(num_idx_qubits-len(control_basis)) + control_basis
+                    control_values = list(map(int, control_values))
+                    ctrl_enc_operator(inputs[j], control=range(num_idx_qubits), control_values=control_values)
                 # add simple qml layer
-                qml.StronglyEntanglingLayers(weights=weights[i], wires=target_wires)
+                qml.StronglyEntanglingLayers(weights=weights[i], wires=range(num_idx_qubits, num_qubits))
             return [qml.expval(meas) for meas in expval_measurements]
         # turn the quantum circuit into a torch layer
         weight_shapes = {"weights":(num_reupload+1, num_layers, num_nn_qubits, 3)}
-        self.net = [qml.qnn.TorchLayer(circuit, weight_shapes=weight_shapes)]
-        self.net = nn.Sequential(*self.net)
+        self.net      = [qml.qnn.TorchLayer(circuit, weight_shapes=weight_shapes)]
+        self.net      = nn.Sequential(*self.net)
+        self.circuit  = circuit
     def forward(self, x):
         x = self.net(x)
         # since the inputs is flattened, we need to unflatten them
