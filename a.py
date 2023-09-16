@@ -235,6 +235,18 @@ class Classical2PCGNN(Graph2PCGNN):
 
 # %%
 """
+### Quantum Trivial GNN Model
+"""
+
+# %%
+class QuantumAngle2PCGNN(Graph2PCGNN):
+    def __init__(self, gnn_qubits, gnn_layers, gnn_reupload, gnn_measurements, **kwargs):
+        phi = m_nn.QuantumMLP(num_qubits=gnn_qubits, num_layers=gnn_layers, num_reupload=gnn_reupload, measurements=gnn_measurements)
+        mlp = m_nn.ClassicalMLP(in_channel=len(gnn_measurements), out_channel=1, hidden_channel=0, num_layers=0)
+        super().__init__(phi, mlp)
+
+# %%
+"""
 ### Quantum Fully Connected GNN Model
 """
 
@@ -346,7 +358,7 @@ def train(model, data_module, train_info, graph=True):
 """
 
 # %%
-data_info = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "cut": (800, 1000), "bin":10, "subjet_radius":0.2, "num_bin_data":cf["num_bin_data"], "num_ptcs_limit":None, "num_pt_ptcs":2}
+data_info = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "cut": (800, 1000), "bin":10, "subjet_radius":0.2, "num_bin_data":cf["num_bin_data"], "num_ptcs_limit":None, "num_pt_ptcs":4}
 sig_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["sig"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"], num_pt_ptcs=data_info["num_pt_ptcs"])
 bkg_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["bkg"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"], num_pt_ptcs=data_info["num_pt_ptcs"])
 
@@ -365,6 +377,16 @@ for rnd_seed in range(1):
         mh, ml      = model_dict['mlp_hidden'], model_dict['mlp_layers']
         train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
         train_info["group_rnd"] = f"{model.__class__.__name__}_{preprocess_mode}_go{go}_gh{gh}_gl{gl}_mh{mh}_ml{ml} | {data_suffix}"
+        train_info.update(model_dict)
+        train_info.update(data_info)
+        train(model, data_module, train_info)
+
+    def train_qtrivial(preprocess_mode, model_dict):
+        data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
+        model       = QuantumAngle2PCGNN(**model_dict)
+        gl, gr      = model_dict['gnn_layers'], model_dict['gnn_reupload']
+        train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
+        train_info["group_rnd"] = f"{model.__class__.__name__}_{preprocess_mode}_gr{gr}_gl{gl} | {data_suffix}"
         train_info.update(model_dict)
         train_info.update(data_info)
         train(model, data_module, train_info)
@@ -391,14 +413,26 @@ for rnd_seed in range(1):
     #     train_classical(preprocess_mode=p_mode, model_dict=model_dict)
 
     # Quantum Fully Connected Graph
-    for gnn_layers, gnn_reupload, gnn_nn_qubits in product((1,2), (0,1), (1,2)):
-        model_class     = QuantumRotFCGNN
-        gnn_idx_qubits  = int(np.ceil(np.log2(max(
-            max(ak.count(sig_events["fast_pt"], axis=1)), 
-            max(ak.count(bkg_events["fast_pt"], axis=1))))))
-        preprocess_mode = "normalize_pi"
-        # gnn_layers      = parse_args.q_gnn_layers
-        # gnn_reupload    = parse_args.q_gnn_reupload
-        gnn_num_qnn     = parse_args.q_gnn_num_qnn
-        model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":gnn_nn_qubits, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
-        train_qfcgnn(preprocess_mode, model_class, model_dict)
+    for gnn_layers, gnn_reupload in product((1,2), (0,1)):
+        # Trivial GNN
+        preprocess_mode  = "normalize_pi"
+        # gnn_layers       = parse_args.q_gnn_layers
+        # gnn_reupload     = parse_args.q_gnn_reupload
+        gnn_qubits       = 6
+        gnn_num_qnn      = parse_args.q_gnn_num_qnn
+        model_dict       = {"gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_qubits":gnn_qubits}
+        gnn_measurements = list(product(range(gnn_qubits), ["Z"]))
+        model_dict["gnn_measurements"] = gnn_measurements
+        train_qtrivial(preprocess_mode, model_dict)
+
+        # # QFCGNN
+        # model_class     = QuantumRyFCGNN
+        # gnn_idx_qubits  = int(np.ceil(np.log2(max(
+        #     max(ak.count(sig_events["fast_pt"], axis=1)), 
+        #     max(ak.count(bkg_events["fast_pt"], axis=1))))))
+        # preprocess_mode = "normalize_pi"
+        # # gnn_layers      = parse_args.q_gnn_layers
+        # # gnn_reupload    = parse_args.q_gnn_reupload
+        # gnn_num_qnn     = parse_args.q_gnn_num_qnn
+        # model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":3, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
+        # train_qfcgnn(preprocess_mode, model_class, model_dict)
