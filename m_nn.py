@@ -122,6 +122,8 @@ class QuantumDisorderedFCGraph(nn.Module):
             # the inputs is flattened due to torch confusing batch and features
             inputs = inputs.reshape(-1, 3)
             # constructing controlled encoding gates
+            for i in range(num_idx_qubits):
+                qml.Hadamard(wires=i)
             for i in range(num_reupload+1):
                 for j in range(len(inputs)):
                     control_basis  = np.binary_repr(j)[::-1]
