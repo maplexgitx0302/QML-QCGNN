@@ -99,7 +99,7 @@ class QuantumSphericalIQP(nn.Module):
 
 # Quantum Fully Conneted Graph (disordered rotation encoding)
 class QuantumDisorderedFCGraph(nn.Module):
-    def __init__(self, num_idx_qubits, num_nn_qubits, num_layers, num_reupload, ctrl_enc_operator, device='default.qubit', diff_method="best"):
+    def __init__(self, num_idx_qubits, num_nn_qubits, num_layers, num_reupload, ctrl_enc_operator, device='default.qubit', diff_method="best", rnd_shuffle_inputs=False):
         super().__init__()
         self.num_idx_qubits = num_idx_qubits
         self.num_nn_qubits  = num_nn_qubits
@@ -109,8 +109,7 @@ class QuantumDisorderedFCGraph(nn.Module):
         expval_measurements = []
         # constructing 2**num_idx_qubits measurements I@I@I, I@I@X, I@X@I, I@X@X, ...
         for i in range(2**num_idx_qubits):
-            x_basis_bool = np.binary_repr(i)[::-1]
-            x_basis_bool = "0"*(num_idx_qubits-len(x_basis_bool)) + x_basis_bool
+            x_basis_bool = np.binary_repr(i, width=num_idx_qubits)
             # add X or I measurement on each idx qubits
             xz_measurements = [x_basis_dict[x_basis_bool[j]](j) for j in range(num_idx_qubits)]
             # add a Z for non-trivial measurements on each nn qubits
@@ -121,13 +120,14 @@ class QuantumDisorderedFCGraph(nn.Module):
         def circuit(inputs, weights):
             # the inputs is flattened due to torch confusing batch and features
             inputs = inputs.reshape(-1, 3)
+            if rnd_shuffle_inputs:
+                inputs = inputs[torch.randperm(len(inputs))]
             # constructing controlled encoding gates
             for i in range(num_idx_qubits):
                 qml.Hadamard(wires=i)
             for i in range(num_reupload+1):
                 for j in range(len(inputs)):
-                    control_basis  = np.binary_repr(j)[::-1]
-                    control_values = "0"*(num_idx_qubits-len(control_basis)) + control_basis
+                    control_values = np.binary_repr(j, width=num_idx_qubits)
                     control_values = list(map(int, control_values))
                     ctrl_enc_operator(inputs[j], control=range(num_idx_qubits), control_values=control_values)
                 # add simple qml layer
@@ -138,6 +138,7 @@ class QuantumDisorderedFCGraph(nn.Module):
         self.net      = [qml.qnn.TorchLayer(circuit, weight_shapes=weight_shapes)]
         self.net      = nn.Sequential(*self.net)
         self.circuit  = circuit
+        self.meas     = expval_measurements
     def forward(self, x):
         x = self.net(x)
         # since the inputs is flattened, we need to unflatten them
