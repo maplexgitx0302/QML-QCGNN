@@ -99,7 +99,7 @@ class QuantumSphericalIQP(nn.Module):
 
 # Quantum Fully Conneted Graph (disordered rotation encoding)
 class QuantumDisorderedFCGraph(nn.Module):
-    def __init__(self, num_idx_qubits, num_nn_qubits, num_layers, num_reupload, ctrl_enc_operator, device='default.qubit', diff_method="best", rnd_shuffle_inputs=False):
+    def __init__(self, num_idx_qubits, num_nn_qubits, num_layers, num_reupload, ctrl_enc_operator, device='default.qubit', diff_method="best"):
         super().__init__()
         self.num_idx_qubits = num_idx_qubits
         self.num_nn_qubits  = num_nn_qubits
@@ -120,8 +120,6 @@ class QuantumDisorderedFCGraph(nn.Module):
         def circuit(inputs, weights):
             # the inputs is flattened due to torch confusing batch and features
             inputs = inputs.reshape(-1, 3)
-            if rnd_shuffle_inputs:
-                inputs = inputs[torch.randperm(len(inputs))]
             # constructing controlled encoding gates
             for i in range(num_idx_qubits):
                 qml.Hadamard(wires=i)
