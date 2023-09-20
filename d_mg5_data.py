@@ -61,6 +61,12 @@ class FatJetEvents:
             events['fatjet_daughter_py']  = events['ptcs_py'][refs]
             events['fatjet_daughter_pz']  = events['ptcs_pz'][refs]
 
+            # default fast pt, eta, phi (for subjet_radius=0 use)
+            events['fast_pt']        = events['fatjet_daughter_pt']
+            events['fast_delta_eta'] = events['fatjet_daughter_eta'] - events['fatjet_eta']
+            events['fast_delta_phi'] = events['fatjet_daughter_phi'] - events['fatjet_phi']
+            events['fast_delta_phi'] = np.mod(events['fast_delta_phi'] + np.pi, 2*np.pi) - np.pi
+
             # remove unnecessary records (ptcs)
             remain_fields = [field for field in events.fields if 'ptcs' not in field]
             events        = events[remain_fields]
