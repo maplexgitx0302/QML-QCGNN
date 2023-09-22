@@ -13,7 +13,7 @@ _array   = ak.Array([{"px": 0.1, "py": 0.2, "pz": 0.3, "E": 0.4},])
 fastjet.ClusterSequence(_array, _jet_def)
 
 class FatJetEvents:
-    def __init__(self, channel:str, cut_pt:tuple[float,float]=None, subjet_radius:float=None, num_pt_ptcs:int=None, check_hdf5:bool=True):
+    def __init__(self, channel:str, cut_pt:tuple[float,float]=None, subjet_radius:float=0, num_pt_ptcs:int="Full", check_hdf5:bool=True):
         '''Construct mg5 fatjet events with energy flow information'''
         self.channel       = channel
         self.cut_pt        = cut_pt
@@ -79,10 +79,10 @@ class FatJetEvents:
             print(f"\nDataLog: Successfully create {channel} with {len(events)} events.\n")
 
             # reclustering fastjet events
-            if subjet_radius is not None:
+            if subjet_radius != 0:
                 self.generate_fastjet_events(subjet_radius)
         
-        if num_pt_ptcs is not None:
+        if num_pt_ptcs != "Full":
             self.generate_max_pt_events()
 
     def generate_fastjet_events(self, subjet_radius, algorithm=fastjet.antikt_algorithm):
