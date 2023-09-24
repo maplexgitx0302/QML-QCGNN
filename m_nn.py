@@ -99,7 +99,7 @@ class QuantumSphericalIQP(nn.Module):
 
 # Quantum Fully Conneted Graph (disordered rotation encoding)
 class QuantumDisorderedFCGraph(nn.Module):
-    def __init__(self, num_idx_qubits, num_nn_qubits, num_layers, num_reupload, ctrl_enc_operator, device='default.qubit', diff_method="best"):
+    def __init__(self, num_idx_qubits, num_nn_qubits, num_layers, num_reupload, ctrl_enc_operator, pt_weight=False, device='default.qubit', diff_method="best"):
         super().__init__()
         self.num_idx_qubits = num_idx_qubits
         self.num_nn_qubits  = num_nn_qubits
@@ -117,12 +117,18 @@ class QuantumDisorderedFCGraph(nn.Module):
             expval_measurements = expval_measurements + xz_measurements
         # constructing circuit
         @qml.qnode(qml.device(device, wires=num_qubits), diff_method=diff_method)
-        def circuit(inputs, weights):
+        def circuit(inputs=torch.rand(3*2**num_idx_qubits), weights=torch.rand(num_reupload+1, num_layers, num_nn_qubits, 3)):
             # the inputs is flattened due to torch confusing batch and features
             inputs = inputs.reshape(-1, 3)
+            # initialize the controlled qubits
+            if pt_weight == True:
+                _pts = torch.tan(inputs[:, 0])
+                qml.AmplitudeEmbedding(features=_pts, wires=range(num_idx_qubits), pad_with=0, normalize=True)
+            else:
+                # uniformly weighted
+                for i in range(num_idx_qubits):
+                    qml.Hadamard(wires=i)
             # constructing controlled encoding gates
-            for i in range(num_idx_qubits):
-                qml.Hadamard(wires=i)
             for i in range(num_reupload+1):
                 for j in range(len(inputs)):
                     control_values = np.binary_repr(j, width=num_idx_qubits)
