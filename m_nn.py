@@ -19,7 +19,7 @@ class ClassicalMLP(nn.Module):
             self.net = nn.Linear(in_channel, out_channel)
         else:
             net = [nn.Linear(in_channel, hidden_channel), nn.ReLU()]
-            for _ in range(num_layers-2):
+            for _ in range(num_layers-1):
                 net += [nn.Linear(hidden_channel, hidden_channel), nn.ReLU()]
             net += [nn.Linear(hidden_channel, out_channel)]
             self.net = nn.Sequential(*net)

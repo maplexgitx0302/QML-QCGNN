@@ -311,13 +311,13 @@ class QuantumWtRotFCGNN(QuantumRotFCGNN):
 """
 
 # %%
-def train(model, data_module, train_info, graph=True):
+def train(model, data_module, train_info, suffix="", graph=True):
     # setup wandb logger
     wandb_info = {}
     if cf["wandb"]:
         wandb_info["project"]  = cf["project"]
         wandb_info["group"]    = f"{train_info['sig']}_{train_info['bkg']}"
-        wandb_info["name"]     = f"{train_info['group_rnd']} | {cf['time']}_{train_info['rnd_seed']}"
+        wandb_info["name"]     = f"{train_info['group_rnd']} | {cf['time']}_{train_info['rnd_seed']}{suffix}"
         wandb_info["id"]       = wandb_info["name"]
         wandb_info["save_dir"] = root_dir 
         wandb_logger = WandbLogger(**wandb_info)
@@ -382,7 +382,7 @@ for rnd_seed in range(1):
     bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
     data_suffix = f"cut{data_info['cut']}_ptc{data_info['num_pt_ptcs']}_bin{data_info['bin']}-{data_info['num_bin_data']}_R{data_info['subjet_radius']}"
 
-    def train_classical(preprocess_mode, model_dict):
+    def train_classical(preprocess_mode, model_dict, suffix=""):
         data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
         model       = Classical2PCGNN(**model_dict)
         go, gh, gl  = model_dict['gnn_out'], model_dict['gnn_hidden'], model_dict['gnn_layers']
@@ -391,9 +391,9 @@ for rnd_seed in range(1):
         train_info["group_rnd"] = f"{model.__class__.__name__}_{preprocess_mode}_go{go}_gh{gh}_gl{gl}_mh{mh}_ml{ml} | {data_suffix}"
         train_info.update(model_dict)
         train_info.update(data_info)
-        train(model, data_module, train_info)
+        train(model, data_module, train_info, suffix=suffix)
 
-    def train_qtrivial(preprocess_mode, model_dict):
+    def train_qtrivial(preprocess_mode, model_dict, suffix=""):
         data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
         model       = QuantumAngle2PCGNN(**model_dict)
         gl, gr      = model_dict['gnn_layers'], model_dict['gnn_reupload']
@@ -401,9 +401,9 @@ for rnd_seed in range(1):
         train_info["group_rnd"] = f"{model.__class__.__name__}_{preprocess_mode}_gr{gr}_gl{gl} | {data_suffix}"
         train_info.update(model_dict)
         train_info.update(data_info)
-        train(model, data_module, train_info)
+        train(model, data_module, train_info, suffix=suffix)
 
-    def train_qfcgnn(preprocess_mode, model_class, model_dict):
+    def train_qfcgnn(preprocess_mode, model_class, model_dict, suffix=""):
         data_module = JetDataModule(sig_events, bkg_events, preprocess_mode, graph=False)
         model       = model_class(**model_dict)
         qidx, qnn   = model_dict['gnn_idx_qubits'], model_dict['gnn_nn_qubits']
@@ -413,10 +413,10 @@ for rnd_seed in range(1):
         train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_QNN{num_qnn}_qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr} | {data_suffix}"
         train_info.update(model_dict)
         train_info.update(data_info)
-        train(model, data_module, train_info, graph=False)
+        train(model, data_module, train_info, suffix=suffix, graph=False)
 
     # # classical ML only
-    # for p_mode, go, gh, gl in product(["", "normalize", "normalize_pi", "tri_eflow"], [6], [6], [0,1,2]):
+    # for p_mode, go, gh, gl in product(["", "normalize", "normalize_pi", "tri_eflow"], [6], [6], [2]):
     #     if p_mode in ["", "normalize", "normalize_pi"]:
     #         gnn_in = 6
     #     elif p_mode in ["tri_eflow"]:
@@ -437,7 +437,7 @@ for rnd_seed in range(1):
     #     model_dict["gnn_measurements"] = gnn_measurements
     #     train_qtrivial(preprocess_mode, model_dict)
 
-    for gnn_layers, gnn_reupload, gnn_nn_qubits in product((1,2), (0,1), (1,2,3)):
+    for gnn_layers, gnn_reupload, gnn_nn_qubits in product([1,2], [0,1], [2]):
         # QFCGNN
         model_class     = QuantumWtRotFCGNN
         gnn_idx_qubits  = int(np.ceil(np.log2(max(
@@ -446,6 +446,6 @@ for rnd_seed in range(1):
         preprocess_mode = "normalize_pi"
         # gnn_layers      = parse_args.q_gnn_layers
         # gnn_reupload    = parse_args.q_gnn_reupload
-        gnn_num_qnn     = parse_args.q_gnn_num_qnn
+        gnn_num_qnn     = 6
         model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":gnn_nn_qubits, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
         train_qfcgnn(preprocess_mode, model_class, model_dict)
