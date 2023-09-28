@@ -306,6 +306,31 @@ class QuantumWtRotFCGNN(QuantumRotFCGNN):
 #         super().__init__(gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload, gnn_num_qnn, ctrl_enc_operator, **kwargs)
 
 # %%
+class QuantumSuperFCGNN(nn.Module):
+    def __init__(self, gnn_idx_qubits, gnn_max_reupload, **kwargs):
+        super().__init__()
+        def angle_ctrl_enc_operator(_input, control, control_values):
+            ctrl = qml.ctrl(qml.AngleEmbedding, control=control, control_values=control_values)
+            ctrl(features=_input, wires=range(gnn_idx_qubits, gnn_idx_qubits+3), rotation="Y")
+        def rot_ctrl_enc_operator(_input, control, control_values):
+            ctrl_H = qml.ctrl(qml.Hadamard, control=control, control_values=control_values)
+            ctrl_H(wires=gnn_idx_qubits)
+            ctrl_R = qml.ctrl(qml.Rot, control=control, control_values=control_values)
+            ctrl_R(theta=_input[0], phi=_input[1], omega=_input[2], wires=gnn_idx_qubits)
+        module       = m_nn.QuantumDisorderedFCGraph
+        angle_module = lambda r: module(gnn_idx_qubits, num_nn_qubits=3, num_layers=2, num_reupload=r, ctrl_enc_operator=angle_ctrl_enc_operator)
+        rot_module   = lambda r: module(gnn_idx_qubits, num_nn_qubits=2, num_layers=2, num_reupload=r, ctrl_enc_operator=rot_ctrl_enc_operator)
+        self.phi     = nn.ModuleList([angle_module(r) for r in range(gnn_max_reupload+1)])
+        self.phi    += nn.ModuleList([rot_module(r) for r in range(gnn_max_reupload+1)])
+        self.mlp = m_nn.ClassicalMLP(in_channel=(3+2)*(gnn_max_reupload+1), out_channel=1, hidden_channel=0, num_layers=0)
+    def forward(self, x):
+        # inputs should be 1-dim for each data, otherwise it would be confused with batch shape
+        x = torch.flatten(x, start_dim=-2, end_dim=-1)
+        x = torch.cat([self.phi[i](x) for i in range(len(self.phi))], dim=-1)
+        x = self.mlp(x)
+        return x
+
+# %%
 """
 ### Wandb Training
 """
@@ -415,6 +440,15 @@ for rnd_seed in range(1):
         train_info.update(data_info)
         train(model, data_module, train_info, suffix=suffix, graph=False)
 
+    def train_superqfcgnn(preprocess_mode, model_dict, suffix=""):
+        data_module = JetDataModule(sig_events, bkg_events, preprocess_mode, graph=False)
+        model       = QuantumSuperFCGNN(**model_dict)
+        train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
+        train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_qidx{model_dict['gnn_idx_qubits']}_maxgr{model_dict['gnn_max_reupload']} | {data_suffix}"
+        train_info.update(model_dict)
+        train_info.update(data_info)
+        train(model, data_module, train_info, suffix=suffix, graph=False)
+
     # # classical ML only
     # for p_mode, go, gh, gl in product(["", "normalize", "normalize_pi", "tri_eflow"], [6], [6], [2]):
     #     if p_mode in ["", "normalize", "normalize_pi"]:
@@ -437,15 +471,23 @@ for rnd_seed in range(1):
     #     model_dict["gnn_measurements"] = gnn_measurements
     #     train_qtrivial(preprocess_mode, model_dict)
 
-    for gnn_layers, gnn_reupload, gnn_nn_qubits in product([1,2], [0,1], [2]):
-        # QFCGNN
-        model_class     = QuantumWtRotFCGNN
+    # for gnn_layers, gnn_reupload, gnn_nn_qubits in product([1,2], [0,1], [2]):
+    #     # QFCGNN
+    #     model_class     = QuantumWtRotFCGNN
+    #     gnn_idx_qubits  = int(np.ceil(np.log2(max(
+    #         max(ak.count(sig_events["fast_pt"], axis=1)), 
+    #         max(ak.count(bkg_events["fast_pt"], axis=1))))))
+    #     preprocess_mode = "normalize_pi"
+    #     # gnn_layers      = parse_args.q_gnn_layers
+    #     # gnn_reupload    = parse_args.q_gnn_reupload
+    #     gnn_num_qnn     = 6
+    #     model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":gnn_nn_qubits, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
+    #     train_qfcgnn(preprocess_mode, model_class, model_dict)
+
+    # Super QFCGNN
+    for r in range(4):
         gnn_idx_qubits  = int(np.ceil(np.log2(max(
             max(ak.count(sig_events["fast_pt"], axis=1)), 
             max(ak.count(bkg_events["fast_pt"], axis=1))))))
-        preprocess_mode = "normalize_pi"
-        # gnn_layers      = parse_args.q_gnn_layers
-        # gnn_reupload    = parse_args.q_gnn_reupload
-        gnn_num_qnn     = 6
-        model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":gnn_nn_qubits, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
-        train_qfcgnn(preprocess_mode, model_class, model_dict)
+        model_dict = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_max_reupload":r}
+        train_superqfcgnn("normalize_pi", model_dict)
