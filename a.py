@@ -298,6 +298,21 @@ class QuantumWtRotFCGNN(QuantumRotFCGNN):
         # Weighted QuantumRyFCGNN
         super().__init__(gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload, gnn_num_qnn, **{"pt_weight":True})
 
+class QuantumMultiRotFCGNN(QuantumFCGNN):
+    def __init__(self, gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload, gnn_num_qnn, **kwargs):
+        def ctrl_enc_operator(_input, control, control_values):
+            for i in range(gnn_nn_qubits):
+                ctrl_H = qml.ctrl(qml.Hadamard, control=control, control_values=control_values)
+                ctrl_H(wires=gnn_idx_qubits+i)
+                ctrl_R = qml.ctrl(qml.Rot, control=control, control_values=control_values)
+                ctrl_R(theta=_input[0], phi=_input[1], omega=_input[2], wires=gnn_idx_qubits+i)
+        super().__init__(gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload, gnn_num_qnn, ctrl_enc_operator, **kwargs)
+
+class QuantumWtMultiRotFCGNN(QuantumMultiRotFCGNN):
+    def __init__(self, gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload, gnn_num_qnn, **kwargs):
+        # Weighted QuantumRyFCGNN
+        super().__init__(gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload, gnn_num_qnn, **{"pt_weight":True})
+
 # class QuantumAmpFCGNN(QuantumFCGNN):
 #     def __init__(self, gnn_idx_qubits, gnn_nn_qubits, gnn_layers, gnn_reupload, gnn_num_qnn, **kwargs):
 #         def ctrl_enc_operator(_input, control, control_values):
@@ -408,99 +423,100 @@ def train(model, data_module, train_info, suffix="", graph=True):
 """
 
 # %%
-data_info = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "cut": (800, 1000), "bin":10, "subjet_radius":0, "num_bin_data":cf["num_bin_data"], "num_ptcs_limit":None, "num_pt_ptcs":8}
-sig_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["sig"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"], num_pt_ptcs=data_info["num_pt_ptcs"])
-bkg_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["bkg"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"], num_pt_ptcs=data_info["num_pt_ptcs"])
+for num_pt_ptcs in [2, 4, 8, 16]:
+    data_info = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "cut": (800, 1000), "bin":10, "subjet_radius":0, "num_bin_data":cf["num_bin_data"], "num_ptcs_limit":None, "num_pt_ptcs":num_pt_ptcs}
+    sig_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["sig"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"], num_pt_ptcs=data_info["num_pt_ptcs"])
+    bkg_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["bkg"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"], num_pt_ptcs=data_info["num_pt_ptcs"])
 
-for rnd_seed in range(1):
-    cf["rnd_seed"] = rnd_seed
-    L.seed_everything(cf["rnd_seed"])
+    for rnd_seed in range(1):
+        cf["rnd_seed"] = rnd_seed
+        L.seed_everything(cf["rnd_seed"])
 
-    sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
-    bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
-    data_suffix = f"cut{data_info['cut']}_ptc{data_info['num_pt_ptcs']}_bin{data_info['bin']}-{data_info['num_bin_data']}_R{data_info['subjet_radius']}"
+        sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
+        bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
+        data_suffix = f"cut{data_info['cut']}_ptc{data_info['num_pt_ptcs']}_bin{data_info['bin']}-{data_info['num_bin_data']}_R{data_info['subjet_radius']}"
 
-    def train_classical(preprocess_mode, model_dict, suffix=""):
-        data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
-        model       = Classical2PCGNN(**model_dict)
-        go, gh, gl  = model_dict['gnn_out'], model_dict['gnn_hidden'], model_dict['gnn_layers']
-        mh, ml      = model_dict['mlp_hidden'], model_dict['mlp_layers']
-        train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
-        train_info["group_rnd"] = f"{model.__class__.__name__}_{preprocess_mode}_go{go}_gh{gh}_gl{gl}_mh{mh}_ml{ml} | {data_suffix}"
-        train_info.update(model_dict)
-        train_info.update(data_info)
-        train(model, data_module, train_info, suffix=suffix)
+        def train_classical(preprocess_mode, model_dict, suffix=""):
+            data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
+            model       = Classical2PCGNN(**model_dict)
+            go, gh, gl  = model_dict['gnn_out'], model_dict['gnn_hidden'], model_dict['gnn_layers']
+            mh, ml      = model_dict['mlp_hidden'], model_dict['mlp_layers']
+            train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
+            train_info["group_rnd"] = f"{model.__class__.__name__}_{preprocess_mode}_go{go}_gh{gh}_gl{gl}_mh{mh}_ml{ml} | {data_suffix}"
+            train_info.update(model_dict)
+            train_info.update(data_info)
+            train(model, data_module, train_info, suffix=suffix)
 
-    def train_qtrivial(preprocess_mode, model_dict, suffix=""):
-        data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
-        model       = QuantumAngle2PCGNN(**model_dict)
-        gl, gr      = model_dict['gnn_layers'], model_dict['gnn_reupload']
-        train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
-        train_info["group_rnd"] = f"{model.__class__.__name__}_{preprocess_mode}_gr{gr}_gl{gl} | {data_suffix}"
-        train_info.update(model_dict)
-        train_info.update(data_info)
-        train(model, data_module, train_info, suffix=suffix)
+        def train_qtrivial(preprocess_mode, model_dict, suffix=""):
+            data_module = JetDataModule(sig_events, bkg_events, preprocess_mode)
+            model       = QuantumAngle2PCGNN(**model_dict)
+            gl, gr      = model_dict['gnn_layers'], model_dict['gnn_reupload']
+            train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
+            train_info["group_rnd"] = f"{model.__class__.__name__}_{preprocess_mode}_gr{gr}_gl{gl} | {data_suffix}"
+            train_info.update(model_dict)
+            train_info.update(data_info)
+            train(model, data_module, train_info, suffix=suffix)
 
-    def train_qfcgnn(preprocess_mode, model_class, model_dict, suffix=""):
-        data_module = JetDataModule(sig_events, bkg_events, preprocess_mode, graph=False)
-        model       = model_class(**model_dict)
-        qidx, qnn   = model_dict['gnn_idx_qubits'], model_dict['gnn_nn_qubits']
-        gl, gr      = model_dict['gnn_layers'], model_dict['gnn_reupload']
-        num_qnn     = model_dict['gnn_num_qnn']
-        train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
-        train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_QNN{num_qnn}_qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr} | {data_suffix}"
-        train_info.update(model_dict)
-        train_info.update(data_info)
-        train(model, data_module, train_info, suffix=suffix, graph=False)
+        def train_qfcgnn(preprocess_mode, model_class, model_dict, suffix=""):
+            data_module = JetDataModule(sig_events, bkg_events, preprocess_mode, graph=False)
+            model       = model_class(**model_dict)
+            qidx, qnn   = model_dict['gnn_idx_qubits'], model_dict['gnn_nn_qubits']
+            gl, gr      = model_dict['gnn_layers'], model_dict['gnn_reupload']
+            num_qnn     = model_dict['gnn_num_qnn']
+            train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
+            train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_QNN{num_qnn}_qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr} | {data_suffix}"
+            train_info.update(model_dict)
+            train_info.update(data_info)
+            train(model, data_module, train_info, suffix=suffix, graph=False)
 
-    def train_superqfcgnn(preprocess_mode, model_dict, suffix=""):
-        data_module = JetDataModule(sig_events, bkg_events, preprocess_mode, graph=False)
-        model       = HybridSuperFCGNN(**model_dict)
-        train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
-        train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_qidx{model_dict['gnn_idx_qubits']}_maxgr{model_dict['gnn_max_reupload']} | {data_suffix}"
-        train_info.update(model_dict)
-        train_info.update(data_info)
-        train(model, data_module, train_info, suffix=suffix, graph=False)
+        def train_superqfcgnn(preprocess_mode, model_dict, suffix=""):
+            data_module = JetDataModule(sig_events, bkg_events, preprocess_mode, graph=False)
+            model       = HybridSuperFCGNN(**model_dict)
+            train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
+            train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_qidx{model_dict['gnn_idx_qubits']}_maxgr{model_dict['gnn_max_reupload']} | {data_suffix}"
+            train_info.update(model_dict)
+            train_info.update(data_info)
+            train(model, data_module, train_info, suffix=suffix, graph=False)
 
-    # # classical ML only
-    # for p_mode, go, gh, gl in product(["", "normalize", "normalize_pi", "tri_eflow"], [6], [6], [2]):
-    #     if p_mode in ["", "normalize", "normalize_pi"]:
-    #         gnn_in = 6
-    #     elif p_mode in ["tri_eflow"]:
-    #         gnn_in = 12
-    #     model_dict = {"gnn_in":gnn_in, "gnn_out":go, "gnn_hidden":gh, "gnn_layers":gl, "mlp_hidden":0, "mlp_layers":0}
-    #     train_classical(preprocess_mode=p_mode, model_dict=model_dict)
+        # # classical ML only
+        # for p_mode, go, gh, gl in product(["", "normalize", "normalize_pi", "tri_eflow"], [3], [3], [0, 1, 2]):
+        #     if p_mode in ["", "normalize", "normalize_pi"]:
+        #         gnn_in = 6
+        #     elif p_mode in ["tri_eflow"]:
+        #         gnn_in = 12
+        #     model_dict = {"gnn_in":gnn_in, "gnn_out":go, "gnn_hidden":gh, "gnn_layers":gl, "mlp_hidden":0, "mlp_layers":0}
+        #     train_classical(preprocess_mode=p_mode, model_dict=model_dict)
 
-    # # Quantum Fully Connected Graph
-    # for gnn_layers, gnn_reupload in product((1,2), (0,1)):
-    #     # Trivial GNN
-    #     preprocess_mode  = "normalize_pi"
-    #     # gnn_layers       = parse_args.q_gnn_layers
-    #     # gnn_reupload     = parse_args.q_gnn_reupload
-    #     gnn_qubits       = 6
-    #     gnn_num_qnn      = parse_args.q_gnn_num_qnn
-    #     model_dict       = {"gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_qubits":gnn_qubits}
-    #     gnn_measurements = list(product(range(gnn_qubits), ["Z"]))
-    #     model_dict["gnn_measurements"] = gnn_measurements
-    #     train_qtrivial(preprocess_mode, model_dict)
+        # # Quantum Fully Connected Graph
+        # for gnn_layers, gnn_reupload in product((1,2), (0,1)):
+        #     # Trivial GNN
+        #     preprocess_mode  = "normalize_pi"
+        #     # gnn_layers       = parse_args.q_gnn_layers
+        #     # gnn_reupload     = parse_args.q_gnn_reupload
+        #     gnn_qubits       = 6
+        #     gnn_num_qnn      = parse_args.q_gnn_num_qnn
+        #     model_dict       = {"gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_qubits":gnn_qubits}
+        #     gnn_measurements = list(product(range(gnn_qubits), ["Z"]))
+        #     model_dict["gnn_measurements"] = gnn_measurements
+        #     train_qtrivial(preprocess_mode, model_dict)
 
-    # for gnn_layers, gnn_reupload, gnn_nn_qubits in product([1,2], [0,1], [2]):
-    #     # QFCGNN
-    #     model_class     = QuantumWtRotFCGNN
-    #     gnn_idx_qubits  = int(np.ceil(np.log2(max(
-    #         max(ak.count(sig_events["fast_pt"], axis=1)), 
-    #         max(ak.count(bkg_events["fast_pt"], axis=1))))))
-    #     preprocess_mode = "normalize_pi"
-    #     # gnn_layers      = parse_args.q_gnn_layers
-    #     # gnn_reupload    = parse_args.q_gnn_reupload
-    #     gnn_num_qnn     = 6
-    #     model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":gnn_nn_qubits, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
-    #     train_qfcgnn(preprocess_mode, model_class, model_dict)
+        for gnn_layers, gnn_reupload, gnn_nn_qubits in product([1,2], [0,1], [1,2,3]):
+            # QFCGNN
+            model_class     = QuantumMultiRotFCGNN
+            gnn_idx_qubits  = int(np.ceil(np.log2(max(
+                max(ak.count(sig_events["fast_pt"], axis=1)), 
+                max(ak.count(bkg_events["fast_pt"], axis=1))))))
+            preprocess_mode = "normalize_pi"
+            # gnn_layers      = parse_args.q_gnn_layers
+            # gnn_reupload    = parse_args.q_gnn_reupload
+            gnn_num_qnn     = 1
+            model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":gnn_nn_qubits, "gnn_layers":gnn_layers, "gnn_reupload":gnn_reupload, "gnn_num_qnn":gnn_num_qnn}
+            train_qfcgnn(preprocess_mode, model_class, model_dict)
 
-    # Super QFCGNN
-    for r in range(4):
-        gnn_idx_qubits  = int(np.ceil(np.log2(max(
-            max(ak.count(sig_events["fast_pt"], axis=1)), 
-            max(ak.count(bkg_events["fast_pt"], axis=1))))))
-        model_dict = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_max_reupload":r}
-        train_superqfcgnn("normalize_pi", model_dict)
+        # # Super QFCGNN
+        # for r in range(4):
+        #     gnn_idx_qubits  = int(np.ceil(np.log2(max(
+        #         max(ak.count(sig_events["fast_pt"], axis=1)), 
+        #         max(ak.count(bkg_events["fast_pt"], axis=1))))))
+        #     model_dict = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_max_reupload":r}
+        #     train_superqfcgnn("normalize_pi", model_dict)
