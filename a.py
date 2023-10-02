@@ -322,8 +322,21 @@ class QuantumSuperFCGNN(nn.Module):
         rot_module   = lambda r: module(gnn_idx_qubits, num_nn_qubits=2, num_layers=2, num_reupload=r, ctrl_enc_operator=rot_ctrl_enc_operator)
         self.phi     = nn.ModuleList([angle_module(r) for r in range(gnn_max_reupload+1)])
         self.phi    += nn.ModuleList([rot_module(r) for r in range(gnn_max_reupload+1)])
-        self.mlp = m_nn.ClassicalMLP(in_channel=(3+2)*(gnn_max_reupload+1), out_channel=1, hidden_channel=0, num_layers=0)
+        self.mlp     = m_nn.ClassicalMLP(in_channel=(3+2)*(gnn_max_reupload+1), out_channel=1, hidden_channel=0, num_layers=0)
     def forward(self, x):
+        # inputs should be 1-dim for each data, otherwise it would be confused with batch shape
+        x = torch.flatten(x, start_dim=-2, end_dim=-1)
+        x = torch.cat([self.phi[i](x) for i in range(len(self.phi))], dim=-1)
+        x = self.mlp(x)
+        return x
+    
+class HybridSuperFCGNN(QuantumSuperFCGNN):
+    def __init__(self, gnn_idx_qubits, gnn_max_reupload, **kwargs):
+        super().__init__(gnn_idx_qubits, gnn_max_reupload, **kwargs)
+        self.pre_mlp = nn.Linear(3, 3)
+    def forward(self, x):
+        # pre-linear
+        x = self.pre_mlp(x)
         # inputs should be 1-dim for each data, otherwise it would be confused with batch shape
         x = torch.flatten(x, start_dim=-2, end_dim=-1)
         x = torch.cat([self.phi[i](x) for i in range(len(self.phi))], dim=-1)
@@ -442,7 +455,7 @@ for rnd_seed in range(1):
 
     def train_superqfcgnn(preprocess_mode, model_dict, suffix=""):
         data_module = JetDataModule(sig_events, bkg_events, preprocess_mode, graph=False)
-        model       = QuantumSuperFCGNN(**model_dict)
+        model       = HybridSuperFCGNN(**model_dict)
         train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "preprocess_mode":preprocess_mode}
         train_info["group_rnd"]  = f"{model.__class__.__name__}_{preprocess_mode}_qidx{model_dict['gnn_idx_qubits']}_maxgr{model_dict['gnn_max_reupload']} | {data_suffix}"
         train_info.update(model_dict)
