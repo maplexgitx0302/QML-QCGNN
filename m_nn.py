@@ -150,5 +150,5 @@ class QuantumDisorderedFCGraph(nn.Module):
         # transpose last two dimensions (X,Z) -> (Z,X)
         x = x.mT
         # sum up X expvals
-        x = torch.sum(x, dim=-1)
+        x = torch.sum(x, dim=-1) * (2**self.num_idx_qubits)
         return x
