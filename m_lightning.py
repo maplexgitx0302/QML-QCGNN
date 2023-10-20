@@ -31,7 +31,8 @@ class BinaryLitModel(L.LightningModule):
         acc    = (y_pred == y_true).float().mean()
 
         # calculate auc
-        y_score = torch.sigmoid(x).detach() # because we use BCEWithLogitsLoss
+        y_true  = y_true.detach().to("cpu")
+        y_score = torch.sigmoid(x).detach().to("cpu") # because we use BCEWithLogitsLoss
         if mode == "train":
             self.y_train_true_buffer  = torch.cat((self.y_train_true_buffer, y_true))
             self.y_train_score_buffer = torch.cat((self.y_train_score_buffer, y_score))
