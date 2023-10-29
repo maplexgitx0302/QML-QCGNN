@@ -1,0 +1,37 @@
+# Step 1
+Check conda virtual environment
+>>> conda env list
+
+# Step 2
+Activate the virtual environment, e.g.,
+>>> conda activate qml
+One can use `python -V` to double check venv version
+
+# Step 3
+Write a shell script, e.g., consider `a.sh`
+'''
+#!/bin/bash
+#SBATCH --exclusive
+python_version="$(python --version)"
+required_version="Python 3.9.12"
+echo current python version is $python_version
+echo required python version is $required_version
+if [ "$python_version" = "$required_version" ]; then
+    echo "Python 3.9.12 detected"
+    python a.py
+else
+    echo "Python 3.9.12 not detected"
+fi
+'''
+
+# Step 4
+Run `a.sh` with sbatch
+>>> sbatch -p large a.sh
+-p: select partition
+
+------------------------------------------------------
+
+# Slurm commands
+sinfo: check slurm information (partition, time limit, etc.)
+sacct: check personal usage now
+squeue: check slurm queue

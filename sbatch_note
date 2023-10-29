@@ -1,1 +1,0 @@
-sbatch -p large sbatch_job_qml.sh
