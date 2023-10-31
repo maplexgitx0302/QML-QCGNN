@@ -1,3 +1,5 @@
+import m_nn
+
 class QuantumAngle2PCGNN(Graph2PCGNN):
     def __init__(self, gnn_qubits, gnn_layers, gnn_reupload, gnn_measurements, **kwargs):
         phi = m_nn.QuantumMLP(num_qubits=gnn_qubits, num_layers=gnn_layers, num_reupload=gnn_reupload, measurements=gnn_measurements)
