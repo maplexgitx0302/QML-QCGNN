@@ -58,12 +58,13 @@ if os.path.isdir(root_dir) == False:
 # global settings
 cf = {}
 cf["time"]     = input("Type a date time or leave it space to use default date time: ")
+cf["device"]   = input("Enter the device (3080, 4090, slurm, node, etc.): ")
 cf["wandb"]    = True # <-----------------------------------------------
 cf["project"]  = "g_main"
 
 # training configuration
 cf["lr"]                = None
-cf["rnd_seed"]          = 3020616
+cf["rnd_seed"]          = int(input("Set random seed = "))
 cf["num_train_ratio"]   = 0.8
 cf["num_bin_data"]      = 500 # <-----------------------------------------------
 cf["batch_size"]        = 100 # <-----------------------------------------------
@@ -236,7 +237,7 @@ def train_wandb(model, data_module, train_info, graph, suffix=""):
     if cf["wandb"]:
         wandb_info["project"]  = cf["project"]
         wandb_info["group"]    = f"{train_info['sig']}_{train_info['bkg']}"
-        wandb_info["name"]     = f"{train_info['group_rnd']} | {cf['time']}_{train_info['rnd_seed']}_{suffix}"
+        wandb_info["name"]     = f"{train_info['group_rnd']} | {cf['time']}_{cf['device']}_{train_info['rnd_seed']} {suffix}"
         wandb_info["id"]       = wandb_info["name"]
         wandb_info["save_dir"] = root_dir 
         wandb_logger = WandbLogger(**wandb_info)
@@ -295,39 +296,37 @@ data_info = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "abbrev":"BB-QCD", "cut"
 sig_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["sig"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"], num_pt_ptcs=data_info["num_pt_ptcs"])
 bkg_fatjet_events = d_mg5_data.FatJetEvents(channel=data_info["bkg"], cut_pt=data_info["cut"], subjet_radius=data_info["subjet_radius"], num_pt_ptcs=data_info["num_pt_ptcs"])
 
-for rnd_seed in range(3):
-    cf["rnd_seed"] = rnd_seed
-    L.seed_everything(cf["rnd_seed"])
+L.seed_everything(cf["rnd_seed"])
 
-    sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
-    bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
-    data_suffix = f"{data_info['abbrev']}_cut{data_info['cut']}_ptc{data_info['num_pt_ptcs']}_bin{data_info['bin']}-{data_info['num_bin_data']}_R{data_info['subjet_radius']}"
+sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
+bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_info["bin"], num_bin_data=data_info["num_bin_data"], num_ptcs_limit=data_info["num_ptcs_limit"])
+data_suffix = f"{data_info['abbrev']}_cut{data_info['cut']}_ptc{data_info['num_pt_ptcs']}_bin{data_info['bin']}-{data_info['num_bin_data']}_R{data_info['subjet_radius']}"
 
-    def train_model(model_class, model_dict, model_suffix, graph, suffix=""):
-        data_module = JetDataModule(sig_events, bkg_events, graph=graph)
-        model       = model_class(**model_dict)
-        train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "model_suffix":model_suffix}
-        train_info["group_rnd"] = f"{model.__class__.__name__}_{model_suffix} | {data_suffix}"
-        train_info.update(model_dict)
-        train_info.update(data_info)
-        train_wandb(model, data_module, train_info, graph=graph, suffix=suffix)
+def train_model(model_class, model_dict, model_suffix, graph, suffix=""):
+    data_module = JetDataModule(sig_events, bkg_events, graph=graph)
+    model       = model_class(**model_dict)
+    train_info  = {"rnd_seed":cf["rnd_seed"], "model_name":model.__class__.__name__, "model_suffix":model_suffix}
+    train_info["group_rnd"] = f"{model.__class__.__name__}_{model_suffix} | {data_suffix}"
+    train_info.update(model_dict)
+    train_info.update(data_info)
+    train_wandb(model, data_module, train_info, graph=graph, suffix=suffix)
 
-    # # classical ML only
-    # for gnn_out, gnn_layers in product([3,6,9], [1,2,4,8,12]):
-    #     cf["lr"]     =  1E-3
-    #     model_dict   = {"gnn_in":6, "gnn_out":gnn_out, "gnn_hidden":gnn_out, "gnn_layers":gnn_layers, "mlp_hidden":0, "mlp_layers":0}
-    #     go, gh, gl   = model_dict["gnn_out"], model_dict["gnn_hidden"], model_dict["gnn_layers"]
-    #     mh, ml       = model_dict["mlp_hidden"], model_dict["mlp_layers"]
-    #     model_suffix = f"go{go}_gh{gh}_gl{gl}_mh{mh}_ml{ml}"
-    #     train_model(model_class=Classical2PCGNN, model_dict=model_dict, model_suffix=model_suffix, graph=True)
+# # classical ML only
+# for gnn_out, gnn_layers in product([3,6,9], [1,2,4,8,12]):
+#     cf["lr"]     =  1E-3
+#     model_dict   = {"gnn_in":6, "gnn_out":gnn_out, "gnn_hidden":gnn_out, "gnn_layers":gnn_layers, "mlp_hidden":0, "mlp_layers":0}
+#     go, gh, gl   = model_dict["gnn_out"], model_dict["gnn_hidden"], model_dict["gnn_layers"]
+#     mh, ml       = model_dict["mlp_hidden"], model_dict["mlp_layers"]
+#     model_suffix = f"go{go}_gh{gh}_gl{gl}_mh{mh}_ml{ml}"
+#     train_model(model_class=Classical2PCGNN, model_dict=model_dict, model_suffix=model_suffix, graph=True)
 
-    # QFCGNN
-    cf["lr"]        =  1E-4
-    max_sig_ptcs    = max(ak.count(sig_events["fast_pt"], axis=1))
-    max_bkg_ptcs    = max(ak.count(bkg_events["fast_pt"], axis=1))
-    gnn_idx_qubits  = int(np.ceil(np.log2(max(max_sig_ptcs, max_bkg_ptcs))))
-    model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":1, "gnn_layers":0, "gnn_reupload":0}
-    qidx, qnn       = gnn_idx_qubits, model_dict["gnn_nn_qubits"]
-    gl, gr          = model_dict["gnn_layers"], model_dict["gnn_reupload"]
-    model_suffix    = f"qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr}"
-    train_model(model_class=QuantumRotFCGNN, model_dict=model_dict, model_suffix=model_suffix, graph=False)
+# QFCGNN
+max_sig_ptcs    = max(ak.count(sig_events["fast_pt"], axis=1))
+max_bkg_ptcs    = max(ak.count(bkg_events["fast_pt"], axis=1))
+gnn_idx_qubits  = int(np.ceil(np.log2(max(max_sig_ptcs, max_bkg_ptcs))))
+cf["lr"]        = 1E-4
+model_dict      = {"gnn_idx_qubits":gnn_idx_qubits, "gnn_nn_qubits":1, "gnn_layers":0, "gnn_reupload":0}
+qidx, qnn       = gnn_idx_qubits, model_dict["gnn_nn_qubits"]
+gl, gr          = model_dict["gnn_layers"], model_dict["gnn_reupload"]
+model_suffix    = f"qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr}"
+train_model(model_class=QuantumRotFCGNN, model_dict=model_dict, model_suffix=model_suffix, graph=False)
