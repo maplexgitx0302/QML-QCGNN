@@ -171,3 +171,11 @@ def load_hdf5(channel, data_info):
         {k: np.asarray(v) for k, v in hdf5_group.items()},
     )
     return ak_array
+
+# if __name__ == "__main__":
+    # # example for generating hdf5 file
+    # subjet_radius = 0.25
+    # channels = ["VzToQCD"]
+    # channels = ["VzToTt"]
+    # events = FatJetEvents(channel=channel, cut_pt=(800, 1000), subjet_radius=subjet_radius, check_hdf5=False)
+    # save_hdf5(channel=channel, data_info=f"c{800}_{1000}_r{subjet_radius}", ak_array=events.events)
