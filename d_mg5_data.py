@@ -117,7 +117,7 @@ class FatJetEvents:
             self.events[f"fast_{field}"] = fastjet_events[field]
         print(f"DataLog: Finish reclustering {self.channel} with radius {subjet_radius}\n")
     
-    def generate_uniform_pt_events(self, bin, num_bin_data, num_ptcs_limit=None):
+    def generate_uniform_pt_events(self, bin, num_bin_data):
         # determine the lower and upper limits of pt
         cut_pt = self.cut_pt if self.cut_pt is not None else (min(self.events['fatjet_pt']), max(self.events['fatjet_pt']))
         bin_interval = (max(cut_pt) - min(cut_pt)) / bin
@@ -128,9 +128,6 @@ class FatJetEvents:
             bin_lower    = min(cut_pt) + bin_interval * i
             bin_upper    = min(cut_pt) + bin_interval * (i+1)
             bin_selected = (self.events['fatjet_pt'] >= bin_lower) * (self.events['fatjet_pt'] < bin_upper)
-            # whether select events with num_ptcs <= num_ptcs_limit
-            if num_ptcs_limit is not None:
-                bin_selected = bin_selected * (ak.num(self.events["fast_pt"]) <= num_ptcs_limit)
             bin_events   = self.events[bin_selected]
             
             # randomly select uniform events
