@@ -7,10 +7,6 @@ from functools import reduce
 
 measurements_dict = {"I":qml.Identity, "X":qml.PauliX, "Y":qml.PauliY, "Z":qml.PauliZ}
 
-
-
-
-
 # Classical Multi Layer Perceptron
 class ClassicalMLP(nn.Module):
     def __init__(self, in_channel, out_channel, hidden_channel, num_layers):
@@ -25,10 +21,6 @@ class ClassicalMLP(nn.Module):
             self.net = nn.Sequential(*net)
     def forward(self, x):
         return self.net(x)
-    
-
-
-
 
 # Element-wise classical linear
 # https://stackoverflow.com/questions/51980654/pytorch-element-wise-filter-layer
@@ -39,10 +31,6 @@ class ElementwiseLinear(nn.Module):
         self.b = nn.Parameter(torch.Tensor(in_channel))
     def forward(self, x):
         return self.w * x + self.b
-    
-
-
-
 
 # Quantum Multi Layer Perceptron
 class QuantumMLP(nn.Module):
@@ -61,10 +49,6 @@ class QuantumMLP(nn.Module):
         self.net = nn.Sequential(*net)
     def forward(self, x):
         return self.net(x)
-
-
-
-
 
 # Quantum IQP-style
 # https://arxiv.org/pdf/1804.11326.pdf
@@ -93,62 +77,57 @@ class QuantumSphericalIQP(nn.Module):
     def forward(self, x):
         return self.net(x)
 
-
-
-
-
-# Quantum Fully Conneted Graph (disordered rotation encoding)
-class QuantumDisorderedFCGraph(nn.Module):
-    def __init__(self, num_idx_qubits, num_nn_qubits, num_layers, num_reupload, ctrl_enc_operator, pt_weight=False, device='default.qubit', diff_method="best"):
+# Quantum Complete Graph Neural Network (QCGNN)
+class QCGNN(nn.Module):
+    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc_gate, device='default.qubit', diff_method="best"):
         super().__init__()
-        self.num_idx_qubits = num_idx_qubits
-        self.num_nn_qubits  = num_nn_qubits
-        # prepare for constructing circuits
-        num_qubits = num_idx_qubits + num_nn_qubits
-        x_basis_dict = {"0":qml.Identity, "1":qml.PauliX}
+        # setup quantum registers
+        self.num_ir_qubits = num_ir_qubits
+        self.num_nr_qubits = num_nr_qubits
+        num_qubits = num_ir_qubits + num_nr_qubits
+        
+        # setup measurement operators (IR:Combinations of {I,X}, NR:Measurements in Z)
+        ir_meas_dict = {"0":qml.Identity, "1":qml.PauliX}
         expval_measurements = []
-        # constructing 2**num_idx_qubits measurements I@I@I, I@I@X, I@X@I, I@X@X, ...
-        for i in range(2**num_idx_qubits):
-            x_basis_bool = np.binary_repr(i, width=num_idx_qubits)
-            # add X or I measurement on each idx qubits
-            xz_measurements = [x_basis_dict[x_basis_bool[j]](j) for j in range(num_idx_qubits)]
-            # add a Z for non-trivial measurements on each nn qubits
-            xz_measurements = [reduce(lambda x, y: x @ y, xz_measurements + [qml.PauliZ(j)]) for j in range(num_idx_qubits, num_qubits)]
+        for i in range(2**num_ir_qubits):
+            # One of the combinations in IR
+            ir_binary = np.binary_repr(i, width=num_ir_qubits)
+            xz_measurements = [ir_meas_dict[ir_binary[q]](q) for q in range(num_ir_qubits)]
+            # Measure each NR qubit in Z
+            xz_measurements = [reduce(lambda x, y: x @ y, xz_measurements + [qml.PauliZ(q)]) for q in range(num_ir_qubits, num_qubits)]
             expval_measurements = expval_measurements + xz_measurements
-        # constructing circuit
+
+        # quantum circuit
         @qml.qnode(qml.device(device, wires=num_qubits), diff_method=diff_method)
-        def circuit(inputs=torch.rand(3*2**num_idx_qubits), weights=torch.rand(num_reupload+1, num_layers, num_nn_qubits, 3)):
-            # the inputs is flattened due to torch confusing batch and features
+        def circuit(inputs=torch.rand(3*2**num_ir_qubits), weights=torch.rand(num_reupload+1, num_layers, num_nr_qubits, 3)):
+            # the inputs is flattened due to torch confusing batch and features, so we reshape back
             inputs = inputs.reshape(-1, 3)
-            # initialize the controlled qubits
-            if pt_weight == True:
-                _pts = torch.tan(inputs[:, 0])
-                qml.AmplitudeEmbedding(features=_pts, wires=range(num_idx_qubits), pad_with=0, normalize=True)
-            else:
-                # uniformly weighted
-                for i in range(num_idx_qubits):
-                    qml.Hadamard(wires=i)
-            # constructing controlled encoding gates
+
+            # uniformly initialize the controlled qubits (assuming number of particles = 2**num_ir_qubits)
+            for i in range(num_ir_qubits):
+                qml.Hadamard(wires=i)
+
+            # main structure of data reupload
             for i in range(num_reupload+1):
-                for j in range(len(inputs)):
-                    control_values = np.binary_repr(j, width=num_idx_qubits)
+                # data encoding with correponding control conditions
+                for ir_idx in range(len(inputs)):
+                    control_values = np.binary_repr(ir_idx, width=num_ir_qubits)
                     control_values = list(map(int, control_values))
-                    ctrl_enc_operator(inputs[j], control=range(num_idx_qubits), control_values=control_values)
-                # add simple qml layer
-                qml.StronglyEntanglingLayers(weights=weights[i], wires=range(num_idx_qubits, num_qubits))
+                    ctrl_enc_gate(inputs[ir_idx], control=range(num_ir_qubits), control_values=control_values)
+                # parametrized gates using strongly entangling layers
+                qml.StronglyEntanglingLayers(weights=weights[i], wires=range(num_ir_qubits, num_qubits))
             return [qml.expval(meas) for meas in expval_measurements]
-        # turn the quantum circuit into a torch layer
-        weight_shapes = {"weights":(num_reupload+1, num_layers, num_nn_qubits, 3)}
-        self.net      = [qml.qnn.TorchLayer(circuit, weight_shapes=weight_shapes)]
-        self.net      = nn.Sequential(*self.net)
-        self.circuit  = circuit
-        self.meas     = expval_measurements
+        
+        # use torch framework
+        q_layer  = qml.qnn.TorchLayer(circuit, weight_shapes={"weights":(num_reupload+1, num_layers, num_nr_qubits, 3)})
+        self.net = nn.Sequential(q_layer)
+    
     def forward(self, x):
         x = self.net(x)
-        # since the inputs is flattened, we need to unflatten them
-        x = torch.unflatten(x, dim=-1, sizes=(2**self.num_idx_qubits, self.num_nn_qubits))
+        # since the inputs is flattened in the circuit, we need to unflatten them
+        x = torch.unflatten(x, dim=-1, sizes=(2**self.num_ir_qubits, self.num_nr_qubits))
         # transpose last two dimensions (X,Z) -> (Z,X)
         x = x.mT
         # sum up X expvals
-        x = torch.sum(x, dim=-1) * (2**self.num_idx_qubits)
+        x = torch.sum(x, dim=-1) * (2**self.num_ir_qubits)
         return x

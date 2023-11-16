@@ -6,6 +6,7 @@ result/
 lightning_logs/
 
 data/
+jet_dataset/
 *.root
 *.hdf5
 

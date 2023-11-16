@@ -1,8 +1,19 @@
 import time
 import torch
+from sklearn import metrics
+
+# pytorch_lightning
 import lightning as L
 import lightning.pytorch as pl
-from sklearn import metrics
+
+class TorchDataset(torch.utils.data.Dataset):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    def __len__(self):
+        return len(self.y)
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx]
 
 # Binary classification of graph data
 class BinaryLitModel(L.LightningModule):
@@ -97,3 +108,21 @@ class BinaryLitModel(L.LightningModule):
         batch_size = len(data.x) if self.graph is True else len(data[0])
         _, acc = self.forward(data, mode="test")
         self.log("test_acc", acc, on_step=True, on_epoch=True, batch_size=batch_size)
+
+# wandb functions
+def wandb_monitor(model, logger_config, *args):
+    import wandb
+    from lightning.pytorch.loggers import WandbLogger
+    wandb.login()
+    wandb_logger = WandbLogger(**logger_config)
+    wandb_config = {}
+    wandb_config.update(logger_config)
+    for config in args:
+        wandb_config.update(config)
+    wandb_logger.experiment.config.update(wandb_config, allow_val_change=True)
+    wandb_logger.watch(model, log="all")
+    return wandb_logger
+
+def wandb_finish():
+    import wandb
+    wandb.finish()

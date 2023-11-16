@@ -1,3 +1,4 @@
+import torch
 import os, random
 import uproot, fastjet
 import numpy as np
@@ -13,7 +14,13 @@ _array   = ak.Array([{"px": 0.1, "py": 0.2, "pz": 0.3, "E": 0.4},])
 fastjet.ClusterSequence(_array, _jet_def)
 
 class FatJetEvents:
-    def __init__(self, channel:str, cut_pt:tuple[float,float]=None, subjet_radius:float=0, num_pt_ptcs:int="Full", check_hdf5:bool=True):
+    def __init__(self, 
+                 channel:str,                        # channel name (see dir `jet_dataset`)
+                 cut_pt:tuple[float,float] = None,   # cut jet pt in a specific region
+                 subjet_radius:float       = 0,      # radius for reclustering jets in subjets if needed
+                 num_pt_ptcs:int           = "Full", # number of selected particles in jets (sorted by pt)
+                 check_hdf5:bool           = True    # whether to load hdf5 files if needed
+                 ):
         '''Construct mg5 fatjet events with energy flow information'''
         self.channel       = channel
         self.cut_pt        = cut_pt
@@ -21,13 +28,14 @@ class FatJetEvents:
         self.num_pt_ptcs   = num_pt_ptcs
         
         if check_hdf5 == True:
+            # if hdf5 file exists, just load it
             data_info   = f"c{cut_pt[0]}_{cut_pt[1]}_r{subjet_radius}"
             print(f"DataLog: Now loading hdf5 file {channel}|{data_info}.hdf5")
             self.events = load_hdf5(channel, data_info)
             print(f"DataLog: Successfully loading hdf5 file {channel}|{data_info}.hdf5")
         else:
-            # read MadGraph5 root file through 'uproot'
-            dir_path  = f"{os.path.dirname(__file__)}/data"
+            # read original MadGraph5 root file through 'uproot'
+            dir_path  = f"{os.path.dirname(__file__)}/jet_dataset"
             root_path = f"{dir_path}/{channel}/Events/run_01/tag_1_delphes_events.root"
             events    = uproot.open(root_path + ":Delphes;1")
             self.keys = events.keys()
@@ -67,9 +75,11 @@ class FatJetEvents:
             events['fast_delta_phi'] = events['fatjet_daughter_phi'] - events['fatjet_phi']
             events['fast_delta_phi'] = np.mod(events['fast_delta_phi'] + np.pi, 2*np.pi) - np.pi
 
-            # remove unnecessary records (ptcs)
+            # remove unnecessary records which contain 'ptcs' in field name
             remain_fields = [field for field in events.fields if 'ptcs' not in field]
             events        = events[remain_fields]
+
+            # cut events that not in pt region by cut_pt
             if cut_pt != None:
                 idx_in_cut_pt = (events['fatjet_pt']>=min(cut_pt)) * (events['fatjet_pt']<max(cut_pt))
                 events        = events[idx_in_cut_pt]
@@ -82,11 +92,14 @@ class FatJetEvents:
             if subjet_radius != 0:
                 self.generate_fastjet_events(subjet_radius)
         
+        # whether remain all particles in jets
+        # default "Full"      -> all particles in jets remain
+        # assign with a int N -> N particles with highest pt remain for each jet
         if num_pt_ptcs != "Full":
-            self.generate_max_pt_events()
+            self.generate_max_pt_events(num_pt_ptcs)
 
     def generate_fastjet_events(self, subjet_radius, algorithm=fastjet.antikt_algorithm):
-        # start reclustering particles into subjets
+        '''start reclustering particles into subjets'''
         print(f"\nDataLog: Start reclustering {self.channel} with radius {subjet_radius}")
         fastjet_list = []
         for event in self.events:
@@ -118,8 +131,12 @@ class FatJetEvents:
         print(f"DataLog: Finish reclustering {self.channel} with radius {subjet_radius}\n")
     
     def generate_uniform_pt_events(self, bin, num_bin_data):
+        '''randomly generate uniform events'''
         # determine the lower and upper limits of pt
-        cut_pt = self.cut_pt if self.cut_pt is not None else (min(self.events['fatjet_pt']), max(self.events['fatjet_pt']))
+        if self.cut_pt is not None:
+            cut_pt = self.cut_pt
+        else:
+            cut_pt = (min(self.events['fatjet_pt']), max(self.events['fatjet_pt']))
         bin_interval = (max(cut_pt) - min(cut_pt)) / bin
         bin_list     = []
         
@@ -140,9 +157,10 @@ class FatJetEvents:
         
         return ak.concatenate(bin_list)
     
-    def generate_max_pt_events(self):
+    def generate_max_pt_events(self, num_pt_ptcs):
+        '''retain num_pt_ptcs particles with highest pt'''
         max_arg = ak.argsort(self.events["fast_pt"], ascending=False, axis=1)
-        max_arg = max_arg[:, :self.num_pt_ptcs]
+        max_arg = max_arg[:, :num_pt_ptcs]
         for field in self.events.fields:
             if "fast_" in field:
                 self.events[field] = self.events[field][max_arg]
@@ -151,7 +169,7 @@ class FatJetEvents:
 def save_hdf5(channel, data_info, ak_array):
     # see https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#saving-awkward-arrays-to-hdf5
     print(f"DataLog: Start creating {channel}|{data_info}.hdf5 file")
-    hdf5_file  = h5py.File(f"{os.path.dirname(__file__)}/data/{channel}|{data_info}.hdf5", "w")
+    hdf5_file  = h5py.File(f"{os.path.dirname(__file__)}/jet_dataset/{channel}|{data_info}.hdf5", "w")
     hdf5_group = hdf5_file.create_group(channel)
     form, length, container    = ak.to_buffers(ak.to_packed(ak_array), container=hdf5_group)
     hdf5_group.attrs["form"]   = form.to_json()
@@ -160,7 +178,7 @@ def save_hdf5(channel, data_info, ak_array):
 
 def load_hdf5(channel, data_info):
     # see https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#reading-awkward-arrays-from-hdf5
-    hdf5_file  = h5py.File(f"{os.path.dirname(__file__)}/data/{channel}|{data_info}.hdf5", "r")
+    hdf5_file  = h5py.File(f"{os.path.dirname(__file__)}/jet_dataset/{channel}|{data_info}.hdf5", "r")
     hdf5_group = hdf5_file[channel]
     ak_array   = ak.from_buffers(
         ak.forms.from_json(hdf5_group.attrs["form"]),
