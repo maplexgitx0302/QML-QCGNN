@@ -19,7 +19,7 @@ class FatJetEvents:
                  cut_pt:tuple[float,float] = None,   # cut jet pt in a specific region
                  subjet_radius:float       = 0,      # radius for reclustering jets in subjets if needed
                  num_pt_ptcs:int           = "Full", # number of selected particles in jets (sorted by pt)
-                 check_hdf5:bool           = True    # whether to load hdf5 files if needed
+                 check_hdf5:bool           = True,   # whether to load hdf5 files if needed
                  ):
         '''Construct mg5 fatjet events with energy flow information'''
         self.channel       = channel
@@ -130,7 +130,7 @@ class FatJetEvents:
             self.events[f"fast_{field}"] = fastjet_events[field]
         print(f"DataLog: Finish reclustering {self.channel} with radius {subjet_radius}\n")
     
-    def generate_uniform_pt_events(self, bin, num_bin_data):
+    def generate_uniform_pt_events(self, bin, num_bin_data, log=False):
         '''randomly generate uniform events'''
         # determine the lower and upper limits of pt
         if self.cut_pt is not None:
@@ -153,7 +153,8 @@ class FatJetEvents:
             random.shuffle(idx)
             idx = idx[:num_bin_data]
             bin_list.append(bin_events[idx])
-            print(f"DataLog: Generate uniform Pt events ({i+1}/{bin}) | number of bin events = {num_bin_data}/{len(bin_events)}")
+            if log:
+                print(f"DataLog: Generate uniform Pt events ({i+1}/{bin}) | number of bin events = {num_bin_data}/{len(bin_events)}")
         
         return ak.concatenate(bin_list)
     

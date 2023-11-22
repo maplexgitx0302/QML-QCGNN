@@ -12,3 +12,5 @@ jet_dataset/
 
 slurm_out
 slurm*
+
+config.toml

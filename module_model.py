@@ -34,10 +34,10 @@ class ElementwiseLinear(nn.Module):
 
 # Quantum Multi Layer Perceptron
 class QuantumMLP(nn.Module):
-    def __init__(self, num_qubits, num_layers, num_reupload, measurements, device='default.qubit', diff_method="best"):
+    def __init__(self, num_qubits, num_layers, num_reupload, measurements, device='default.qubit'):
         super().__init__()
         # create a quantum MLP
-        @qml.qnode(qml.device(device, wires=num_qubits), diff_method=diff_method)
+        @qml.qnode(qml.device(device, wires=num_qubits))
         def circuit(inputs, weights):
             for i in range(num_reupload+1):
                 qml.AngleEmbedding(features=inputs, wires=range(num_qubits), rotation='Y')
@@ -53,10 +53,10 @@ class QuantumMLP(nn.Module):
 # Quantum IQP-style
 # https://arxiv.org/pdf/1804.11326.pdf
 class QuantumSphericalIQP(nn.Module):
-    def __init__(self, num_qubits, num_layers, num_reupload, measurements, device='default.qubit', diff_method="best"):
+    def __init__(self, num_qubits, num_layers, num_reupload, measurements, device='default.qubit'):
         super().__init__()
         # create a quantum MLP
-        @qml.qnode(qml.device(device, wires=num_qubits), diff_method=diff_method)
+        @qml.qnode(qml.device(device, wires=num_qubits))
         def circuit(inputs, weights):
             for i in range(num_reupload+1):
                 # IQP encoding
@@ -79,12 +79,23 @@ class QuantumSphericalIQP(nn.Module):
 
 # Quantum Complete Graph Neural Network (QCGNN)
 class QCGNN(nn.Module):
-    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc_gate, device='default.qubit', diff_method="best"):
+    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc, device='default.qubit', backend='ibmq_qasm_simulator'):
         super().__init__()
         # setup quantum registers
+        if "qiskit" in device or "qiskit" in ctrl_enc.__name__:
+            num_wk_qubits = num_ir_qubits - 1
+        else:
+            num_wk_qubits = 0
         self.num_ir_qubits = num_ir_qubits
+        self.num_wk_qubits = num_wk_qubits
         self.num_nr_qubits = num_nr_qubits
-        num_qubits = num_ir_qubits + num_nr_qubits
+        num_qubits = num_ir_qubits + num_wk_qubits + num_nr_qubits
+        print(f"ModelLog: Quantum device  = {device} | Qubits (IR, WK, NR) = {num_ir_qubits, num_wk_qubits, num_nr_qubits}")
+        if "qiskit" in device:
+            qml_device = qml.device(device, wires=num_qubits, backend=backend)
+            print(f"ModelLog: Quantum backend = {backend}")
+        else:
+            qml_device = qml.device(device, wires=num_qubits)
         
         # setup measurement operators (IR:Combinations of {I,X}, NR:Measurements in Z)
         ir_meas_dict = {"0":qml.Identity, "1":qml.PauliX}
@@ -94,11 +105,11 @@ class QCGNN(nn.Module):
             ir_binary = np.binary_repr(i, width=num_ir_qubits)
             xz_measurements = [ir_meas_dict[ir_binary[q]](q) for q in range(num_ir_qubits)]
             # Measure each NR qubit in Z
-            xz_measurements = [reduce(lambda x, y: x @ y, xz_measurements + [qml.PauliZ(q)]) for q in range(num_ir_qubits, num_qubits)]
+            xz_measurements = [reduce(lambda x, y: x @ y, xz_measurements + [qml.PauliZ(q)]) for q in range(num_ir_qubits+num_wk_qubits, num_qubits)]
             expval_measurements = expval_measurements + xz_measurements
 
         # quantum circuit
-        @qml.qnode(qml.device(device, wires=num_qubits), diff_method=diff_method)
+        @qml.qnode(qml_device)
         def circuit(inputs=torch.rand(3*2**num_ir_qubits), weights=torch.rand(num_reupload+1, num_layers, num_nr_qubits, 3)):
             # the inputs is flattened due to torch confusing batch and features, so we reshape back
             inputs = inputs.reshape(-1, 3)
@@ -113,11 +124,12 @@ class QCGNN(nn.Module):
                 for ir_idx in range(len(inputs)):
                     control_values = np.binary_repr(ir_idx, width=num_ir_qubits)
                     control_values = list(map(int, control_values))
-                    ctrl_enc_gate(inputs[ir_idx], control=range(num_ir_qubits), control_values=control_values)
+                    ctrl_enc(inputs[ir_idx], control_values=control_values)
                 # parametrized gates using strongly entangling layers
-                qml.StronglyEntanglingLayers(weights=weights[i], wires=range(num_ir_qubits, num_qubits))
+                qml.StronglyEntanglingLayers(weights=weights[i], wires=range(num_ir_qubits+num_wk_qubits, num_qubits))
             return [qml.expval(meas) for meas in expval_measurements]
-        
+        self.circuit = circuit
+
         # use torch framework
         q_layer  = qml.qnn.TorchLayer(circuit, weight_shapes={"weights":(num_reupload+1, num_layers, num_nr_qubits, 3)})
         self.net = nn.Sequential(q_layer)
