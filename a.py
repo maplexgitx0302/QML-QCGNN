@@ -20,6 +20,8 @@ import awkward as ak
 # qml
 import pennylane as qml
 from pennylane import numpy as np
+print(f"\nPennylane default config path  = {qml.default_config.path}")
+print(f"Pennylane default config setup = {qml.default_config}\n")
 
 # pytorch
 import torch
@@ -55,18 +57,20 @@ config["wandb"]    = True # <-----------------------------------------------
 # config["project"]  = "g_main"
 # config["suffix"]   = ""
 # config["rnd_seed"] = int(input("Set random seed = "))
-# config["qdevice"]  = "default.qubit"
-# config["qbackend"] = ""
+# config["qdevice"]     = "default.qubit"
+# config["qbackend"]    = ""
+# config["diff_method"] = "best"
 
 # test
 config["time"]     = "20231123"
 config["device"]   = "4090"
 config["project"]  = "g_main"
-config["suffix"]   = "qml_qiskit_enc"
+config["suffix"]   = "qml_psr"
 config["rnd_seed"] = 0
-config["qdevice"]  = "default.qubit"
-# config["qdevice"]  = "qiskit.ibmq"
-config["qbackend"] = "ibmq_qasm_simulator"
+config["qdevice"]     = "default.qubit"
+# config["qdevice"]     = "qiskit.aer"
+config["qbackend"]    = None
+config["diff_method"] = "parameter-shift"
 config["use_qiskit_enc"] = True
 
 # # parser (if needed)
@@ -193,8 +197,8 @@ class Classical2PCGNN(Graph2PCGNN):
 """
 
 # %%
-class QuantumRotFCGNN(nn.Module):
-    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, device="default.qubit", backend="ibmq_qasm_simulator", **kwargs):
+class QuantumRotQCGNN(nn.Module):
+    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, device="default.qubit", backend="ibmq_qasm_simulator", diff_method="best", **kwargs):
         super().__init__()
         # rotation encoding on pennylane simulator
         def qml_encoding(_input, control_values):
@@ -239,9 +243,9 @@ class QuantumRotFCGNN(nn.Module):
 
         # constructing QCGNN like a MPGNN
         if "qiskit" in device or config["use_qiskit_enc"]:
-            self.phi = module_model.QCGNN(num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc=qiskit_encoding, device=device, backend=backend)
+            self.phi = module_model.QCGNN(num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc=qiskit_encoding, device=device, backend=backend, diff_method=diff_method)
         else:
-            self.phi = module_model.QCGNN(num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc=qml_encoding, device=device)
+            self.phi = module_model.QCGNN(num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc=qml_encoding, device=device, diff_method=diff_method)
         self.mlp = module_model.ClassicalMLP(in_channel=num_nr_qubits, out_channel=1, hidden_channel=0, num_layers=0)
     
     def forward(self, x):
@@ -309,7 +313,7 @@ data_config = {"sig": "VzToTt", "bkg": "VzToQCD", "abbrev":"TT-QCD", "cut": (800
 sig_fatjet_events = module_data.FatJetEvents(channel=data_config["sig"], cut_pt=data_config["cut"], subjet_radius=data_config["subjet_radius"], num_pt_ptcs=data_config["num_pt_ptcs"])
 bkg_fatjet_events = module_data.FatJetEvents(channel=data_config["bkg"], cut_pt=data_config["cut"], subjet_radius=data_config["subjet_radius"], num_pt_ptcs=data_config["num_pt_ptcs"])
 
-for rnd_seed in range(3):
+for rnd_seed in range(1):
     config["rnd_seed"] = rnd_seed
     L.seed_everything(config["rnd_seed"])
     sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
@@ -332,5 +336,5 @@ for rnd_seed in range(3):
     gl, gr        = 1, 3
     model_suffix  = f"qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr}"
     model_config  = {"gnn_idx_qubits":qidx, "gnn_nn_qubits":qnn, "gnn_layers":gl, "gnn_reupload":gr, "lr":1E-2, "model_suffix":model_suffix}
-    model         = QuantumRotFCGNN(num_ir_qubits=qidx, num_nr_qubits=qnn, num_layers=gl, num_reupload=gr, device=config["qdevice"], backend=config["qbackend"])
+    model         = QuantumRotQCGNN(num_ir_qubits=qidx, num_nr_qubits=qnn, num_layers=gl, num_reupload=gr, device=config["qdevice"], backend=config["qbackend"], diff_method=config["diff_method"])
     train(model, model_config, data_module, data_config, graph=False, suffix=config["suffix"])

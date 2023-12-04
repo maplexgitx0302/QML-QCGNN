@@ -79,7 +79,7 @@ class QuantumSphericalIQP(nn.Module):
 
 # Quantum Complete Graph Neural Network (QCGNN)
 class QCGNN(nn.Module):
-    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc, device='default.qubit', backend='ibmq_qasm_simulator'):
+    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc, device='default.qubit', backend='ibmq_qasm_simulator', diff_method="best"):
         super().__init__()
         # setup quantum registers
         if "qiskit" in device or "qiskit" in ctrl_enc.__name__:
@@ -91,7 +91,7 @@ class QCGNN(nn.Module):
         self.num_nr_qubits = num_nr_qubits
         num_qubits = num_ir_qubits + num_wk_qubits + num_nr_qubits
         print(f"ModelLog: Quantum device  = {device} | Qubits (IR, WK, NR) = {num_ir_qubits, num_wk_qubits, num_nr_qubits}")
-        if "qiskit" in device:
+        if "qiskit" in device and backend is not None:
             qml_device = qml.device(device, wires=num_qubits, backend=backend)
             print(f"ModelLog: Quantum backend = {backend}")
         else:
@@ -109,7 +109,7 @@ class QCGNN(nn.Module):
             expval_measurements = expval_measurements + xz_measurements
 
         # quantum circuit
-        @qml.qnode(qml_device)
+        @qml.qnode(qml_device, diff_method=diff_method)
         def circuit(inputs=torch.rand(3*2**num_ir_qubits), weights=torch.rand(num_reupload+1, num_layers, num_nr_qubits, 3)):
             # the inputs is flattened due to torch confusing batch and features, so we reshape back
             inputs = inputs.reshape(-1, 3)
