@@ -8,6 +8,7 @@
 import os, time, sys, argparse
 from itertools import product
 import matplotlib.pyplot as plt
+from collections import defaultdict
 
 # model template
 import module_model
@@ -27,6 +28,9 @@ print(f"Pennylane default config setup = {qml.default_config}\n")
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader as TorchDataLoader
+
+import wandb
+api = wandb.Api()
 
 # pytorch_lightning
 import lightning as L
@@ -50,28 +54,27 @@ os.makedirs(result_dir, exist_ok=True)
 
 # %%
 # global settings
-config = {}
+config = defaultdict(str)
 config["wandb"]    = True # <-----------------------------------------------
-# config["time"]     = input("Specify a datetime or leave empty (default current time): ") or time.strftime("%Y%m%d_%H%M%S", time.localtime())
-# config["device"]   = input("Enter the computing device (4090, slurm, node, etc.)    : ")
-# config["project"]  = "g_main"
-# config["suffix"]   = ""
-# config["rnd_seed"] = int(input("Set random seed = "))
-# config["qdevice"]     = "default.qubit"
-# config["qbackend"]    = ""
-# config["diff_method"] = "best"
-
-# test
-config["time"]     = "20231123"
-config["device"]   = "4090"
+config["time"]     = input("Specify a datetime or leave empty (default current time): ") or time.strftime("%Y%m%d_%H%M%S", time.localtime())
+config["device"]   = input("Enter the computing device (4090, slurm, node, etc.)    : ")
 config["project"]  = "g_main"
-config["suffix"]   = "qml_psr"
-config["rnd_seed"] = 0
+config["suffix"]   = input("suffix = ")
+# config["rnd_seed"] = int(input("Set random seed = "))
 config["qdevice"]     = "default.qubit"
+config["qbackend"]    = ""
+config["diff_method"] = "best"
+
+# test qiskit
+# config["time"]     = "20231123"
+# config["device"]   = "4090"
+# config["project"]  = "g_main"
+# config["suffix"]   = "qml_psr"
+# config["rnd_seed"] = 0
 # config["qdevice"]     = "qiskit.aer"
-config["qbackend"]    = None
-config["diff_method"] = "parameter-shift"
-config["use_qiskit_enc"] = True
+# config["qbackend"]    = None
+# config["diff_method"] = "parameter-shift"
+# config["use_qiskit_enc"] = True
 
 # # parser (if needed)
 # parser = argparse.ArgumentParser(description='argparse for slurm')
@@ -269,10 +272,12 @@ def train(model, model_config, data_module, data_config, graph, suffix=""):
         logger_config = {}
         logger_config["project"]  = config["project"]
         logger_config["group"]    = f"{data_config['sig']}_{data_config['bkg']}"
+        if suffix != "":
+            suffix = "_" + suffix
         if "qiskit" in config['qdevice']:
-            logger_config["name"]     = f"{model_config['group_rnd']} | {config['time']}_{config['qdevice']}_{config['rnd_seed']} {suffix}"
+            logger_config["name"] = f"{model_config['group_rnd']} | {config['time']}_{config['qdevice']}{suffix}_{config['rnd_seed']}"
         else:
-            logger_config["name"]     = f"{model_config['group_rnd']} | {config['time']}_{config['device']}_{config['rnd_seed']} {suffix}"
+            logger_config["name"] = f"{model_config['group_rnd']} | {config['time']}_{config['device']}{suffix}_{config['rnd_seed']}"
         logger_config["id"]       = logger_config["name"]
         logger_config["save_dir"] = result_dir
         logger = module_training.wandb_monitor(model, logger_config, config, model_config, data_config)
@@ -305,6 +310,8 @@ def train(model, model_config, data_module, data_config, graph, suffix=""):
     if config["wandb"] == True:
         module_training.wandb_finish()
 
+    return logger_config["id"]
+
 # %%
 # data_config = {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "abbrev":"BB-QCD", "cut": (800, 1000), "bin":10, "subjet_radius":0, "num_bin_data":config["num_bin_data"], "num_pt_ptcs":8}
 data_config = {"sig": "VzToTt", "bkg": "VzToQCD", "abbrev":"TT-QCD", "cut": (800, 1000), "bin":10, "subjet_radius":0, "num_bin_data":config["num_bin_data"], "num_pt_ptcs":8}
@@ -313,7 +320,7 @@ data_config = {"sig": "VzToTt", "bkg": "VzToQCD", "abbrev":"TT-QCD", "cut": (800
 sig_fatjet_events = module_data.FatJetEvents(channel=data_config["sig"], cut_pt=data_config["cut"], subjet_radius=data_config["subjet_radius"], num_pt_ptcs=data_config["num_pt_ptcs"])
 bkg_fatjet_events = module_data.FatJetEvents(channel=data_config["bkg"], cut_pt=data_config["cut"], subjet_radius=data_config["subjet_radius"], num_pt_ptcs=data_config["num_pt_ptcs"])
 
-for rnd_seed in range(1):
+for rnd_seed in range(10):
     config["rnd_seed"] = rnd_seed
     L.seed_everything(config["rnd_seed"])
     sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
@@ -321,20 +328,32 @@ for rnd_seed in range(1):
     data_suffix = f"{data_config['abbrev']}_cut{data_config['cut']}_ptc{data_config['num_pt_ptcs']}_bin{data_config['bin']}-{data_config['num_bin_data']}_R{data_config['subjet_radius']}"
     data_config["data_suffix"] = data_suffix
 
-    # # classical ML
-    # data_module  = JetDataModule(sig_events, bkg_events, graph=True)
-    # go, gh, gl   = 3, 3, 3
-    # mh, ml       = 0, 0
-    # model_suffix = f"go{go}_gh{gh}_gl{gl}_mh{mh}_ml{ml}"
-    # model_config = {"gnn_in":6, "gnn_out":go, "gnn_hidden":gh, "gnn_layers":gl, "mlp_hidden":mh, "mlp_layers":ml, "lr":1E-3, "model_suffix":model_suffix}
-    # model        = Classical2PCGNN(**model_config) 
-    # train(model, model_config, data_module, data_config, graph=True, suffix=config["suffix"])
+    # classical ML
+    data_module  = JetDataModule(sig_events, bkg_events, graph=True)
+    go, gh, gl   = 3, 3, 2
+    mh, ml       = 0, 0
+    model_suffix = f"go{go}_gh{gh}_gl{gl}_mh{mh}_ml{ml}"
+    model_config = {"gnn_in":6, "gnn_out":go, "gnn_hidden":gh, "gnn_layers":gl, "mlp_hidden":mh, "mlp_layers":ml, "lr":1E-3, "model_suffix":model_suffix}
+    model        = Classical2PCGNN(**model_config)
+    
+    # fix untrainable classical model
+    run_id = train(model, model_config, data_module, data_config, graph=True, suffix=config["suffix"])
+    run    = api.run(f"ntuyianchen/g_main/{run_id}")
+    while run.summary["valid_acc_epoch"] < 0.60:
+        run.delete()
+        rnd_seed = rnd_seed + 10
+        config["rnd_seed"] = rnd_seed
+        print(f"\n ModelLog: Reinitialize model with new rnd_seed = {rnd_seed}\n")
+        L.seed_everything(rnd_seed)
+        model  = Classical2PCGNN(**model_config)
+        run_id = train(model, model_config, data_module, data_config, graph=True, suffix=config["suffix"])
+        run    = api.run(f"ntuyianchen/g_main/{run_id}")
 
-    # QFCGNN
-    data_module   = JetDataModule(sig_events, bkg_events, graph=False)
-    qidx, qnn     = int(np.ceil(np.log2(data_config["num_pt_ptcs"]))), 3
-    gl, gr        = 1, 3
-    model_suffix  = f"qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr}"
-    model_config  = {"gnn_idx_qubits":qidx, "gnn_nn_qubits":qnn, "gnn_layers":gl, "gnn_reupload":gr, "lr":1E-2, "model_suffix":model_suffix}
-    model         = QuantumRotQCGNN(num_ir_qubits=qidx, num_nr_qubits=qnn, num_layers=gl, num_reupload=gr, device=config["qdevice"], backend=config["qbackend"], diff_method=config["diff_method"])
-    train(model, model_config, data_module, data_config, graph=False, suffix=config["suffix"])
+    # # QFCGNN
+    # data_module   = JetDataModule(sig_events, bkg_events, graph=False)
+    # qidx, qnn     = int(np.ceil(np.log2(data_config["num_pt_ptcs"]))), 9
+    # gl, gr        = 1, 9
+    # model_suffix  = f"qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr}"
+    # model_config  = {"gnn_idx_qubits":qidx, "gnn_nn_qubits":qnn, "gnn_layers":gl, "gnn_reupload":gr, "lr":1E-3, "model_suffix":model_suffix}
+    # model         = QuantumRotQCGNN(num_ir_qubits=qidx, num_nr_qubits=qnn, num_layers=gl, num_reupload=gr, device=config["qdevice"], backend=config["qbackend"], diff_method=config["diff_method"])
+    # train(model, model_config, data_module, data_config, graph=False, suffix=config["suffix"])
