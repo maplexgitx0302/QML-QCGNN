@@ -1,9 +1,19 @@
-import torch
+# basic tools
 import os, random
-import uproot, fastjet
 import numpy as np
-import awkward as ak
+from itertools import product
+
+# HEP tools
 import h5py, json
+import awkward as ak
+import uproot, fastjet
+
+# ML tools
+import torch
+import lightning.pytorch as pl
+from torch_geometric.data import Data
+from torch_geometric.loader import DataLoader as GeoDataLoader
+from torch.utils.data import DataLoader as TorchDataLoader
 
 # PID table
 pdgid_table = {"electron": 11, "muon": 13, "gamma": 22, "ch_hadron": 211, "neu_hadron": 130, "HF_hadron": 1, "HF_em": 2,}
@@ -30,9 +40,9 @@ class FatJetEvents:
         if check_hdf5 == True:
             # if hdf5 file exists, just load it
             data_info   = f"c{cut_pt[0]}_{cut_pt[1]}_r{subjet_radius}"
-            print(f"DataLog: Now loading hdf5 file {channel}|{data_info}.hdf5")
+            print(f"# DataLog: Now loading hdf5 file {channel}|{data_info}.hdf5")
             self.events = load_hdf5(channel, data_info)
-            print(f"DataLog: Successfully loading hdf5 file {channel}|{data_info}.hdf5")
+            print(f"# DataLog: Successfully loading hdf5 file {channel}|{data_info}.hdf5\n")
         else:
             # read original MadGraph5 root file through 'uproot'
             dir_path  = f"{os.path.dirname(__file__)}/jet_dataset"
@@ -86,7 +96,7 @@ class FatJetEvents:
 
             # finish loading fatjet events
             self.events  = events
-            print(f"\nDataLog: Successfully create {channel} with {len(events)} events.\n")
+            print(f"\n# DataLog: Successfully create {channel} with {len(events)} events.\n")
 
             # reclustering fastjet events
             if subjet_radius != 0:
@@ -100,7 +110,7 @@ class FatJetEvents:
 
     def generate_fastjet_events(self, subjet_radius, algorithm=fastjet.antikt_algorithm):
         '''start reclustering particles into subjets'''
-        print(f"\nDataLog: Start reclustering {self.channel} with radius {subjet_radius}")
+        print(f"\n# DataLog: Start reclustering {self.channel} with radius {subjet_radius}")
         fastjet_list = []
         for event in self.events:
             four_momentums = ak.Array({
@@ -128,7 +138,7 @@ class FatJetEvents:
         # finish reclustering and merge with original events
         for field in fastjet_events.fields:
             self.events[f"fast_{field}"] = fastjet_events[field]
-        print(f"DataLog: Finish reclustering {self.channel} with radius {subjet_radius}\n")
+        print(f"# DataLog: Finish reclustering {self.channel} with radius {subjet_radius}\n")
     
     def generate_uniform_pt_events(self, bin, num_bin_data, log=False):
         '''randomly generate uniform events'''
@@ -148,13 +158,13 @@ class FatJetEvents:
             bin_events   = self.events[bin_selected]
             
             # randomly select uniform events
-            assert num_bin_data <= len(bin_events), f"DataLog: num_bin_data is not enough -> {num_bin_data} > {len(bin_events)}"
+            assert num_bin_data <= len(bin_events), f"# DataLog: num_bin_data is not enough -> {num_bin_data} > {len(bin_events)}"
             idx = list(range(len(bin_events)))
             random.shuffle(idx)
             idx = idx[:num_bin_data]
             bin_list.append(bin_events[idx])
             if log:
-                print(f"DataLog: Generate uniform Pt events ({i+1}/{bin}) | number of bin events = {num_bin_data}/{len(bin_events)}")
+                print(f"# DataLog: Generate uniform Pt events ({i+1}/{bin}) | number of bin events = {num_bin_data}/{len(bin_events)}")
         
         return ak.concatenate(bin_list)
     
@@ -165,17 +175,90 @@ class FatJetEvents:
         for field in self.events.fields:
             if "fast_" in field:
                 self.events[field] = self.events[field][max_arg]
-        
+
+
+class TorchDataset(torch.utils.data.Dataset):
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+    def __len__(self):
+        return len(self.y)
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx]
+
+class JetDataModule(pl.LightningDataModule):
+    def __init__(self, sig_events, bkg_events, data_ratio, batch_size, graph):
+        super().__init__()
+        # whether transform to torch_geometric graph data
+        self.graph = graph
+        self.data_ratio = data_ratio
+        self.batch_size = batch_size
+
+        # jet events
+        self.max_num_ptcs = max(
+            max(ak.count(sig_events["fast_pt"], axis=1)),
+            max(ak.count(bkg_events["fast_pt"], axis=1)))
+        sig_events = self._preprocess(sig_events)
+        bkg_events = self._preprocess(bkg_events)
+        print(f"\n# DataLog: Max number of particles = {self.max_num_ptcs}\n")
+
+        # prepare dataset for dataloader
+        train_idx = int(data_ratio * len(sig_events))
+        self.train_dataset = self._dataset(sig_events[:train_idx], 1) + self._dataset(bkg_events[:train_idx], 0)
+        self.test_dataset  = self._dataset(sig_events[train_idx:], 1) + self._dataset(bkg_events[train_idx:], 0)
+
+    def _preprocess(self, events):
+        # "_" prefix means that it is a fastjet feature
+        fatjet_radius = 0.8
+        f1 = np.arctan(events["fast_pt"] / events["fatjet_pt"])
+        f2 = events["fast_delta_eta"] / fatjet_radius * (np.pi/2)
+        f3 = events["fast_delta_phi"] / fatjet_radius * (np.pi/2)
+        arrays = ak.zip([f1, f2, f3])
+        arrays = arrays.to_list()
+        events = [torch.tensor(arrays[i], dtype=torch.float32, requires_grad=False) for i in range(len(arrays))]
+        return events
+
+    def _dataset(self, events, y):
+        if self.graph == True:
+            # create pytorch_geometric "Data" object
+            dataset = []
+            for i in range(len(events)):
+                x = events[i]
+                edge_index = list(product(range(len(x)), range(len(x))))
+                edge_index = torch.tensor(edge_index, requires_grad=False).transpose(0, 1)
+                dataset.append(Data(x=x, edge_index=edge_index, y=y))
+        else:
+            pad     = lambda x: torch.nn.functional.pad(x, (0,0,0,self.max_num_ptcs-len(x)), mode="constant", value=0)
+            dataset = TorchDataset(x=[pad(events[i]) for i in range(len(events))], y=[y]*len(events))
+        return dataset
+
+    def train_dataloader(self):
+        if self.graph == True:
+            return GeoDataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
+        else:
+            return TorchDataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
+
+    def val_dataloader(self):
+        if self.graph == True:
+            return GeoDataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False)
+        else:
+            return TorchDataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False)
+
+    def test_dataloader(self):
+        if self.graph == True:
+            return GeoDataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False)
+        else:
+            return TorchDataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False)
     
 def save_hdf5(channel, data_info, ak_array):
     # see https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#saving-awkward-arrays-to-hdf5
-    print(f"DataLog: Start creating {channel}|{data_info}.hdf5 file")
+    print(f"# DataLog: Start creating {channel}|{data_info}.hdf5 file")
     hdf5_file  = h5py.File(f"{os.path.dirname(__file__)}/jet_dataset/{channel}|{data_info}.hdf5", "w")
     hdf5_group = hdf5_file.create_group(channel)
     form, length, container    = ak.to_buffers(ak.to_packed(ak_array), container=hdf5_group)
     hdf5_group.attrs["form"]   = form.to_json()
     hdf5_group.attrs["length"] = json.dumps(length)
-    print(f"DataLog: Successfully creating {channel}|{data_info}.hdf5 file")
+    print(f"# DataLog: Successfully creating {channel}|{data_info}.hdf5 file")
 
 def load_hdf5(channel, data_info):
     # see https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#reading-awkward-arrays-from-hdf5

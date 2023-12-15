@@ -1,0 +1,42 @@
+{   
+    "// basic information": "",
+        "rnd_seed"   : 3020616,
+        "result_dir" : "./result",
+        "ckpt_dir"   : "./ckpt",
+        "use_wandb"  : false,
+        "wandb_id"   : "ntuyianchen",
+        "project"    : "g_main",
+        
+    "// configuration": "",
+        "config":{
+            "input_dim": 6,
+            "data_ratio": 0.8,
+            "batch_size": 100,
+            "num_workers": 0,
+            "accelerator": "cpu",
+            "fast_dev_run": false,
+            "log_every_n_steps": 50
+        },
+
+    "// re-training for classical shallow models": "",
+        "retrain": false,
+        "retrain_cycle": 10,
+        "retrain_threshold": 0.6,
+    
+    "// quantum device configuration": "e.g., quantum device, backend, diff_method", 
+        "pennylane_config":{
+            "qdevice": "default.qubit",
+            "qbackend": "",
+            "diff_method": "best"
+        },
+        "ibmq_sim_config":{
+            "qdevice": "qiskit.ibmq",
+            "qbackend": "ibmq_qasm_simulator",
+            "diff_method": "parameter-shift"
+        },
+        "ibmq_real_config":{
+            "qdevice": "qiskit.ibmq",
+            "qbackend": "ibm_cairo",
+            "diff_method": "parameter-shift"
+        }
+}

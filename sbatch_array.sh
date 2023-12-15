@@ -2,6 +2,9 @@
 #SBATCH --array=0-2
 #SBATCH --exclusive
 
+source ~/anaconda3/etc/profile.d/conda.sh
+conda activate qml
+
 pwd
 python_version="$(python --version)"
 required_version="Python 3.9.12"

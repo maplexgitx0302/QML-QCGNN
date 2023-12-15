@@ -1,11 +1,15 @@
 # Step 1
-Check conda virtual environment
->>> conda env list
+    [Option 1]
+    Check conda virtual environment
+    >>> conda env list
+    Activate the virtual environment, e.g.,
+    >>> conda activate qml
+    One can use `python -V` to double check venv version
 
-# Step 2
-Activate the virtual environment, e.g.,
->>> conda activate qml
-One can use `python -V` to double check venv version
+    [Option 2]
+    See https://stackoverflow.com/questions/61915607/commandnotfounderror-your-shell-has-not-been-properly-configured-to-use-conda
+    Add "source ~/anaconda3/etc/profile.d/conda.sh" in shell script
+    Then you can call "conda activate your_env_name" in shell script
 
 # Step 3
 Write a shell script, e.g., consider `a.sh`

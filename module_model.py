@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import pennylane as qml
 from pennylane import numpy as np
-from torch_geometric.nn import MessagePassing
 from functools import reduce
 
 measurements_dict = {"I":qml.Identity, "X":qml.PauliX, "Y":qml.PauliY, "Z":qml.PauliZ}
@@ -79,10 +78,10 @@ class QuantumSphericalIQP(nn.Module):
 
 # Quantum Complete Graph Neural Network (QCGNN)
 class QCGNN(nn.Module):
-    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc, device='default.qubit', backend='ibmq_qasm_simulator', diff_method="best"):
+    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc, qdevice='default.qubit', qbackend='ibmq_qasm_simulator', diff_method="best"):
         super().__init__()
         # setup quantum registers
-        if "qiskit" in device or "qiskit" in ctrl_enc.__name__:
+        if "qiskit" in qdevice or "qiskit" in ctrl_enc.__name__:
             num_wk_qubits = num_ir_qubits - 1
         else:
             num_wk_qubits = 0
@@ -90,12 +89,12 @@ class QCGNN(nn.Module):
         self.num_wk_qubits = num_wk_qubits
         self.num_nr_qubits = num_nr_qubits
         num_qubits = num_ir_qubits + num_wk_qubits + num_nr_qubits
-        print(f"ModelLog: Quantum device  = {device} | Qubits (IR, WK, NR) = {num_ir_qubits, num_wk_qubits, num_nr_qubits}")
-        if "qiskit" in device and backend is not None:
-            qml_device = qml.device(device, wires=num_qubits, backend=backend)
-            print(f"ModelLog: Quantum backend = {backend}")
+        print(f"# ModelLog: Quantum device  = {qdevice} | Qubits (IR, WK, NR) = {num_ir_qubits, num_wk_qubits, num_nr_qubits}")
+        if "qiskit" in qdevice and qbackend != "":
+            qml_device = qml.device(qdevice, wires=num_qubits, backend=qdevice)
+            print(f"# ModelLog: Quantum backend = {qbackend}")
         else:
-            qml_device = qml.device(device, wires=num_qubits)
+            qml_device = qml.device(qdevice, wires=num_qubits)
         
         # setup measurement operators (IR:Combinations of {I,X}, NR:Measurements in Z)
         ir_meas_dict = {"0":qml.Identity, "1":qml.PauliX}
@@ -114,9 +113,17 @@ class QCGNN(nn.Module):
             # the inputs is flattened due to torch confusing batch and features, so we reshape back
             inputs = inputs.reshape(-1, 3)
 
-            # uniformly initialize the controlled qubits (assuming number of particles = 2**num_ir_qubits)
-            for i in range(num_ir_qubits):
-                qml.Hadamard(wires=i)
+            # initialize the IR
+            if np.log2(len(inputs)) % 1 == 0:
+                # i.e. number of particles = 2**num_ir_qubits
+                for i in range(num_ir_qubits):
+                    qml.Hadamard(wires=i)
+            else:
+                # i.e. number of particles < 2**num_ir_qubits
+                N = len(inputs)
+                state_vector = N * [1/np.sqrt(N)] + (2**num_ir_qubits-N) * [0]
+                state_vector = np.array(state_vector) / np.linalg.norm(state_vector)
+                qml.QubitStateVector(state_vector, wires=range(num_ir_qubits))
 
             # main structure of data reupload
             for i in range(num_reupload+1):

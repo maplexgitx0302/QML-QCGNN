@@ -1,19 +1,28 @@
+# local files
 .DS_Store
 __pycache__/
+_*
+log_*
 
+# training result
 wandb/
 result/
 lightning_logs/
 tmux_log/
 QCGNN_result/
 QCGNN_ckpt/
+ckpt/
+csv/
 
+# data
 data/
 jet_dataset/
 *.root
 *.hdf5
 
+# slurm
 slurm_out
 slurm*
 
+# pennylane-qiskit plugin
 config.toml

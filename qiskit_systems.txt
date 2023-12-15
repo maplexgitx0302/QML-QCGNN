@@ -1,0 +1,6 @@
+# 27 Qubits
+- ibm_cairo
+- ibm_hanoi
+- ibm_algiers
+- ibmq_kolkata
+- ibmq_mumbai
