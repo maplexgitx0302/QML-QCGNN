@@ -4,12 +4,22 @@ import time
 # ML tools
 import torch
 import lightning as L
-import lightning.pytorch as pl
 from sklearn import metrics
+from lightning.pytorch.loggers import CSVLogger
 
 # wandb
 import wandb
 from lightning.pytorch.loggers import WandbLogger
+
+# tensorboard logger
+def default_monitor(logger_config, *args):
+    csv_logger = CSVLogger(save_dir=logger_config["save_dir"], name=logger_config["name"])
+    csv_config = {}
+    csv_config.update(logger_config)
+    for config in args:
+        csv_config.update(config)
+    csv_logger.log_hyperparams(csv_config)
+    return csv_logger
 
 # wandb monitor
 def wandb_monitor(model, logger_config, *args):
