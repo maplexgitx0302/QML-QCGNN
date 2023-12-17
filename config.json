@@ -1,22 +1,32 @@
 {   
-    "// basic information": "",
-        "rnd_seed"   : 3020616,
-        "result_dir" : "./result",
-        "ckpt_dir"   : "./ckpt",
-        "use_wandb"  : false,
-        "wandb_id"   : "ntuyianchen",
-        "project"    : "g_main",
-        
-    "// configuration": "",
+    "// configurations": "",
         "config":{
-            "input_dim": 6,
-            "data_ratio": 0.8,
-            "batch_size": 100,
-            "num_workers": 0,
-            "accelerator": "cpu",
-            "fast_dev_run": false,
-            "log_every_n_steps": 50
+            "// basic settings": "",
+                "quick_test":true,
+                "max_epochs":30,
+                "num_bin_data":500,
+                "batch_size": 100,
+                "quantum_config":"pennylane_config",
+            
+            "// data settings": "",
+                "input_dim": 6,
+                "data_ratio": 0.8,
+            
+            "// pytorch lightning trainer": "",
+                "num_workers": 0,
+                "accelerator": "cpu",
+                "fast_dev_run": false,
+                "log_every_n_steps": 50
         },
+    
+    "// wandb settings (optional)": "",
+        "use_wandb": false,
+        "wandb_id": "ntuyianchen",
+        "project": "g_main",
+                
+    "// output directories": "",
+        "ckpt_dir"     : "./ckpt",
+        "result_dir"   : "./result",
 
     "// re-training for classical shallow models": "",
         "retrain": false,
