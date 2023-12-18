@@ -2,11 +2,12 @@
 Jet Discrimination with Quantum Complete Graph Neural Network
 
 ---
+
 ### Prerequisites
 The code is fully written in **Python** environment.
 
 ##### Python packages
-The main training workflow is based on [PyTorch](https://pytorch.org) and [Pennylane](https://pennylane.ai), Python 3.9 or newer is required. To succesfully reproduce the output, the Python version can be set to `3.9.12` and install the packages through
+The main training workflow is based on [PyTorch](https://pytorch.org) and [Pennylane](https://pennylane.ai), and Python 3.9 or newer is required. To succesfully reproduce the output, install the packages through
 ```bash
 # /bin/bash
 pip install -r requirements.txt
@@ -32,13 +33,13 @@ python a.py
 All main procedure can be executed through `./g_main.ipynb`, and most of the configuration can be setup in `./config.json`. You can simply uncomment the code you want to test in the last two sections (*Training* and *Prediction*).
 
 - Training
-    - **Uncomment** and modify the model you want to train, also set up the random seeds if needed.
-    - The data configuration can also be set in `data_config` dictionaries. 
-    - The default is in **quick start mode** (trained with `max_epochs=1` and `num_bin_data=1`) whatever you set in `./config.json`. Set `config["quick_start"]=true` in `./config.json`
+    - **Uncomment** and modify the model hyperparameters you want to train, also set up the random seeds if needed.
+    - The dataset hyperparameters can be set in `data_config` dictionaries. 
+    - The default training mode is **quick start mode**, i.e., trained with `max_epochs=1` and `num_bin_data=1`, no matter whatever you set in `./config.json`. Set `config["quick_start"]=false` in `./config.json` for full training.
 
 - Prediction
   - Make sure you have the `ckpt` files placed correctly, e.g., `./ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [ckpt](https://drive.google.com/drive/folders/1K6Ox448EbpGtZFI-6_jadwMWIbCRG0Oj?usp=share_link).
-  - **Uncomment** and modify the code.
+  - **Uncomment** and modify the code you want to test.
 
 ### File descriptions
 - Files with prefix `./module_`: Modules for detail of reading/loading data, constructing models, training procedures.
@@ -49,7 +50,7 @@ All main procedure can be executed through `./g_main.ipynb`, and most of the con
   - `VzToZhToVevebb`: 2-prong jets from $H\rightarrow b\bar{b}$.
   - `VzToTt`: 3-prong jets from $t\rightarrow bW^+$.
   - `c800_1000`: Jets with transverse momentum $p_T$ in range $(800,1000)$.
-  - `r0.x`: Jets reclustered through *anti-$k_T$* with subjet radius $0.x$
+  - `r0.x`: Jets reclustered through *anti-$k_T$* with subjet radius $0.x$ (default using `r0`)
 
 ### Generating original jet data by MG5
 The data in `./jet_dataset` is generated through [MadGraph5_aMC@NLO](https://launchpad.net/mg5amcnlo) with [Heavy Vector Triplets (HVT)](https://hepmdb.soton.ac.uk/index.php?mod=user&act=showmodel&id=0214.0151) model:

@@ -3,6 +3,7 @@
 __pycache__/
 _*
 log_*
+a.py
 
 # training result
 wandb/
