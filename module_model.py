@@ -111,27 +111,30 @@ class QCGNN(nn.Module):
         @qml.qnode(qml_device, diff_method=diff_method)
         def circuit(inputs=torch.rand(3*2**num_ir_qubits), weights=torch.rand(num_reupload+1, num_layers, num_nr_qubits, 3)):
             # the inputs is flattened due to torch confusing batch and features, so we reshape back
-            inputs = inputs.reshape(-1, 3)
+            inputs   = inputs.unflatten(dim=-1, sizes=(-1, 3))
+            num_ptcs = inputs.shape[-2]
 
             # initialize the IR
-            if np.log2(len(inputs)) % 1 == 0:
+            if num_ptcs == 2**num_ir_qubits:
                 # i.e. number of particles = 2**num_ir_qubits
                 for i in range(num_ir_qubits):
                     qml.Hadamard(wires=i)
             else:
                 # i.e. number of particles < 2**num_ir_qubits
-                N = len(inputs)
-                state_vector = N * [1/np.sqrt(N)] + (2**num_ir_qubits-N) * [0]
+                state_vector = num_ptcs * [1/np.sqrt(num_ptcs)] + (2**num_ir_qubits-num_ptcs) * [0]
                 state_vector = np.array(state_vector) / np.linalg.norm(state_vector)
                 qml.QubitStateVector(state_vector, wires=range(num_ir_qubits))
 
             # main structure of data reupload
             for i in range(num_reupload+1):
                 # data encoding with correponding control conditions
-                for ir_idx in range(len(inputs)):
+                for ir_idx in range(num_ptcs):
                     control_values = np.binary_repr(ir_idx, width=num_ir_qubits)
                     control_values = list(map(int, control_values))
-                    ctrl_enc(inputs[ir_idx], control_values=control_values)
+                    if len(inputs.shape) > 2:
+                        ctrl_enc(inputs[:, ir_idx], control_values=control_values)
+                    else:
+                        ctrl_enc(inputs[ir_idx], control_values=control_values)
                 # parametrized gates using strongly entangling layers
                 qml.StronglyEntanglingLayers(weights=weights[i], wires=range(num_ir_qubits+num_wk_qubits, num_qubits))
             return [qml.expval(meas) for meas in expval_measurements]

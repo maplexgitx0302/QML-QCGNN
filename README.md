@@ -13,6 +13,8 @@ The main training workflow is based on [PyTorch](https://pytorch.org) and [Penny
 pip install -r requirements.txt
 ```
 
+> Note: The version of Pennylane should be newer than `0.31.0` due to `qml.qnn.TorchLayer` [issue](https://discuss.pennylane.ai/t/inputs-dimension-mix-with-batch-dimension-in-qml-qnn-torchlayer/3824/8).
+
 ##### Dataset
 The jet dataset can be downloaded from [jet_dataset](https://drive.google.com/drive/folders/1Q6pTv3qgT0HE5wgR11qDokBvL2qpoP1a?usp=share_link) to local directory `./jet_dataset`
 
