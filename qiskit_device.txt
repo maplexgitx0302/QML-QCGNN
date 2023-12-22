@@ -1,0 +1,5 @@
+ibmq_kolkata
+ibm_algiers
+ibm_hanoi
+ibm_cairo
+ibm_cusco
