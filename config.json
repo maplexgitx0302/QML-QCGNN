@@ -4,7 +4,7 @@
             "// basic settings": "",
                 "quick_test":false,
                 "max_epochs":30,
-                "num_bin_data":50,
+                "num_bin_data":500,
                 "batch_size": 100,
                 "quantum_config":"pennylane_config",
             

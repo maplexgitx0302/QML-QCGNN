@@ -91,7 +91,7 @@ class QCGNN(nn.Module):
         num_qubits = num_ir_qubits + num_wk_qubits + num_nr_qubits
         print(f"# ModelLog: Quantum device  = {qdevice} | Qubits (IR, WK, NR) = {num_ir_qubits, num_wk_qubits, num_nr_qubits}")
         if "qiskit" in qdevice and qbackend != "":
-            qml_device = qml.device(qdevice, wires=num_qubits, backend=qdevice)
+            qml_device = qml.device(qdevice, wires=num_qubits, backend=qbackend)
             print(f"# ModelLog: Quantum backend = {qbackend}")
         else:
             qml_device = qml.device(qdevice, wires=num_qubits)

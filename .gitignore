@@ -27,3 +27,4 @@ slurm*
 
 # pennylane-qiskit plugin
 config.toml
+ibmq/

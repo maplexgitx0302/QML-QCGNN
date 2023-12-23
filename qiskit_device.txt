@@ -1,5 +1,10 @@
+# 27 Qubits
 ibmq_kolkata
 ibm_algiers
 ibm_hanoi
 ibm_cairo
+
+# 127 Qubits
 ibm_cusco
+ibm_brisbane
+ibm_sherbrooke
