@@ -78,8 +78,10 @@ class QuantumSphericalIQP(nn.Module):
 
 # Quantum Complete Graph Neural Network (QCGNN)
 class QCGNN(nn.Module):
-    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc, qdevice='default.qubit', qbackend='ibmq_qasm_simulator', diff_method="best"):
+    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc, qdevice='default.qubit', qbackend='ibmq_qasm_simulator', diff_method="best", scale=None):
         super().__init__()
+        # quantum aggregation scale (default SUM)
+        self.scale = 2**num_ir_qubits if scale is None else scale
         # setup quantum registers
         if "qiskit" in qdevice or "qiskit" in ctrl_enc.__name__:
             num_wk_qubits = num_ir_qubits - 1
@@ -151,5 +153,5 @@ class QCGNN(nn.Module):
         # transpose last two dimensions (X,Z) -> (Z,X)
         x = x.mT
         # sum up X expvals
-        x = torch.sum(x, dim=-1) * (2**self.num_ir_qubits)
+        x = torch.sum(x, dim=-1) * self.scale
         return x
