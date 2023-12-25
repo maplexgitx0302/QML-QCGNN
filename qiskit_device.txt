@@ -8,3 +8,4 @@ ibm_cairo
 ibm_cusco
 ibm_brisbane
 ibm_sherbrooke
+ibm_nazca

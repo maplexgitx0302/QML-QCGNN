@@ -78,7 +78,7 @@ class QuantumSphericalIQP(nn.Module):
 
 # Quantum Complete Graph Neural Network (QCGNN)
 class QCGNN(nn.Module):
-    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc, qdevice='default.qubit', qbackend='ibmq_qasm_simulator', diff_method="best", scale=None):
+    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc, qdevice='default.qubit', qbackend='ibmq_qasm_simulator', diff_method="best", shots=1024, scale=None):
         super().__init__()
         # quantum aggregation scale (default SUM)
         self.scale = 2**num_ir_qubits if scale is None else scale
@@ -93,7 +93,7 @@ class QCGNN(nn.Module):
         num_qubits = num_ir_qubits + num_wk_qubits + num_nr_qubits
         print(f"# ModelLog: Quantum device  = {qdevice} | Qubits (IR, WK, NR) = {num_ir_qubits, num_wk_qubits, num_nr_qubits}")
         if "qiskit" in qdevice and qbackend != "":
-            qml_device = qml.device(qdevice, wires=num_qubits, backend=qbackend)
+            qml_device = qml.device(qdevice, wires=num_qubits, backend=qbackend, shots=shots)
             print(f"# ModelLog: Quantum backend = {qbackend}")
         else:
             qml_device = qml.device(qdevice, wires=num_qubits)

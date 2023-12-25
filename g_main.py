@@ -66,7 +66,6 @@ if __name__ == "__main__":
 
     # quantum config
     quantum_config = json_config[config["quantum_config"]]
-    quantum_config["qbackend"] = input("Qiskit real device backend: ")
 
     # manual settings
     if config["quick_test"] == True:
@@ -362,29 +361,28 @@ def execute_quantum(data_config, qnn, gl, gr, lr, mode):
 
 # c_df, b_df, q_df = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 # num_ptcs_range = range(2, 16+1, 2)
-# for rnd_seed, num_pt_ptcs in product(range(10), num_ptcs_range):
+# for rnd_seed, num_pt_ptcs in product(range(3), num_ptcs_range):
 #     for data_config in data_configs:
 #         data_config["num_pt_ptcs"] = num_pt_ptcs
 #         config["rnd_seed"] = rnd_seed
 #         L.seed_everything(config["rnd_seed"])
 
-        # # classical
-        # for g_dim in [3,6,9]:
-        #     _, summary = execute_classical(data_config, go=g_dim, gh=g_dim, gl=2, lr=1E-3, mode="predict")
-        #     c_df = pd.concat((c_df, summary))
-        #     c_df.to_csv(f"csv/classical-{config['num_bin_data']}_{rnd_seed}.csv", index=False)
+#         # # classical
+#         # for g_dim in [3,6,9]:
+#         #     _, summary = execute_classical(data_config, go=g_dim, gh=g_dim, gl=2, lr=1E-3, mode="predict")
+#         #     c_df = pd.concat((c_df, summary))
+#         #     c_df.to_csv(f"csv/classical-{config['num_bin_data']}_{rnd_seed}.csv", index=False)
 
-        # # best classical
-        # _, summary = execute_classical(data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="predict")
-        # b_df = pd.concat((b_df, summary))
-        # b_df.to_csv(f"csv/classical-{config['num_bin_data']}_best.csv", index=False)
+#         # # best classical
+#         # _, summary = execute_classical(data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="predict")
+#         # b_df = pd.concat((b_df, summary))
+#         # b_df.to_csv(f"csv/classical-{config['num_bin_data']}_best.csv", index=False)
 
-        # # quantum
-        # for q in [3,6,9]:
-        #     _, summary = execute_quantum(data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="predict")
-        #     q_df = pd.concat((q_df, summary))
-        #     q_df.to_csv(f"csv/qnn{q}_gl1_gr{q}_ptc({num_ptcs_range[0]},{num_ptcs_range[-1]})-{config['num_bin_data']}_{rnd_seed}.csv", index=False)
-
+#         # quantum
+#         for q in [3,6,9]:
+#             _, summary = execute_quantum(data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="predict")
+#             q_df = pd.concat((q_df, summary))
+#         q_df.to_csv(f"csv/qnn{q}_gl1_gr{q}_ptc({num_ptcs_range[0]},{num_ptcs_range[-1]})-{config['num_bin_data']}_{rnd_seed}.csv", index=False)
 
 # %%
 """
