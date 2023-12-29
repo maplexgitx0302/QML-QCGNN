@@ -1,52 +1,33 @@
-{   
-    "// configurations": "",
-        "config":{
-            "// basic settings": "",
-                "quick_test":false,
-                "max_epochs":30,
-                "num_bin_data":500,
-                "batch_size": 100,
-                "quantum_config":"pennylane_config",
-            
-            "// data settings": "",
-                "input_dim": 6,
-                "data_ratio": 0.8,
-            
-            "// pytorch lightning trainer": "",
-                "num_workers": 0,
-                "accelerator": "cpu",
-                "fast_dev_run": false,
-                "log_every_n_steps": 50
-        },
+{
+    "// basic settings": "",
+        "quick_test": true,
+        "max_epochs": 30,
+        "num_bin_data": 500,
+        "batch_size": 100,
+        "quantum_config": "pennylane_config",
+        "computing_platform": "",
+    
+    "// dataset settings": "",
+        "input_dim": 6,
+        "data_ratio": 0.8,
+    
+    "// pytorch lightning trainer": "",
+        "num_workers": 0,
+        "accelerator": "cpu",
+        "fast_dev_run": false,
+        "log_every_n_steps": 50,
     
     "// wandb settings (optional)": "",
         "use_wandb": false,
         "wandb_id": "ntuyianchen",
         "project": "g_main",
-                
+    
     "// output directories": "",
-        "ckpt_dir"     : "./ckpt",
-        "result_dir"   : "./result",
-
+        "pretrain_dir": "./pretrain",
+        "result_dir": "./result",
+    
     "// re-training for classical shallow models": "",
         "retrain": false,
         "retrain_cycle": 10,
-        "retrain_threshold": 0.6,
-    
-    "// quantum device configuration": "e.g., quantum device, backend, diff_method", 
-        "pennylane_config":{
-            "qdevice": "default.qubit",
-            "qbackend": "",
-            "diff_method": "best"
-        },
-        "ibmq_sim_config":{
-            "qdevice": "qiskit.ibmq",
-            "qbackend": "ibmq_qasm_simulator",
-            "diff_method": "parameter-shift"
-        },
-        "ibmq_real_config":{
-            "qdevice": "qiskit.ibmq",
-            "qbackend": "ibm_cairo",
-            "diff_method": "parameter-shift"
-        }
+        "retrain_threshold": 0.6
 }

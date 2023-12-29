@@ -16,10 +16,10 @@ pip install -r requirements.txt
 > Note: The version of Pennylane should be newer than `0.31.0` due to `qml.qnn.TorchLayer` [issue](https://discuss.pennylane.ai/t/inputs-dimension-mix-with-batch-dimension-in-qml-qnn-torchlayer/3824/8).
 
 ##### Dataset
-The jet dataset can be downloaded from [jet_dataset](https://drive.google.com/drive/folders/1Q6pTv3qgT0HE5wgR11qDokBvL2qpoP1a?usp=share_link) to local directory `./jet_dataset`
+The jet dataset can be downloaded from [jet_dataset](https://drive.google.com/drive/folders/1cY__Pj9Rf2n7a8ErMRzOcIppd40MWIEC?usp=share_link) to local directory `./jet_dataset`
 
 ##### Pre-trained model
-The pre-trained model parameters can be loaded from `ckpt` files and can be downloaded from [ckpt](https://drive.google.com/drive/folders/1K6Ox448EbpGtZFI-6_jadwMWIbCRG0Oj?usp=share_link) to local directory `./ckpt`.
+The pre-trained model parameters can be loaded from `ckpt` files and can be downloaded from [ckpt](https://drive.google.com/drive/folders/1cY__Pj9Rf2n7a8ErMRzOcIppd40MWIEC?usp=share_link) to local directory `./ckpt`.
 
 ##### Jupyter
 The main python scripts are written in jupyter format (`.ipynb`), for user who wants to use traditional python scripts (`.py`), you can download `ipynb-py-convert` package:
@@ -40,7 +40,7 @@ All main procedure can be executed through `./g_main.ipynb`, and most of the con
     - The default training mode is **quick start mode**, i.e., trained with `max_epochs=1` and `num_bin_data=1`, no matter whatever you set in `./config.json`. Set `config["quick_start"]=false` in `./config.json` for full training.
 
 - Prediction
-  - Make sure you have the `ckpt` files placed correctly, e.g., `./ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [ckpt](https://drive.google.com/drive/folders/1K6Ox448EbpGtZFI-6_jadwMWIbCRG0Oj?usp=share_link).
+  - Make sure you have the `ckpt` files placed correctly, e.g., `./ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [ckpt](https://drive.google.com/drive/folders/1cY__Pj9Rf2n7a8ErMRzOcIppd40MWIEC?usp=share_link).
   - **Uncomment** and modify the code you want to test.
 
 ### File descriptions

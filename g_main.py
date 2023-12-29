@@ -1,264 +1,596 @@
 # %%
 """
-### Packages and Configurations
+# Main script
+
+This notebook script is about the main training procedure of MPGNN and QCGNN, with some functions and classes are written in other python scripts `module_*.py`. The following codes contain:
+- Setup for the classical MPGNN.
+- Data encoding ansatz of QCGNN (on simulator or IBMQ).
+- Training and prediction workflow.
+
+About the modules `module_*.py`:
+- `module_data.py`: Reading data and constructing data modules.
+- `module_model.py`: Some detail construction of classical and quantum models.
+- `module_training.py`: Related to routine training procedure.
 """
 
 # %%
-# basic packages
-import pandas as pd
-import os, time, json, argparse
-from itertools import product
+"""
+## Initialization
+"""
 
-# modules
+# %%
+"""
+### Import packages
+
+- `lightning`: tools for simplified training procedure.
+- `pennylane`: used for quantum machine learning.
+- `torch`: machine learning backend (for both classical and quantum).
+- `torch_geometric`: used for classical graph neural network.
+"""
+
+# %%
+import argparse
+from itertools import product
+import json
+import os
+import time
+
+import lightning as L
+import pandas as pd
+import pennylane as qml
+from pennylane import numpy as np
+import torch
+import torch.nn as nn
+import torch_geometric
+from torch_geometric.nn import MessagePassing
+
 import module_data
 import module_model
 import module_training
 
-# qml tools
-import pennylane as qml
-from pennylane import numpy as np
-
-# ml tools
-import torch
-import torch.nn as nn
-import lightning as L
-import torch_geometric.nn as geomodule_model
-from torch_geometric.nn import MessagePassing
-
-# faster calculation on GPU but less precision
+# Faster calculation on GPU but less precision.
 torch.set_float32_matmul_precision("medium")
 
 # %%
 """
 ### Manual Settings
+
+Most of the configuration setup can be done in `./config.json`, some explanation of the arguments in `./config.json`.
+- Set `quick_test` to true to test whether the code can run in your environment.
+- Set `computing_platform` to "slurm" if running in *slurm* (optional).
+- Set `use_wandb` to true if you want to monitor the trainning procedure through [Wandb](https://wandb.ai/site), otherwise the training result will be saved as a `csv` file.
 """
 
 # %%
+# The logging function.
+def _log(message: str) -> None:
+    """Printing function for log."""
+    print(f"# MainLog: {message}")
+
+# Read json configuration file.
 with open("config.json", "r") as json_file:
-    # read JSON config file
-    json_config = json.load(json_file)
+    config = json.load(json_file)
 
-    # directory to store result
-    os.makedirs(json_config["result_dir"], exist_ok=True)
-    os.makedirs(json_config["ckpt_dir"], exist_ok=True)
-
-    # default configurations
-    config = json_config["config"]
-
+# This notebook script will be converted to python script for other usage, the
+# following parts are intended not to be imported for other usage.
 if __name__ == "__main__":
-    # general configuration and setup
-    config["ctime"]  = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-    config["time"]   = input("Specify a datetime or leave empty (default current time): ") or config["ctime"]
-    config["device"] = input("Enter the computing device (4090, slurm, node, etc.)    : ")
-    config["suffix"] = input("Suffix (the format looks like 'MODEL_SUFFIX_DATE')      : ")
-    if config["device"] == "slurm":
-        # pass arguments when running through slurm
+    # Settings for running in `slurm` or other platforms that are inconvenient
+    # to pass inputs directly.
+    if config["computing_platform"] == "slurm":
+        # Pass arguments in shell script (e.g. python a.py --rnd_seed 0).
         parser = argparse.ArgumentParser(description='argparse for slurm')
+        # Add `rnd_seed` argument to specify the random seed.
         parser.add_argument('--rnd_seed', type=int, help='random seed')
         parse_args = parser.parse_args()
         config["rnd_seed"] = parse_args.rnd_seed
+    else:
+        # Inputs for additional training information manually.
+        # Record current time.
+        config["ctime"]  = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+        # Specifying a datetime if needed (to compatible with other exp results).
+        config["time"]   = input("Datetime (default current time): ") or config["ctime"]
+        # This will recording the classical device for simulation (optional).
+        config["device"] = input("Classical computing device     : ")
+        # The suffix of training result (optional).
+        config["suffix"] = input("Suffix for this training exp   : ")
 
-    # whether using wandb to monitor the training procedure
-    use_wandb = json_config["use_wandb"]
+    # Whether using Wandb to monitor the training procedure.
+    use_wandb = config["use_wandb"]
     if use_wandb:
         import wandb
+        # Api can be used to fetch training results.
         api = wandb.Api()
 
-    # quantum config
-    quantum_config = json_config[config["quantum_config"]]
+    # Configuration of quantum devices (PennyLane simulation or IBMQ real devices).
+    quantum_config = {"qdevice": "default.qubit", "qbackend": ""}
 
-    # manual settings
+    # Test whether the code can run for at least 1 epoch.
     if config["quick_test"] == True:
-        config["max_epochs"]   = 1
-        config["num_bin_data"] = 10
+        config["max_epochs"] = 1
+        config["num_bin_data"] = 1
+
+# %%
+"""
+## Classical and Quantum Models
+"""
 
 # %%
 """
 ### Classical Message Passing Graph Neural Network (MPGNN)
+
+This classical model is built with GNN structure followed by a simple shallow fully connected linear network. The GNN is constructed with package `torch_geometric`, see ["PyTorch Geometric"](https://pytorch-geometric.readthedocs.io) for futher details. The tutorial for creating a `MessagePassing` class can be found at ["Creating Message Passing Networks"](https://pytorch-geometric.readthedocs.io/en/latest/tutorial/create_gnn.html).
 """
 
 # %%
 class MessagePassing(MessagePassing):
     def __init__(self, phi):
+        """Undirected message passing model.
+        
+        Args:
+            phi : message passing function
+                See the paper or the "Creating Message Passing Networks"
+                for futher details.
+        """
+
         super().__init__(aggr="add", flow="target_to_source")
         self.phi = phi
+    
     def forward(self, x, edge_index):
         return self.propagate(edge_index, x=x)
+    
     def message(self, x_i, x_j):
         return self.phi(torch.cat((x_i, x_j), dim=-1))
+    
     def update(self, aggr_out, x):
         return aggr_out
 
+
 class GraphMPGNN(nn.Module):
     def __init__(self, phi, mlp):
+        """MPGNN with SUM as the aggregation function.
+        
+        Instead of combining this part with the class `ClassicalMPGNN` 
+        below, we seperate out for the possibility of other design of 
+        mlp.
+
+        Args:
+            phi : message passing function
+                See `MessagePassing` above.
+            mlp : Multi-layer perceptrons
+                Basically just a simple shallow fully connected linear
+                model for transforming dimensions.
+        """
+
         super().__init__()
         self.gnn = MessagePassing(phi)
         self.mlp = mlp
+
     def forward(self, x, edge_index, batch):
+        # Graph neural network.
         x = self.gnn(x, edge_index)
-        x = geomodule_model.global_add_pool(x, batch)
+
+        # Graph aggregation.
+        x = torch_geometric.nn.global_add_pool(x, batch)
+
+        # Shallow linear model.
         x = self.mlp(x)
+
         return x
-    
+
+
 class ClassicalMPGNN(GraphMPGNN):
-    def __init__(self, gnn_in, gnn_out, gnn_hidden, gnn_layers, mlp_hidden=0, mlp_layers=0, **kwargs):
-        phi = module_model.ClassicalMLP(in_channel=gnn_in, out_channel=gnn_out, hidden_channel=gnn_hidden, num_layers=gnn_layers)
-        mlp = module_model.ClassicalMLP(in_channel=gnn_out, out_channel=1, hidden_channel=mlp_hidden, num_layers=mlp_layers)
+    def __init__(
+            self,
+            gnn_in: int,
+            gnn_out: int,
+            gnn_hidden: int,
+            gnn_layers: int,
+            mlp_hidden:int = 0,
+            mlp_layers:int = 0,
+            **kwargs
+    ):
+        """Classical model for benchmarking
+
+        Arguments with prefix "gnn" are related to the message passing
+        function `phi`, which is constructed with a classical MLP.
+
+        Arguments with prefix "mlp" are related to the shallow linear
+        model after graph aggregation, which is also constructed with a 
+        classical MLP.
+
+        The shallow linear model at the last step is designed for simply
+        transforming the dimension of GNN outputs to 1 dimension, then
+        the final 1 dimensional output represents the prediction of the 
+        binary classification task, so the number of hidden neurons and
+        hidden layers are default as 0.
+        
+        Args:
+            gnn_in : int
+                The input channel dimension of `phi` in MPGNN.
+            gnn_out : int
+                The output channel dimension of `phi` in MPGNN.
+            gnn_hidden : int
+                Number of hidden neurons of `phi` in MPGNN.
+            gnn_layers : int
+                Number of hidden layers of `phi` in MPGNN.
+            mlp_hidden : int (default 0)
+                Number of hidden neurons of the shallow linear model.
+            mlp_layers : int (default 0)
+                Number of hidden layers of the shallow linear model.
+        """
+        
+        # See `GraphMPGNN` above.
+        phi = module_model.ClassicalMLP(
+            in_channel=gnn_in,
+            out_channel=gnn_out,
+            hidden_channel=gnn_hidden,
+            num_layers=gnn_layers
+            )
+        mlp = module_model.ClassicalMLP(
+            in_channel=gnn_out,
+            out_channel=1,
+            hidden_channel=mlp_hidden,
+            num_layers=mlp_layers
+            )
+
         super().__init__(phi, mlp)
 
 # %%
 """
 ### Quantum Complete Graph Neural Network (QCGNN)
+
+The main structure of QCGNN is written in the `module_model.py` script, and the following codes focus on how data is encoded to the quantum circuit (corresponding to the arguement `ctrl_enc` in `module_model.QCGNN`). In this paper, we test the encoding ansatz constructed through angle encoding.
+
+Note that there are two encoding functions below (`pennylane_encoding` and `qiskit_encoding`), both are equivalent but run in different quantum devices.
+- `pennylane_encoding`: for simulation using PennyLane (such as "default.qubit").
+- `qiskit_encoding`: The multi-qubit gates in `pennylane_encoding` are decomposed to single-qubit and two-qubit gates. The decomposition method can be found at [Quantum Computation and Quantum Information](https://www.cambridge.org/highereducation/books/quantum-computation-and-quantum-information/01E10196D0A682A6AEFFEA52D53BE9AE#overview) section 4.3.
 """
 
 # %%
-# rotation encoding on pennylane simulator
-def pennylane_encoding(_input, control_values, num_ir_qubits, num_nr_qubits):
-    for i in range(num_nr_qubits):
-        ctrl_H = qml.ctrl(qml.Hadamard, control=range(num_ir_qubits), control_values=control_values)
-        ctrl_H(wires=num_ir_qubits+i)
-        ctrl_R = qml.ctrl(qml.Rot, control=range(num_ir_qubits), control_values=control_values)
-        # batch data
-        if len(_input.shape) > 1:
-            ctrl_R(theta=_input[:,0], phi=_input[:,1], omega=_input[:,2], wires=num_ir_qubits+i)
-        # single data
-        else:
-            ctrl_R(theta=_input[0], phi=_input[1], omega=_input[2], wires=num_ir_qubits+i)
+def pennylane_encoding(ptc_input: torch.tensor, control_values: list[int], num_ir_qubits: int, num_nr_qubits: int):
+    """Angle encoding ansatz for PennyLane
 
-# rotation encoding on qiskit
-def qiskit_encoding(_input, control_values, num_ir_qubits, num_nr_qubits):
-    num_wk_qubits = num_ir_qubits - 1
-    # batch data
-    if len(_input.shape) > 1:
-        theta, phi, omega = _input[:,0], _input[:,1], _input[:,2]
-    # single data
+    Args:
+        ptc_input : torch.tensor
+            One particle information of the jet.
+        control_values : list[int]
+            Control values of the multi-controlled gates.
+        num_ir_qubits : int
+            Number of IR qubits.
+        num_nr_qubits : int
+            Number of NR qubits.
+    """
+
+    # Check input shape due to version `pennylane==0.31.0` above.
+    if len(ptc_input.shape) > 1:
+        # The shape of `ptc_input` is (batch, 3)
+        theta, phi, omega = ptc_input[:,0], ptc_input[:,1], ptc_input[:,2]
     else:
-        theta, phi, omega = _input[0], _input[1], _input[2]
-    # see N.C. page.184
-    for i in range(num_nr_qubits):
-        # control values
-        for q in range(num_ir_qubits):
-            if control_values[q] == 0:
-                qml.PauliX(wires=q)
-        # toffoli transformation
-        if num_ir_qubits >= 2:
-            qml.Toffoli(wires=(0, 1, num_ir_qubits))
-        for q in range(num_wk_qubits-1):
-            qml.Toffoli(wires=(2+q, num_ir_qubits+q, num_ir_qubits+1+q))
-        # ctrl_H: decomposed by H = i Rx(pi) Ry(pi/2) (if complete graph with power of 2 nodes -> relative phase i becomes global)
-        target_qubit = num_ir_qubits + num_wk_qubits + i
-        qml.CRY(np.pi/2, wires=(num_ir_qubits + num_wk_qubits - 1, target_qubit))
-        qml.CRX(np.pi, wires=(num_ir_qubits + num_wk_qubits - 1, target_qubit))
-        # ctrl_R: Rot(phi, theta, omega) = Rz(omega) Ry(theta) Rz(phi)
-        qml.CRZ(phi, wires=(num_ir_qubits + num_wk_qubits - 1, target_qubit))
-        qml.CRY(theta, wires=(num_ir_qubits + num_wk_qubits - 1, target_qubit))
-        qml.CRZ(omega, wires=(num_ir_qubits + num_wk_qubits - 1, target_qubit))
-        # toffoli inverse transformation
-        for q in reversed(range(num_wk_qubits-1)):
-            qml.Toffoli(wires=(2+q, num_ir_qubits+q, num_ir_qubits+1+q))
-        if num_ir_qubits >= 2:
-            qml.Toffoli(wires=(0, 1, num_ir_qubits))
-        # control values
-        for q in range(num_ir_qubits):
-            if control_values[q] == 0:
-                qml.PauliX(wires=q)
+        # The shape of `ptc_input` is (3,)
+        theta, phi, omega = ptc_input[0], ptc_input[1], ptc_input[2]
+    
+    # Encode data on NR qubits.
+    nr_wires = range(num_ir_qubits, num_ir_qubits + num_nr_qubits)
+    for wires in nr_wires:
+        # Add a Hadamard gate before the rotation gate.
+        ctrl_H = qml.ctrl(qml.Hadamard, control=range(num_ir_qubits), control_values=control_values)
+        ctrl_H(wires=wires)
+        # Appl general rotation gate.
+        ctrl_R = qml.ctrl(qml.Rot, control=range(num_ir_qubits), control_values=control_values)
+        ctrl_R(theta=theta, phi=phi, omega=omega, wires=wires)
+
+
+def qiskit_encoding(ptc_input: torch.tensor, control_values: list[int], num_ir_qubits: int, num_nr_qubits: int):
+    """Angle encoding ansatz for IBMQ.
+
+    Args:
+        See `pennylane_encoding` above.
+    """
+
+    # Decomposition of multi-qubit gates needs working qubits.
+    num_wk_qubits = num_ir_qubits - 1
+
+    # Check input shape due to version `pennylane==0.31.0` above.
+    if len(ptc_input.shape) > 1:
+        # The shape of `ptc_input` is (batch, 3)
+        theta, phi, omega = ptc_input[:,0], ptc_input[:,1], ptc_input[:,2]
+    else:
+        # The shape of `ptc_input` is (3,)
+        theta, phi, omega = ptc_input[0], ptc_input[1], ptc_input[2]
+    
+    # Target wires to be encoded.
+    nr_wires = range(num_ir_qubits + num_wk_qubits, 
+                     num_ir_qubits + num_wk_qubits + num_nr_qubits)
+    
+    def control_condition_transform(control_values: list[int]):
+        """Turn ctrl-0 to ctrl-1
+        
+        If control values == 0, use X-gate for transforming to 1.
+        """
+
+        for i in range(len(control_values)):
+            # `i` also corresponds to the i-th qubit in IR.
+            bit = control_values[i]
+            if bit == 0:
+                qml.PauliX(wires=i)
+
+    def toffoli_tranformation(inverse: bool = False):
+        """Decomposition of multi-contolled gates
+        
+        Use Toffoli transformation for decomposition of multi-controlled gates.
+
+        Args:
+            inverse : bool
+                Whether to apply inverse transformation or not.
+        """
+
+        if (not inverse) and (num_ir_qubits > 1):
+            wk_qubit_t = num_ir_qubits # target qubit, also first working qubit
+            qml.Toffoli(wires=(0, 1, wk_qubit_t))
+        
+        if inverse:
+            toffoli_range = reversed(range(num_wk_qubits-1))
+        else:
+            toffoli_range = range(num_wk_qubits-1)
+        for i in toffoli_range:
+            ir_qubit_c = 2 + i # control qubit
+            wk_qubit_c = num_ir_qubits + i # control qubit
+            wk_qubit_t = num_ir_qubits + i + 1 # target qubit
+            qml.Toffoli(wires=(ir_qubit_c, wk_qubit_c, wk_qubit_t))
+
+        if inverse and (num_ir_qubits > 1):
+            wk_qubit_t = num_ir_qubits # target qubit, also first working qubit
+            qml.Toffoli(wires=(0, 1, wk_qubit_t))
+
+    # See "Quantum Computation and Quantum Information" section 4.3.
+    for wires in nr_wires:
+        control_condition_transform(control_values)
+        toffoli_tranformation()
+        
+        # The last working qubit becomes the control qubit.
+        wk_qubit_c = num_ir_qubits + num_wk_qubits - 1
+        # ctrl_H: decomposed by H = i Rx(pi) Ry(pi/2) up to a global phase.
+        qml.CRY(np.pi/2, wires=(wk_qubit_c, wires))
+        qml.CRX(np.pi, wires=(wk_qubit_c, wires))
+        # ctrl_R: Rot(phi, theta, omega) = Rz(omega) Ry(theta) Rz(phi).
+        qml.CRZ(phi, wires=(wk_qubit_c, wires))
+        qml.CRY(theta, wires=(wk_qubit_c, wires))
+        qml.CRZ(omega, wires=(wk_qubit_c, wires))
+        
+        toffoli_tranformation(inverse=True)
+        control_condition_transform(control_values)
+
 
 class QuantumRotQCGNN(nn.Module):
-    def __init__(self, num_ir_qubits, num_nr_qubits, num_layers, num_reupload, quantum_config):
+    def __init__(
+            self,
+            num_ir_qubits: int,
+            num_nr_qubits: int,
+            num_layers: int,
+            num_reupload: int,
+            quantum_config: dict,
+    ):
+        
         super().__init__()
-        # constructing QCGNN like a MPGNN
-        if "qiskit" in quantum_config["qdevice"]:
-            ctrl_enc = lambda _input, control_values: qiskit_encoding(_input, control_values, num_ir_qubits, num_nr_qubits)
+        
+        # Detemine the encoding method.
+        qdevice = quantum_config["qdevice"] # quantum device
+        qbackend = quantum_config["qbackend"] # quantum backend
+        if ("qiskit" in qdevice) or (qbackend == "test_qiskit_encoding"):
+            ctrl_enc = lambda ptc_input, control_values: \
+                qiskit_encoding(ptc_input, control_values, num_ir_qubits, num_nr_qubits)
         else:
-            ctrl_enc = lambda _input, control_values: pennylane_encoding(_input, control_values, num_ir_qubits, num_nr_qubits)
-        self.phi = module_model.QCGNN(num_ir_qubits, num_nr_qubits, num_layers, num_reupload, ctrl_enc=ctrl_enc, **quantum_config)
-        self.mlp = module_model.ClassicalMLP(in_channel=num_nr_qubits, out_channel=1, hidden_channel=0, num_layers=0)
+            ctrl_enc = lambda ptc_input, control_values: \
+                pennylane_encoding(ptc_input, control_values, num_ir_qubits, num_nr_qubits)
+        
+        # Constructing `phi` and `mlp` just like MPGNN.
+        self.phi = module_model.QCGNN(
+            num_ir_qubits=num_ir_qubits,
+            num_nr_qubits=num_nr_qubits,
+            num_layers=num_layers,
+            num_reupload=num_reupload,
+            ctrl_enc=ctrl_enc,
+            **quantum_config
+            )
+        self.mlp = module_model.ClassicalMLP(
+            in_channel=num_nr_qubits,
+            out_channel=1,
+            hidden_channel=0,
+            num_layers=0
+            )
     
     def forward(self, x):
-        # inputs should be 1-dim for each data, otherwise it would be confused with batch shape
-        x = torch.flatten(x, start_dim=-2, end_dim=-1)
+        # QCGNN.
         x = self.phi(x)
+
+        # Shallow linear model.
         x = self.mlp(x)
+        
         return x
 
 # %%
 """
-### Workflow
+## Training Workflow
 """
 
 # %%
-def get_ckpt(ckpt_key):
-    ckpt_dir = json_config["ckpt_dir"]
-    for f in os.listdir(ckpt_dir):
-        if ckpt_key in f and int(f[-1]) == config["rnd_seed"]:
-            ckpt_path = os.path.join(ckpt_dir, f, "checkpoints")
-            ckpt_path = os.path.join(ckpt_path, os.listdir(ckpt_path)[0])
+"""
+### Classical and quantum workflow
+
+- The main workflow is written in function `execute`, consists of
+  - Determine the name, id or other information for a training.
+  - Monitoring the training procedure, either with `csv` only or `wandb`.
+  - Record all the configurations (e.g. training, model, settings, .etc).
+  - Two modes can be specified, either `mode="train"` or `mode="predict"`
+    - `mode="train"` will create a new training, with results saving at `result_dir` in `./config.json`.
+    - `mode="predict"` will load `ckpt` files from `ckpt_dir` in `./config.json`.
+"""
+
+# %%
+"""
+##### Functions will be used in `execute` function.
+"""
+
+# %%
+def get_ckpt_path(ckpt_key: str):
+    """Returns the ckpt path for the given key
+
+    Args:
+        ckpt_key : str
+            The key that helps finding the correct ckpt directory.
+    """
+
+    # Find the correct ckpt file path.
+    pretrain_dir = config["pretrain_dir"]
+    for dir_name in os.listdir(pretrain_dir):
+        rnd_seed = int(dir_name[-1])
+        if (ckpt_key in dir_name) and (rnd_seed == config["rnd_seed"]):
+            ckpt_dir = os.path.join(pretrain_dir, dir_name, "checkpoints")
+            ckpt_file = os.listdir(ckpt_dir)[0]
+            ckpt_path = os.path.join(ckpt_dir, ckpt_file)
             break
     else:
-        raise ValueError(f"# ModelLog: ckpt NOT found in {ckpt_dir} -> {ckpt_key}")
-    print(f"# ModelLog: ckpt found at {ckpt_path}")
+        raise ValueError(f"ckpt NOT found in {ckpt_dir} -> {ckpt_key}")
+    
+    _log(f"ckpt found at {ckpt_path}")
+
     return ckpt_path
 
-def execute(model, model_config, data_module, data_config, graph, mode, suffix=""):
+
+def generate_datamodule(data_config: dict, graph: bool):
+    """Generate datamodule for `execute` usage
+    
+    Args:
+        data_config : dict
+            See code below for detail usage.
+        graph : bool
+            Whether the dataset is generated in graph structure or not.
+    """
+
+    # Generate uniform pt events.
+    sig_fatjet_events = module_data.FatJetEvents(channel=data_config["sig"], cut_pt=data_config["cut_pt"], subjet_radius=data_config["subjet_radius"], num_pt_ptcs=data_config["num_pt_ptcs"])
+    bkg_fatjet_events = module_data.FatJetEvents(channel=data_config["bkg"], cut_pt=data_config["cut_pt"], subjet_radius=data_config["subjet_radius"], num_pt_ptcs=data_config["num_pt_ptcs"])
+    sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
+    bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
+
+    return module_data.JetDataModule(sig_events, bkg_events, data_ratio=config["data_ratio"], batch_size=config["batch_size"], graph=graph)
+
+# %%
+"""
+##### General `execute` function -> Main workflow
+"""
+
+# %%
+def execute(
+        model: nn.Module,
+        model_config: dict,
+        data_config: dict,
+        graph: bool,
+        mode:str,
+        suffix:str = ""
+    ):
+    """General training procedure.
+    
+    Workflow:
+    1. Initialize the training monitor.
+    2. Create data module and lightning model.
+    3. Train or predict, depending on `mode`.
+    4. Return training ID and summary.
+
+    Args:
+        model : nn.Module
+            PyTorch format model.
+        model_config : dict
+            Used for recording model information.
+        data_config : dict
+            Used for generating data module.
+        graph : bool
+            Whether the training dataset is in graph structure or not.
+        mode : str
+            Either "train" or "predict" only.
+        suffix : str
+            The training suffix.
+    
+    Returns:
+        1st argument : str
+            The training ID (can be used to restore wandb runs).
+        2nd argument : dict
+            Summary of the training result.
+    """
+    
+    # Seed everything.
+    L.seed_everything(config["rnd_seed"])
+
+    # Record the total training time.
     time_start = time.time()
+
+    # Use suffix for the training if needed.
     if suffix != "":
         suffix = "_" + suffix
 
-    # additional model information
+    # Additional model information (used for wandb filter).
     model_config["model_name"] = model.__class__.__name__
-    model_config["group_rnd"]  = f"{model.__class__.__name__}_{model_config['model_suffix']} | {data_config['data_suffix']}"
+    model_config["group_rnd"] = f"{model.__class__.__name__}_{model_config['model_suffix']} | {data_config['data_suffix']}"
 
-    # use wandb monitoring if needed
+    # Monitor (either CSVLogger or WandbLogger) configuration and setup.
     logger_config = {}
-    logger_config["project"]    = json_config["project"]
-    logger_config["group"]      = f"{data_config['sig']}_{data_config['bkg']}"
-    if "qiskit" in quantum_config["qdevice"]:
-        logger_config["name"] = f"{model_config['group_rnd']} | {config['time']}_{quantum_config['qdevice']}{suffix}_{config['rnd_seed']}"
-    else:
-        logger_config["name"] = f"{model_config['group_rnd']} | {config['time']}_{config['device']}{suffix}_{config['rnd_seed']}"
-    logger_config["id"]       = logger_config["name"]
-    logger_config["save_dir"] = json_config["result_dir"]
+    logger_config["project"] = config["project"]
+    logger_config["group"] = f"{data_config['sig']}_{data_config['bkg']}"
+    logger_config["name"] = f"{model_config['group_rnd']} | {config['time']}_{config['device']}{suffix}_{config['rnd_seed']}"
+    logger_config["id"] = logger_config["name"]
+    logger_config["save_dir"] = config["result_dir"]
     if use_wandb:
         logger = module_training.wandb_monitor(model, logger_config, config, model_config, data_config)
     else:
         logger = module_training.default_monitor(logger_config, config, model_config, data_config)
 
-    # training information
+    # Print out the training information.
     print("\n-------------------- Training information --------------------")
-    print("| * config:", config)
-    print("| * data_config:", data_config)
-    print("| * model_config:", model_config)
-    print("| * logger_config:", logger_config)
+    print("| * config:", config, "\n")
+    print("| * data_config:", data_config, "\n")
+    print("| * model_config:", model_config, "\n")
+    print("| * logger_config:", logger_config, "\n")
     print("--------------------------------------------------------------\n")
     
-    # pytorch lightning setup
+    # pytorch-lightning trainer.
     trainer = L.Trainer(
-        logger               = logger, 
-        accelerator          = config["accelerator"],
-        max_epochs           = config["max_epochs"],
-        fast_dev_run         = config["fast_dev_run"],
-        log_every_n_steps    = config["log_every_n_steps"],
+        logger = logger, 
+        accelerator = config["accelerator"],
+        max_epochs = config["max_epochs"],
+        fast_dev_run = config["fast_dev_run"],
+        log_every_n_steps = config["log_every_n_steps"],
         num_sanity_val_steps = 0,
-        )
-    litmodel = module_training.BinaryLitModel(model, lr=model_config["lr"], graph=graph)
+    )
     
+    # pytorch-lightning data module.
+    data_module = generate_datamodule(data_config, graph=graph)
+    
+    # pytorch-lightning model.
+    litmodel = module_training.BinaryLitModel(
+        model=model,
+        lr=model_config["lr"],
+        graph=graph
+    )
+    
+    # Training or prediction.
     if mode == "train":
         trainer.fit(litmodel, datamodule=data_module)
         train_summary = trainer.test(litmodel, dataloaders=data_module.train_dataloader())[0]
-        test_summary  = trainer.test(litmodel, dataloaders=data_module.test_dataloader())[0]
+        test_summary = trainer.test(litmodel, dataloaders=data_module.test_dataloader())[0]
     elif mode == "predict":
-        ckpt_key = f"{model_config['model_name']}_{model_config['model_suffix']} | {data_config['abbrev']}_cut{data_config['cut']}"
+        ckpt_key = f"{model_config['model_name']}_{model_config['model_suffix']} | {data_config['abbrev']}_cut{data_config['cut_pt']}"
+        # Train 8 particles only, and use the parameters to test other number of particles.
         if model_config['model_name'] == QuantumRotQCGNN.__name__:
             ckpt_key = ckpt_key.replace(f"qidx{model_config['gnn_idx_qubits']}", "qidx3")
-        ckpt_path = get_ckpt(ckpt_key)
+        ckpt_path = get_ckpt_path(ckpt_key)
         train_summary = trainer.test(litmodel, dataloaders=data_module.train_dataloader(), ckpt_path=ckpt_path)[0]
-        test_summary  = trainer.test(litmodel, dataloaders=data_module.test_dataloader(), ckpt_path=ckpt_path)[0]
+        test_summary = trainer.test(litmodel, dataloaders=data_module.test_dataloader(), ckpt_path=ckpt_path)[0]
 
-    # finish wandb monitoring
+    # Finish wandb monitoring if using WandbLogger.
     if use_wandb:
         wandb.finish()
 
-    # summary
+    # Summary of training results.
     train_summary.update({"data_mode":"train"})
     test_summary.update({"data_mode":"test"})
     for _summary in [train_summary,test_summary]:
@@ -266,144 +598,280 @@ def execute(model, model_config, data_module, data_config, graph, mode, suffix="
         _summary.update(data_config)
         _summary.update(model_config)
     summary = pd.DataFrame([train_summary, test_summary])
-
+    
+    # Calculating total training time.
     time_end = time.time()
-    print(f"# ModelLog: Time = {(time_end - time_start) / 60} minutes")
+    _log(f"Time = {(time_end - time_start) / 60} minutes")
+
     print("\n", 100 * "@", "\n")
+    
     return logger_config["id"], summary
 
 # %%
-def generate_datamodule(data_config, graph):
-    sig_fatjet_events = module_data.FatJetEvents(channel=data_config["sig"], cut_pt=data_config["cut"], subjet_radius=data_config["subjet_radius"], num_pt_ptcs=data_config["num_pt_ptcs"])
-    bkg_fatjet_events = module_data.FatJetEvents(channel=data_config["bkg"], cut_pt=data_config["cut"], subjet_radius=data_config["subjet_radius"], num_pt_ptcs=data_config["num_pt_ptcs"])
-    sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
-    bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
-    data_suffix = f"{data_config['abbrev']}_cut{data_config['cut']}_ptc{data_config['num_pt_ptcs']}_bin{data_config['bin']}-{data_config['num_bin_data']}_R{data_config['subjet_radius']}"
-    data_config["data_suffix"] = data_suffix
-    return module_data.JetDataModule(sig_events, bkg_events, data_ratio=config["data_ratio"], batch_size=config["batch_size"], graph=graph)
+"""
+##### Specific execution functions for MPGNN and QCGNN
+"""
 
-def execute_classical(data_config, go, gh, gl, lr, mode):
-    '''
-        go -> dimension of gnn output
-        gh -> dimension of gnn hidden neurons
-        gl -> number of gnn hidden layers
-    '''
-    data_module  = generate_datamodule(data_config, graph=True)
+# %%
+def execute_classical(data_config: dict, go: int, gh: int, gl: int, lr: float, mode: str):
+    """Default setup for classical execution.
+    
+    Create with `ClassicalMPGNN` model.
+
+    Args:
+        data_config : dict
+            Data configuration for generating data module.
+        go : int
+            Dimension of GNN output channel.
+        gh : int
+            Number of hidden neurons in GNN.
+        gl : int
+            Number of hidden layers in GNN
+        lr : float
+            Learning rate.
+        mode : str
+            Either "train" for "predict".
+    """
+    
+    # Suffix used for wandb filter and training result.
     model_suffix = f"go{go}_gh{gh}_gl{gl}_mh0_ml0"
-    model_config = {"gnn_in":6, "gnn_out":go, "gnn_hidden":gh, "gnn_layers":gl, "mlp_hidden":0, "mlp_layers":0, "lr":lr, "model_suffix":model_suffix}
-    model        = ClassicalMPGNN(**model_config)
-    run_id, summary = execute(model, model_config, data_module, data_config, graph=True, mode=mode, suffix=config["suffix"])
-    if mode == "train":
-        while (summary["test_acc_epoch"] < json_config["retrain_threshold"]).any() and json_config["retrain"]:
-            if use_wandb:
-                run = api.run(f"{json_config['wandb_id']}/{json_config['project']}/{run_id}")
-                run.delete()
-            config["rnd_seed"] += json_config["retrain_cycle"]
-            L.seed_everything(config["rnd_seed"])
-            print(f"\n # ModelLog: Reinitialize model with new rnd_seed = {config['rnd_seed']}\n")
-            model = ClassicalMPGNN(**model_config)
-            run_id, summary = execute(model, model_config, data_module, data_config, graph=True, mode=mode, suffix=config["suffix"])
+    
+    # Configurations for constructing MPGNN.
+    model_config = {
+        "gnn_in": 6, "gnn_out": go, "gnn_hidden": gh, "gnn_layers": gl,
+        "mlp_hidden": 0, "mlp_layers": 0,
+        "lr": lr, "model_suffix": model_suffix,
+    }
+    model = ClassicalMPGNN(**model_config)
+
+    # Execute training for classical models.
+    run_id, summary = execute(
+        model=model,
+        model_config=model_config,
+        data_config=data_config,
+        graph=True,
+        mode=mode,
+        suffix=config["suffix"],
+    )
+
+    # Check whether the model is trained successfully above threshold.
+    test_acc = summary["test_acc_epoch"]
+    acc_threshold = config["retrain_threshold"]
+    below_threshold = (test_acc < acc_threshold).any()
+    
+    # Too small model might not trainable, we retrain it with random seed += 10.
+    if (mode == "train") and config["retrain"] and below_threshold:
+        # Delete the failed training on Wandb.
+        if use_wandb:
+            wandb_project = f"{config['wandb_id']}/{config['project']}"
+            run = api.run(f"{wandb_project}/{run_id}")
+            run.delete()
+        
+        # Increase random seed by 10, since we train 10 different seeds.
+        config["rnd_seed"] += config["retrain_cycle"]
+        _log(f"Reinitialize model with new random seed = {config['rnd_seed']}")
+
+        # Retrain a new round.
+        run_id, summary = execute_classical(data_config, go, gh, gl, lr, mode)
+    
     return run_id, summary
 
 def execute_quantum(data_config, qnn, gl, gr, lr, mode):
-    '''
-        qnn -> number of NR qubits
-        gl  -> number of strongly entangling layers
-        gr  -> number of data reuploading
-    '''
-    data_module     = generate_datamodule(data_config, graph=False)
-    qidx            = int(np.ceil(np.log2(data_config["num_pt_ptcs"])))
-    model_suffix    = f"qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr}"
-    model_config    = {"gnn_idx_qubits":qidx, "gnn_nn_qubits":qnn, "gnn_layers":gl, "gnn_reupload":gr, "lr":lr, "model_suffix":model_suffix}
-    model           = QuantumRotQCGNN(num_ir_qubits=qidx, num_nr_qubits=qnn, num_layers=gl, num_reupload=gr, quantum_config=quantum_config)
-    run_id, summary = execute(model, model_config, data_module, data_config, graph=False, mode=mode, suffix=config["suffix"])
+    """Default setup for quantum execution.
+    
+    Create with `QuantumRotQCGNN` model.
+
+    Args:
+        data_config : dict
+            Data configuration for generating data module.
+        qnn : int
+            Number of NR qubits.
+        gl : int
+            Number of strongly entangling layers of a VQC.
+        gr : int
+            Number of data reuploading times.
+        lr : float
+            Learning rate.
+        mode : str
+            Either "train" for "predict".
+    """
+
+    # Number of IR qubits
+    qidx = int(np.ceil(np.log2(data_config["num_pt_ptcs"])))
+
+    # Suffix used for wandb filter and training result.
+    model_suffix = f"qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr}"
+
+    # Configurations for constructing QCGNN.
+    model_config = {
+        "gnn_idx_qubits": qidx, "gnn_nn_qubits": qnn,
+        "gnn_layers": gl, "gnn_reupload": gr,
+        "lr": lr, "model_suffix": model_suffix,
+    }
+    model = QuantumRotQCGNN(num_ir_qubits=qidx, num_nr_qubits=qnn, num_layers=gl, num_reupload=gr, quantum_config=quantum_config)
+    
+    # Execute training for quantum models.
+    run_id, summary = execute(
+        model=model,
+        model_config=model_config,
+        data_config=data_config,
+        graph=False,
+        mode=mode,
+        suffix=config["suffix"],
+    )
+    
     return run_id, summary
 
 # %%
 """
-### Training
+## Training and Prediction
+
+Jet dataset using 3 features $p_T$, $\Delta\eta$, $\Delta\phi$.
+- 2-prong v.s. 1-prong
+    - Signal: VzToZhToVevebb
+    - Background: VzToQCD
+- 3-prong v.s. 1-prong
+    - Signal: VzToTt
+    - Background: VzToQCD
 """
 
 # %%
-# data_configs = [
-#     {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "abbrev":"BB-QCD", "cut": (800, 1000), "bin":10, "subjet_radius":0, "num_bin_data":config["num_bin_data"], "num_pt_ptcs":8},
-#     {"sig": "VzToTt", "bkg": "VzToQCD", "abbrev":"TT-QCD", "cut": (800, 1000), "bin":10, "subjet_radius":0, "num_bin_data":config["num_bin_data"], "num_pt_ptcs":8},
-# ]
+"""
+### Data Cell
+"""
 
-# # training
-# for data_config, rnd_seed in product(data_configs, range(10)):
-#     config["rnd_seed"] = rnd_seed
-#     L.seed_everything(config["rnd_seed"])
+# %%
+def generate_data_config(
+        sig: str,
+        bkg: str,
+        abbrev: str,
+        cut_pt: tuple[float, float],
+        bin: int,
+        subjet_radius: float,
+        num_bin_data: int,
+        num_pt_ptcs: int
+    ):
+    """Generate a dictionary of data configurations
     
-#     # # classical
-#     # for g_dim in [3,6,9]:
-#     #     execute_classical(data_config, go=g_dim, gh=g_dim, gl=2, lr=1E-3, mode="train")
+    For detail construction, see `module_data.py`.
 
-#     # # best classical
-#     # execute_classical(data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="train")
+    Args:
+        sig : str
+            Signal channel (the directory name in `./jet_dataset`).
+        bkg : str
+            Background channel (the directory name in `./jet_dataset`).
+        abbrev : str
+            Abbreviation of the jet discrimination.
+        cut_pt : tuple[float, float]
+            Minimum and maximum range of jet pt.
+        subjet_radius : float
+            The radius for reclustering.
+        bin : int
+            How many bins that will uniformly distributed over cut_pt.
+        num_bin_data : int
+            Number of data that uniformly generated in each bin.
+        num_pt_ptcs : int
+            Maximum number of particles in each jet.
 
-#     # quantum
-#     for q in [3,6,9]:
-#         execute_quantum(data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="train")
+    Returns:
+        dict : Dictionary of data configurations.
+    """
+
+    data_config = {
+        "sig": sig,
+        "bkg": bkg,
+        "abbrev": abbrev,
+        "cut_pt": cut_pt,
+        "subjet_radius": subjet_radius,
+        "bin": bin,
+        "num_bin_data": num_bin_data,
+        "num_pt_ptcs": num_pt_ptcs,
+    }
+    data_config["data_suffix"] = (
+        f"{abbrev}_cut{cut_pt}_ptc{num_pt_ptcs}_bin{bin}"
+        f"-{num_bin_data}_R{subjet_radius}"
+    )
+
+    return data_config
+
+data_config_list = [
+    # 2-prong v.s. 1-prong.
+    generate_data_config(
+        sig="VzToZhToVevebb", bkg="VzToQCD", abbrev="BB-QCD",
+        cut_pt=(800, 1000), subjet_radius=0, 
+        bin=10, num_bin_data=config["num_bin_data"], num_pt_ptcs=8
+    ),
+    
+    # 3-prong v.s. 1-prong.
+    generate_data_config(
+        sig="VzToZhToVevebb", bkg="VzToQCD", abbrev="BB-QCD",
+        cut_pt=(800, 1000), subjet_radius=0, 
+        bin=10, num_bin_data=config["num_bin_data"], num_pt_ptcs=8
+    ),
+]
 
 # %%
 """
-### Prediction
+### Training Cell
 """
 
 # %%
-# os.makedirs("./csv", exist_ok=True)
+# Uncomment the model you want to train.
+for data_config, rnd_seed in product(data_config_list, range(10)):
+    config["rnd_seed"] = rnd_seed
+    
+    # # Classical MPGNN with hidden neurons {3, 6, 9} and 2 layers.
+    # for g_dim in [3,6,9]:
+    #     execute_classical(data_config, go=g_dim, gh=g_dim, gl=2, lr=1E-3, mode="train")
 
-# data_configs = [
-#     {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "abbrev":"BB-QCD", "cut": (800, 1000), "bin":10, "subjet_radius":0, "num_bin_data":config["num_bin_data"], "num_pt_ptcs":None},
-#     {"sig": "VzToTt", "bkg": "VzToQCD", "abbrev":"TT-QCD", "cut": (800, 1000), "bin":10, "subjet_radius":0, "num_bin_data":config["num_bin_data"], "num_pt_ptcs":None},
-# ]
+    # # Best classical MPGNN with hidden neurons 1024 and 4 layers.
+    # execute_classical(data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="train")
 
-# c_df, b_df, q_df = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-# num_ptcs_range = range(2, 16+1, 2)
-# for rnd_seed, num_pt_ptcs in product(range(3), num_ptcs_range):
-#     for data_config in data_configs:
-#         data_config["num_pt_ptcs"] = num_pt_ptcs
-#         config["rnd_seed"] = rnd_seed
-#         L.seed_everything(config["rnd_seed"])
-
-#         # # classical
-#         # for g_dim in [3,6,9]:
-#         #     _, summary = execute_classical(data_config, go=g_dim, gh=g_dim, gl=2, lr=1E-3, mode="predict")
-#         #     c_df = pd.concat((c_df, summary))
-#         #     c_df.to_csv(f"csv/classical-{config['num_bin_data']}_{rnd_seed}.csv", index=False)
-
-#         # # best classical
-#         # _, summary = execute_classical(data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="predict")
-#         # b_df = pd.concat((b_df, summary))
-#         # b_df.to_csv(f"csv/classical-{config['num_bin_data']}_best.csv", index=False)
-
-#         # quantum
-#         for q in [3,6,9]:
-#             _, summary = execute_quantum(data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="predict")
-#             q_df = pd.concat((q_df, summary))
-#         q_df.to_csv(f"csv/qnn{q}_gl1_gr{q}_ptc({num_ptcs_range[0]},{num_ptcs_range[-1]})-{config['num_bin_data']}_{rnd_seed}.csv", index=False)
+    # # Quantum QCGNN with NR qubits = reuploads = {3, 6, 9}.
+    # for q in [3,6,9]:
+    #     execute_quantum(data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="train")
 
 # %%
 """
-### Qiskit device
+### Prediction Cell
 """
 
 # %%
-# data_configs = [
-#     {"sig": "VzToZhToVevebb", "bkg": "VzToQCD", "abbrev":"BB-QCD", "cut": (800, 1000), "bin":10, "subjet_radius":0, "num_bin_data":config["num_bin_data"], "num_pt_ptcs":8},
-#     {"sig": "VzToTt", "bkg": "VzToQCD", "abbrev":"TT-QCD", "cut": (800, 1000), "bin":10, "subjet_radius":0, "num_bin_data":config["num_bin_data"], "num_pt_ptcs":8},
-# ]
+# Pandas data frame buffers for saving prediction values.
+c_df = pd.DataFrame()
+b_df = pd.DataFrame()
+q_df = pd.DataFrame()
 
-# q_df = pd.DataFrame()
-# for rnd_seed in range(3):
-#     for data_config in data_configs:
-#         config["rnd_seed"] = rnd_seed
-#         L.seed_everything(config["rnd_seed"])
+num_ptcs_range = range(2, 16 + 1, 2)
+prediction_tuple = product(range(3), num_ptcs_range, data_config_list)
 
-#         # quantum
-#         q = 3
-#         config["batch_size"] = 300
-#         _, summary = execute_quantum(data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="predict")
-#         q_df = pd.concat((q_df, summary))
-#         q_df.to_csv(f"csv/{quantum_config['qbackend']}_{q}_gl1_gr{q}_ptc{config['num_bin_data']}-{config['num_pt_ptcs']}_{rnd_seed}.csv", index=False)
+# Uncomment the model you want to predict.
+for rnd_seed, num_pt_ptcs, data_config in prediction_tuple:
+    data_config["num_pt_ptcs"] = num_pt_ptcs
+    config["rnd_seed"] = rnd_seed
+
+    # # Prediction for classical MPGNN.
+    # for gnn_dim in [3,6,9]:
+    #     # Get summary of prediction result.
+    #     _, summary = execute_classical(
+    #         data_config, go=gnn_dim, gh=gnn_dim, gl=2, lr=1E-3, mode="predict")
+    #     # Concatenating to prediction buffers.
+    #     c_df = pd.concat((c_df, summary))
+    # # Saving prediction summary to csv file.
+    # c_df.to_csv(f"csv/classical-{config['num_bin_data']}_{rnd_seed}.csv", index=False)
+
+    # # Prediction for best classical MPGNN.
+    # _, summary = execute_classical(
+    #     data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="predict")
+    # b_df = pd.concat((b_df, summary))
+    # b_df.to_csv(f"csv/classical-{config['num_bin_data']}_best.csv", index=False)
+
+    # # Prediction for quantum QCGNN.
+    # for qnn_dim in [3,6,9]:
+    #     # Get summary of prediction result.
+    #     _, summary = execute_quantum(
+    #         data_config, qnn=qnn_dim, gl=1, gr=qnn_dim, lr=1E-3, mode="predict")
+    #     # Concatenating to prediction buffers.
+    #     q_df = pd.concat((q_df, summary))
+    # # Saving prediction summary to csv file.
+    # q_df.to_csv(f"csv/qnn{qnn_dim}_gl1_gr{qnn_dim}_ptc({num_ptcs_range[0]},{num_ptcs_range[-1]})-{config['num_bin_data']}_{rnd_seed}.csv", index=False)
