@@ -19,7 +19,7 @@ pip install -r requirements.txt
 The jet dataset can be downloaded from [jet_dataset](https://drive.google.com/drive/folders/1cY__Pj9Rf2n7a8ErMRzOcIppd40MWIEC?usp=share_link) to local directory `./jet_dataset`
 
 ##### Pre-trained model
-The pre-trained model parameters can be loaded from `ckpt` files and can be downloaded from [ckpt](https://drive.google.com/drive/folders/1cY__Pj9Rf2n7a8ErMRzOcIppd40MWIEC?usp=share_link) to local directory `./ckpt`.
+The pre-trained model parameters can be loaded from `ckpt` (checkpoints) files and can be downloaded from [pretrain_ckpt](https://drive.google.com/drive/folders/1cY__Pj9Rf2n7a8ErMRzOcIppd40MWIEC?usp=share_link) to local directory `./pretrain_ckpt`.
 
 ##### Jupyter
 The main python scripts are written in jupyter format (`.ipynb`), for user who wants to use traditional python scripts (`.py`), you can download `ipynb-py-convert` package:
@@ -32,7 +32,7 @@ python a.py
 
 ### Quick Start
 ##### Training and Prediction
-All main procedure can be executed through `./g_main.ipynb`, and most of the configuration can be setup in `./config.json`. You can simply uncomment the code you want to test in the last two sections (*Training* and *Prediction*).
+All main procedure can be executed through `./g_main.ipynb`, and most of the configuration can be setup in `./config.json`. You can simply uncomment the code you want to test in the last two sections (*Training Cell* and *Prediction Cell*).
 
 - Training
     - **Uncomment** and modify the model hyperparameters you want to train, also set up the random seeds if needed.
@@ -40,12 +40,12 @@ All main procedure can be executed through `./g_main.ipynb`, and most of the con
     - The default training mode is **quick start mode**, i.e., trained with `max_epochs=1` and `num_bin_data=1`, no matter whatever you set in `./config.json`. Set `config["quick_start"]=false` in `./config.json` for full training.
 
 - Prediction
-  - Make sure you have the `ckpt` files placed correctly, e.g., `./ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [ckpt](https://drive.google.com/drive/folders/1cY__Pj9Rf2n7a8ErMRzOcIppd40MWIEC?usp=share_link).
+  - Make sure you have the `ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [pretrain_ckpt](https://drive.google.com/drive/folders/1cY__Pj9Rf2n7a8ErMRzOcIppd40MWIEC?usp=share_link).
   - **Uncomment** and modify the code you want to test.
 
 ### File descriptions
 - Files with prefix `./module_`: Modules for detail of reading/loading data, constructing models, training procedures.
-- Files with prefix `./demo_`: Demo for reading out or extracting the information of data, presenting in historgrams or other plots.
+- Files with prefix `./demo_`: Demo for reading out or extracting the information of data, comparing encodings, etc.
 - Files with prefix `./result_`: Related to getting training results.
 - Files in `./jet_dataset`:
   - `VzToQCD`: 1-prong light quark QCD jets.
