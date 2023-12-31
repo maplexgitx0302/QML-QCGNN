@@ -10,6 +10,7 @@ parameters. It can also be combined with `Wandb`, which monitoring
 hardware information and training procedure.
 """
 
+import os
 import time
 from typing import Callable, Union
 
@@ -36,8 +37,9 @@ def default_monitor(logger_config: dict, *args: dict):
             See `lightning.pytorch.loggers.CSVLogger`.
     """
 
-    csv_logger = CSVLogger(
-        save_dir=logger_config["save_dir"], name=logger_config["name"])
+    # It will automatically recursively create the save_dit path.
+    save_dir = os.path.join(logger_config["save_dir"], "csv_logger")
+    csv_logger = CSVLogger(save_dir=save_dir, name=logger_config["name"])
     csv_config = {}
     csv_config.update(logger_config)
     for config in args:

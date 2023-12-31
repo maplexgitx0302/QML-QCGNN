@@ -19,12 +19,13 @@
     
     "// wandb settings (optional)": "",
         "use_wandb": false,
-        "wandb_id": "ntuyianchen",
-        "project": "g_main",
+        "wandb_account": "ntuyianchen",
+        "wandb_project": "g_main",
     
     "// output directories": "",
-        "pretrain_dir": "./pretrain",
-        "result_dir": "./result",
+        "pretrain_dir": "./pretrain_ckpt",
+        "result_dir": "./training_logs",
+        "predictions_dir": "./pred_outputs",
     
     "// re-training for classical shallow models": "",
         "retrain": false,

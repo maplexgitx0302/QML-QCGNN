@@ -226,7 +226,7 @@ class QCGNN(nn.Module):
         # Initialize quantum registers (IR, NR). Note when executing on IBM
         # real devices, the multi-controlled gates need to be composed, so we
         # also need working qubits (denoted as `wk`).
-        if ("qiskit" in qdevice) or ("qiskit" in ctrl_enc.__name__):
+        if ("qiskit" in qdevice) or ("qiskit" in qbackend):
             num_wk_qubits = num_ir_qubits - 1
         else:
             num_wk_qubits = 0
@@ -305,7 +305,7 @@ class QCGNN(nn.Module):
             else:
                 # Number of particles < 2**num_ir_qubits.
                 state_vector = num_ptcs * \
-                    [1/np.sqrt(num_ptcs)] + (2**num_ir_qubits-num_ptcs) * [0]
+                    [1/np.sqrt(num_ptcs)] + (2**num_ir_qubits - num_ptcs) * [0]
                 state_vector = np.array(state_vector) / \
                     np.linalg.norm(state_vector)
                 qml.QubitStateVector(state_vector, wires=ir_wires)

@@ -107,9 +107,7 @@ class FatJetEvents:
         else:
             # Read original MadGraph5 root file through 'uproot'.
             dir_path = f"{os.path.dirname(__file__)}/jet_dataset"
-            mg5_path = f"{dir_path}/{channel}/Events/run_01"
-            root_file = "tag_1_delphes_events.root"
-            root_path = os.path.join(dir_path, mg5_path, root_file)
+            root_path = os.path.join(dir_path, f"{channel}.root")
             events = uproot.open(root_path + ":Delphes;1")
 
             # Set aliases of branches for uproot reading data

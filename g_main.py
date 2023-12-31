@@ -69,33 +69,37 @@ def _log(message: str) -> None:
 
 # Read json configuration file.
 with open("config.json", "r") as json_file:
-    config = json.load(json_file)
+    # This json config might be loaded for other use in other python scripts.
+    json_config = json.load(json_file)
+    # Copy another config since it will be modified in this code.
+    general_config = json_config.copy()
 
 # This notebook script will be converted to python script for other usage, the
 # following parts are intended not to be imported for other usage.
 if __name__ == "__main__":
     # Settings for running in `slurm` or other platforms that are inconvenient
     # to pass inputs directly.
-    if config["computing_platform"] == "slurm":
+    if general_config["computing_platform"] == "slurm":
         # Pass arguments in shell script (e.g. python a.py --rnd_seed 0).
         parser = argparse.ArgumentParser(description='argparse for slurm')
         # Add `rnd_seed` argument to specify the random seed.
         parser.add_argument('--rnd_seed', type=int, help='random seed')
         parse_args = parser.parse_args()
-        config["rnd_seed"] = parse_args.rnd_seed
+        general_config["rnd_seed"] = parse_args.rnd_seed
     else:
         # Inputs for additional training information manually.
         # Record current time.
-        config["ctime"]  = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+        general_config["ctime"]  = time.strftime("%Y%m%d_%H%M%S", time.localtime())
         # Specifying a datetime if needed (to compatible with other exp results).
-        config["time"]   = input("Datetime (default current time): ") or config["ctime"]
+        general_config["time"]   = input("Datetime (default current time): ") \
+            or general_config["ctime"]
         # This will recording the classical device for simulation (optional).
-        config["device"] = input("Classical computing device     : ")
+        general_config["device"] = input("Classical computing device     : ")
         # The suffix of training result (optional).
-        config["suffix"] = input("Suffix for this training exp   : ")
+        general_config["suffix"] = input("Suffix for this training exp   : ")
 
     # Whether using Wandb to monitor the training procedure.
-    use_wandb = config["use_wandb"]
+    use_wandb = general_config["use_wandb"]
     if use_wandb:
         import wandb
         # Api can be used to fetch training results.
@@ -105,9 +109,9 @@ if __name__ == "__main__":
     quantum_config = {"qdevice": "default.qubit", "qbackend": ""}
 
     # Test whether the code can run for at least 1 epoch.
-    if config["quick_test"] == True:
-        config["max_epochs"] = 1
-        config["num_bin_data"] = 1
+    if general_config["quick_test"] == True:
+        general_config["max_epochs"] = 1
+        general_config["num_bin_data"] = 1
 
 # %%
 """
@@ -376,12 +380,13 @@ class QuantumRotQCGNN(nn.Module):
         # Detemine the encoding method.
         qdevice = quantum_config["qdevice"] # quantum device
         qbackend = quantum_config["qbackend"] # quantum backend
-        if ("qiskit" in qdevice) or (qbackend == "test_qiskit_encoding"):
+        if ("qiskit" in qdevice) or ("qiskit" in qbackend):
             ctrl_enc = lambda ptc_input, control_values: \
                 qiskit_encoding(ptc_input, control_values, num_ir_qubits, num_nr_qubits)
         else:
             ctrl_enc = lambda ptc_input, control_values: \
                 pennylane_encoding(ptc_input, control_values, num_ir_qubits, num_nr_qubits)
+        self.ctrl_enc = ctrl_enc
         
         # Constructing `phi` and `mlp` just like MPGNN.
         self.phi = module_model.QCGNN(
@@ -441,28 +446,37 @@ def get_ckpt_path(ckpt_key: str):
     """
 
     # Find the correct ckpt file path.
-    pretrain_dir = config["pretrain_dir"]
+    pretrain_dir = general_config["pretrain_dir"]
     for dir_name in os.listdir(pretrain_dir):
         rnd_seed = int(dir_name[-1])
-        if (ckpt_key in dir_name) and (rnd_seed == config["rnd_seed"]):
+        if (ckpt_key in dir_name) and (rnd_seed == general_config["rnd_seed"]):
             ckpt_dir = os.path.join(pretrain_dir, dir_name, "checkpoints")
             ckpt_file = os.listdir(ckpt_dir)[0]
             ckpt_path = os.path.join(ckpt_dir, ckpt_file)
             break
     else:
-        raise ValueError(f"ckpt NOT found in {ckpt_dir} -> {ckpt_key}")
+        raise ValueError(f"ckpt NOT found in {pretrain_dir}: key = {ckpt_key}")
     
     _log(f"ckpt found at {ckpt_path}")
 
     return ckpt_path
 
 
-def generate_datamodule(data_config: dict, graph: bool):
+def generate_datamodule(
+        data_config: dict,
+        data_ratio: float,
+        batch_size: int,
+        graph: bool
+    ):
     """Generate datamodule for `execute` usage
     
     Args:
         data_config : dict
             See code below for detail usage.
+        data_ratio : float
+            Ratio of (# of training) / (# of training + testing).
+        batch_size : int
+            Number of data per batch.
         graph : bool
             Whether the dataset is generated in graph structure or not.
     """
@@ -473,7 +487,7 @@ def generate_datamodule(data_config: dict, graph: bool):
     sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
     bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
 
-    return module_data.JetDataModule(sig_events, bkg_events, data_ratio=config["data_ratio"], batch_size=config["batch_size"], graph=graph)
+    return module_data.JetDataModule(sig_events, bkg_events, data_ratio=data_ratio, batch_size=batch_size, graph=graph)
 
 # %%
 """
@@ -483,6 +497,7 @@ def generate_datamodule(data_config: dict, graph: bool):
 # %%
 def execute(
         model: nn.Module,
+        general_config: dict,
         model_config: dict,
         data_config: dict,
         graph: bool,
@@ -500,6 +515,8 @@ def execute(
     Args:
         model : nn.Module
             PyTorch format model.
+        general_config : dict
+            Dictionary of general settings.
         model_config : dict
             Used for recording model information.
         data_config : dict
@@ -519,7 +536,7 @@ def execute(
     """
     
     # Seed everything.
-    L.seed_everything(config["rnd_seed"])
+    L.seed_everything(general_config["rnd_seed"])
 
     # Record the total training time.
     time_start = time.time()
@@ -534,19 +551,19 @@ def execute(
 
     # Monitor (either CSVLogger or WandbLogger) configuration and setup.
     logger_config = {}
-    logger_config["project"] = config["project"]
+    logger_config["project"] = general_config["wandb_project"]
     logger_config["group"] = f"{data_config['sig']}_{data_config['bkg']}"
-    logger_config["name"] = f"{model_config['group_rnd']} | {config['time']}_{config['device']}{suffix}_{config['rnd_seed']}"
+    logger_config["name"] = f"{model_config['group_rnd']} | {general_config['time']}_{general_config['device']}{suffix}_{general_config['rnd_seed']}"
     logger_config["id"] = logger_config["name"]
-    logger_config["save_dir"] = config["result_dir"]
+    logger_config["save_dir"] = general_config["result_dir"]
     if use_wandb:
-        logger = module_training.wandb_monitor(model, logger_config, config, model_config, data_config)
+        logger = module_training.wandb_monitor(model, logger_config, general_config, model_config, data_config)
     else:
-        logger = module_training.default_monitor(logger_config, config, model_config, data_config)
+        logger = module_training.default_monitor(logger_config, general_config, model_config, data_config)
 
     # Print out the training information.
     print("\n-------------------- Training information --------------------")
-    print("| * config:", config, "\n")
+    print("| * general_config:", general_config, "\n")
     print("| * data_config:", data_config, "\n")
     print("| * model_config:", model_config, "\n")
     print("| * logger_config:", logger_config, "\n")
@@ -555,15 +572,20 @@ def execute(
     # pytorch-lightning trainer.
     trainer = L.Trainer(
         logger = logger, 
-        accelerator = config["accelerator"],
-        max_epochs = config["max_epochs"],
-        fast_dev_run = config["fast_dev_run"],
-        log_every_n_steps = config["log_every_n_steps"],
+        accelerator = general_config["accelerator"],
+        max_epochs = general_config["max_epochs"],
+        fast_dev_run = general_config["fast_dev_run"],
+        log_every_n_steps = general_config["log_every_n_steps"],
         num_sanity_val_steps = 0,
     )
     
     # pytorch-lightning data module.
-    data_module = generate_datamodule(data_config, graph=graph)
+    data_module = generate_datamodule(
+        data_config=data_config, 
+        data_ratio=general_config["data_ratio"],
+        batch_size=general_config["batch_size"],
+        graph=graph
+        )
     
     # pytorch-lightning model.
     litmodel = module_training.BinaryLitModel(
@@ -575,16 +597,34 @@ def execute(
     # Training or prediction.
     if mode == "train":
         trainer.fit(litmodel, datamodule=data_module)
-        train_summary = trainer.test(litmodel, dataloaders=data_module.train_dataloader())[0]
-        test_summary = trainer.test(litmodel, dataloaders=data_module.test_dataloader())[0]
+        train_summary = trainer.test(
+            model=litmodel,
+            dataloaders=data_module.train_dataloader()
+        )[0] # The output is like [summary_object], so use [0] to get the item.
+        test_summary = trainer.test(
+            model=litmodel,
+            dataloaders=data_module.test_dataloader()
+        )[0] # The output is like [summary_object], so use [0] to get the item.
     elif mode == "predict":
+        # The ckpt key helped for finding correct checkpoints file.
         ckpt_key = f"{model_config['model_name']}_{model_config['model_suffix']} | {data_config['abbrev']}_cut{data_config['cut_pt']}"
-        # Train 8 particles only, and use the parameters to test other number of particles.
+        # Train 8 particles only, and use the parameters to test other number 
+        # of particles.
         if model_config['model_name'] == QuantumRotQCGNN.__name__:
-            ckpt_key = ckpt_key.replace(f"qidx{model_config['gnn_idx_qubits']}", "qidx3")
+            gnn_idx_qubits = model_config['gnn_idx_qubits']
+            ckpt_key = ckpt_key.replace(f"qidx{gnn_idx_qubits}", "qidx3")
+        # Get the correct checkpoints file path.
         ckpt_path = get_ckpt_path(ckpt_key)
-        train_summary = trainer.test(litmodel, dataloaders=data_module.train_dataloader(), ckpt_path=ckpt_path)[0]
-        test_summary = trainer.test(litmodel, dataloaders=data_module.test_dataloader(), ckpt_path=ckpt_path)[0]
+        train_summary = trainer.test(
+            model=litmodel,
+            dataloaders=data_module.train_dataloader(),
+            ckpt_path=ckpt_path
+        )[0] # The output is like [summary_object], so use [0] to get the item.
+        test_summary = trainer.test(
+            model=litmodel,
+            dataloaders=data_module.test_dataloader(),
+            ckpt_path=ckpt_path
+        )[0] # The output is like [summary_object], so use [0] to get the item.
 
     # Finish wandb monitoring if using WandbLogger.
     if use_wandb:
@@ -594,7 +634,7 @@ def execute(
     train_summary.update({"data_mode":"train"})
     test_summary.update({"data_mode":"test"})
     for _summary in [train_summary,test_summary]:
-        _summary.update(config)
+        _summary.update(general_config)
         _summary.update(data_config)
         _summary.update(model_config)
     summary = pd.DataFrame([train_summary, test_summary])
@@ -602,7 +642,6 @@ def execute(
     # Calculating total training time.
     time_end = time.time()
     _log(f"Time = {(time_end - time_start) / 60} minutes")
-
     print("\n", 100 * "@", "\n")
     
     return logger_config["id"], summary
@@ -613,12 +652,22 @@ def execute(
 """
 
 # %%
-def execute_classical(data_config: dict, go: int, gh: int, gl: int, lr: float, mode: str):
+def execute_classical(
+        general_config: dict,
+        data_config: dict,
+        go: int,
+        gh: int,
+        gl: int,
+        lr: float,
+        mode: str
+    ):
     """Default setup for classical execution.
     
     Create with `ClassicalMPGNN` model.
 
     Args:
+        general_config : dict
+            Dictionary of general settings.
         data_config : dict
             Data configuration for generating data module.
         go : int
@@ -647,41 +696,56 @@ def execute_classical(data_config: dict, go: int, gh: int, gl: int, lr: float, m
     # Execute training for classical models.
     run_id, summary = execute(
         model=model,
+        general_config=general_config,
         model_config=model_config,
         data_config=data_config,
         graph=True,
         mode=mode,
-        suffix=config["suffix"],
+        suffix=general_config["suffix"],
     )
 
     # Check whether the model is trained successfully above threshold.
     test_acc = summary["test_acc_epoch"]
-    acc_threshold = config["retrain_threshold"]
+    acc_threshold = general_config["retrain_threshold"]
     below_threshold = (test_acc < acc_threshold).any()
     
-    # Too small model might not trainable, we retrain it with random seed += 10.
-    if (mode == "train") and config["retrain"] and below_threshold:
+    # Too small model might not trainable, we retrain with random seed += 10.
+    if (mode == "train") and general_config["retrain"] and below_threshold:
         # Delete the failed training on Wandb.
         if use_wandb:
-            wandb_project = f"{config['wandb_id']}/{config['project']}"
-            run = api.run(f"{wandb_project}/{run_id}")
+            account = general_config["wandb_account"]
+            project = general_config["wandb_project"]
+            run = api.run(f"{account}/{project}/{run_id}")
             run.delete()
         
         # Increase random seed by 10, since we train 10 different seeds.
-        config["rnd_seed"] += config["retrain_cycle"]
-        _log(f"Reinitialize model with new random seed = {config['rnd_seed']}")
+        old_rnd_ssed = general_config["rnd_seed"]
+        new_rnd_seed = old_rnd_ssed + general_config["retrain_cycle"]
+        general_config["rnd_seed"] = new_rnd_seed
+        _log(f"Reinitialize model with new random seed = {new_rnd_seed}")
 
         # Retrain a new round.
-        run_id, summary = execute_classical(data_config, go, gh, gl, lr, mode)
+        run_id, summary = execute_classical(general_config, data_config,
+                                            go, gh, gl, lr, mode)
     
     return run_id, summary
 
-def execute_quantum(data_config, qnn, gl, gr, lr, mode):
+def execute_quantum(
+        general_config: dict,
+        data_config: dict,
+        qnn: int,
+        gl: int,
+        gr: int,
+        lr: float,
+        mode: str
+    ):
     """Default setup for quantum execution.
     
     Create with `QuantumRotQCGNN` model.
 
     Args:
+        general_config : dict
+            Dictionary of general settings.
         data_config : dict
             Data configuration for generating data module.
         qnn : int
@@ -704,20 +768,30 @@ def execute_quantum(data_config, qnn, gl, gr, lr, mode):
 
     # Configurations for constructing QCGNN.
     model_config = {
-        "gnn_idx_qubits": qidx, "gnn_nn_qubits": qnn,
-        "gnn_layers": gl, "gnn_reupload": gr,
-        "lr": lr, "model_suffix": model_suffix,
+        "gnn_idx_qubits": qidx,
+        "gnn_nn_qubits": qnn,
+        "gnn_layers": gl,
+        "gnn_reupload": gr,
+        "lr": lr,
+        "model_suffix": model_suffix,
     }
-    model = QuantumRotQCGNN(num_ir_qubits=qidx, num_nr_qubits=qnn, num_layers=gl, num_reupload=gr, quantum_config=quantum_config)
+    model = QuantumRotQCGNN(
+        num_ir_qubits=qidx,
+        num_nr_qubits=qnn,
+        num_layers=gl,
+        num_reupload=gr,
+        quantum_config=quantum_config
+    )
     
     # Execute training for quantum models.
     run_id, summary = execute(
         model=model,
+        general_config=general_config,
         model_config=model_config,
         data_config=data_config,
         graph=False,
         mode=mode,
-        suffix=config["suffix"],
+        suffix=general_config["suffix"],
     )
     
     return run_id, summary
@@ -799,14 +873,14 @@ data_config_list = [
     generate_data_config(
         sig="VzToZhToVevebb", bkg="VzToQCD", abbrev="BB-QCD",
         cut_pt=(800, 1000), subjet_radius=0, 
-        bin=10, num_bin_data=config["num_bin_data"], num_pt_ptcs=8
+        bin=10, num_bin_data=general_config["num_bin_data"], num_pt_ptcs=8
     ),
     
     # 3-prong v.s. 1-prong.
     generate_data_config(
         sig="VzToZhToVevebb", bkg="VzToQCD", abbrev="BB-QCD",
         cut_pt=(800, 1000), subjet_radius=0, 
-        bin=10, num_bin_data=config["num_bin_data"], num_pt_ptcs=8
+        bin=10, num_bin_data=general_config["num_bin_data"], num_pt_ptcs=8
     ),
 ]
 
@@ -818,18 +892,18 @@ data_config_list = [
 # %%
 # Uncomment the model you want to train.
 for data_config, rnd_seed in product(data_config_list, range(10)):
-    config["rnd_seed"] = rnd_seed
+    general_config["rnd_seed"] = rnd_seed
     
     # # Classical MPGNN with hidden neurons {3, 6, 9} and 2 layers.
     # for g_dim in [3,6,9]:
-    #     execute_classical(data_config, go=g_dim, gh=g_dim, gl=2, lr=1E-3, mode="train")
+    #     execute_classical(general_config, data_config, go=g_dim, gh=g_dim, gl=2, lr=1E-3, mode="train")
 
     # # Best classical MPGNN with hidden neurons 1024 and 4 layers.
-    # execute_classical(data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="train")
+    # execute_classical(general_config, data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="train")
 
     # # Quantum QCGNN with NR qubits = reuploads = {3, 6, 9}.
     # for q in [3,6,9]:
-    #     execute_quantum(data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="train")
+    #     execute_quantum(general_config, data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="train")
 
 # %%
 """
@@ -841,6 +915,8 @@ for data_config, rnd_seed in product(data_config_list, range(10)):
 c_df = pd.DataFrame()
 b_df = pd.DataFrame()
 q_df = pd.DataFrame()
+pred_dir = os.path.join(general_config["predictions_dir"], "ideal_model")
+os.makedirs(pred_dir, exist_ok=True)
 
 num_ptcs_range = range(2, 16 + 1, 2)
 prediction_tuple = product(range(3), num_ptcs_range, data_config_list)
@@ -848,30 +924,33 @@ prediction_tuple = product(range(3), num_ptcs_range, data_config_list)
 # Uncomment the model you want to predict.
 for rnd_seed, num_pt_ptcs, data_config in prediction_tuple:
     data_config["num_pt_ptcs"] = num_pt_ptcs
-    config["rnd_seed"] = rnd_seed
+    general_config["rnd_seed"] = rnd_seed
 
     # # Prediction for classical MPGNN.
     # for gnn_dim in [3,6,9]:
     #     # Get summary of prediction result.
     #     _, summary = execute_classical(
-    #         data_config, go=gnn_dim, gh=gnn_dim, gl=2, lr=1E-3, mode="predict")
+    #         general_config, data_config, go=gnn_dim, gh=gnn_dim, gl=2, lr=1E-3, mode="predict")
     #     # Concatenating to prediction buffers.
     #     c_df = pd.concat((c_df, summary))
     # # Saving prediction summary to csv file.
-    # c_df.to_csv(f"csv/classical-{config['num_bin_data']}_{rnd_seed}.csv", index=False)
+    # csv_file = f"classical-{general_config['num_bin_data']}_{rnd_seed}.csv"
+    # c_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
 
     # # Prediction for best classical MPGNN.
     # _, summary = execute_classical(
-    #     data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="predict")
+    #     general_config, data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="predict")
     # b_df = pd.concat((b_df, summary))
-    # b_df.to_csv(f"csv/classical-{config['num_bin_data']}_best.csv", index=False)
+    # csv_file = f"classical-{general_config['num_bin_data']}_best.csv"
+    # b_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
 
     # # Prediction for quantum QCGNN.
     # for qnn_dim in [3,6,9]:
     #     # Get summary of prediction result.
     #     _, summary = execute_quantum(
-    #         data_config, qnn=qnn_dim, gl=1, gr=qnn_dim, lr=1E-3, mode="predict")
+    #         general_config, data_config, qnn=qnn_dim, gl=1, gr=qnn_dim, lr=1E-3, mode="predict")
     #     # Concatenating to prediction buffers.
     #     q_df = pd.concat((q_df, summary))
     # # Saving prediction summary to csv file.
-    # q_df.to_csv(f"csv/qnn{qnn_dim}_gl1_gr{qnn_dim}_ptc({num_ptcs_range[0]},{num_ptcs_range[-1]})-{config['num_bin_data']}_{rnd_seed}.csv", index=False)
+    # csv_file = f"qnn{qnn_dim}_gl1_gr{qnn_dim}_ptc({num_ptcs_range[0]},{num_ptcs_range[-1]})-{general_config['num_bin_data']}_{rnd_seed}.csv"
+    # q_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
