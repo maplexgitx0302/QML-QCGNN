@@ -878,7 +878,7 @@ data_config_list = [
     
     # 3-prong v.s. 1-prong.
     generate_data_config(
-        sig="VzToZhToVevebb", bkg="VzToQCD", abbrev="BB-QCD",
+        sig="VzToTt", bkg="VzToQCD", abbrev="TT-QCD",
         cut_pt=(800, 1000), subjet_radius=0, 
         bin=10, num_bin_data=general_config["num_bin_data"], num_pt_ptcs=8
     ),
