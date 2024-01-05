@@ -941,7 +941,7 @@ for rnd_seed, num_pt_ptcs, data_config in prediction_tuple:
     # _, summary = execute_classical(
     #     general_config, data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="predict")
     # b_df = pd.concat((b_df, summary))
-    # csv_file = f"classical-{general_config['num_bin_data']}_best.csv"
+    # csv_file = f"best_classical-{general_config['num_bin_data']}_{rnd_seed}.csv"
     # b_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
 
     # # Prediction for quantum QCGNN.
@@ -952,5 +952,5 @@ for rnd_seed, num_pt_ptcs, data_config in prediction_tuple:
     #     # Concatenating to prediction buffers.
     #     q_df = pd.concat((q_df, summary))
     # # Saving prediction summary to csv file.
-    # csv_file = f"qnn{qnn_dim}_gl1_gr{qnn_dim}_ptc({num_ptcs_range[0]},{num_ptcs_range[-1]})-{general_config['num_bin_data']}_{rnd_seed}.csv"
+    # csv_file = f"quantum-{general_config['num_bin_data']}_{rnd_seed}.csv"
     # q_df.to_csv(os.path.join(pred_dir, csv_file), index=False)

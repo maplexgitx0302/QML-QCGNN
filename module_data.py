@@ -1,8 +1,8 @@
 """Module related to reading jet data.
 
-When using the package `fastjet`, the warning related to citation will  
-pop up, so we initialize a simple `fastjet.ClusterSequence` to make it  
-pop up in the first place.
+# When using the package `fastjet`, the warning related to citation will  
+# pop up, so we initialize a simple `fastjet.ClusterSequence` to make it  
+# pop up in the first place.
 
 To read data from MadGraph5 (mg5), use the class `FatJetEvents`. We 
 assume the mg5 data is generated in directory `./jet_dataset`.
@@ -22,7 +22,7 @@ import random
 from typing import Union
 
 import awkward as ak
-import fastjet
+# import fastjet
 import lightning.pytorch as pl
 import numpy as np
 import torch
@@ -44,10 +44,10 @@ pdgid_table = {
 }
 
 
-# Run fastjet 1 time then it won't show up citation warning.
-_jet_def = fastjet.JetDefinition(fastjet.antikt_algorithm, 1.0)
-_array = ak.Array([{"px": 0.1, "py": 0.2, "pz": 0.3, "E": 0.4},])
-fastjet.ClusterSequence(_array, _jet_def)
+# # Run fastjet 1 time then it won't show up citation warning.
+# _jet_def = fastjet.JetDefinition(fastjet.antikt_algorithm, 1.0)
+# _array = ak.Array([{"px": 0.1, "py": 0.2, "pz": 0.3, "E": 0.4},])
+# fastjet.ClusterSequence(_array, _jet_def)
 
 
 # The logging function.
@@ -194,7 +194,6 @@ class FatJetEvents:
     def generate_fastjet_events(
             self,
             subjet_radius: int,
-            algorithm: int = fastjet.antikt_algorithm
     ) -> None:
         '''Reclustering particles into subjets.
 
@@ -204,11 +203,12 @@ class FatJetEvents:
         Args:
             subjet_radius : int
                 Subjet radius for reclustering.
-            algorithm (default fastjet.antikt_algorithm)
-                Algorithm for reclustering particles (see fastjet for 
-                further details).
+            # algorithm (default fastjet.antikt_algorithm)
+            #     Algorithm for reclustering particles (see fastjet for 
+            #     further details).
         '''
 
+        import fastjet
         _log(f"Reclustering {self.channel} with radius {subjet_radius}")
 
         # Reclustering jets event by event.
@@ -220,6 +220,7 @@ class FatJetEvents:
                 "pz": event["fatjet_daughter_pz"],
                 "E": event["fatjet_daughter_e"],
             })
+            algorithm = fastjet.antikt_algorithm
             jet_def = fastjet.JetDefinition(algorithm, float(subjet_radius))
             cluster = fastjet.ClusterSequence(four_momentums, jet_def)
             fastjet_list.append(cluster.inclusive_jets())
