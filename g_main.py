@@ -547,13 +547,13 @@ def execute(
 
     # Additional model information (used for wandb filter).
     model_config["model_name"] = model.__class__.__name__
-    model_config["group_rnd"] = f"{model.__class__.__name__}_{model_config['model_suffix']} | {data_config['data_suffix']}"
+    model_config["group_rnd"] = f"{model.__class__.__name__}_{model_config['model_suffix']}-{data_config['data_suffix']}"
 
     # Monitor (either CSVLogger or WandbLogger) configuration and setup.
     logger_config = {}
     logger_config["project"] = general_config["wandb_project"]
     logger_config["group"] = f"{data_config['sig']}_{data_config['bkg']}"
-    logger_config["name"] = f"{model_config['group_rnd']} | {general_config['time']}_{general_config['device']}{suffix}_{general_config['rnd_seed']}"
+    logger_config["name"] = f"{model_config['group_rnd']}-{general_config['time']}_{general_config['device']}{suffix}_{general_config['rnd_seed']}"
     logger_config["id"] = logger_config["name"]
     logger_config["save_dir"] = general_config["result_dir"]
     if use_wandb:
@@ -607,7 +607,14 @@ def execute(
         )[0] # The output is like [summary_object], so use [0] to get the item.
     elif mode == "predict":
         # The ckpt key helped for finding correct checkpoints file.
-        ckpt_key = f"{model_config['model_name']}_{model_config['model_suffix']} | {data_config['abbrev']}_cut{data_config['cut_pt']}"
+        data_suffix = (
+            f"{data_config['abbrev']}_"
+            f"cut({data_config['cut_pt'][0]},{data_config['cut_pt'][1]})"
+        )
+        ckpt_key = (
+            f"{model_config['model_name']}_{model_config['model_suffix']}"
+            f"-{data_suffix}"
+        )
         # Train 8 particles only, and use the parameters to test other number 
         # of particles.
         if model_config['model_name'] == QuantumRotQCGNN.__name__:

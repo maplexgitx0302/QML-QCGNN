@@ -25,7 +25,7 @@ pip install -r requirements.txt
 The jet dataset can be downloaded from [jet_dataset](https://drive.google.com/drive/folders/1i0wG-YqQr4hbMl4SNnhKbOK0UB_aHWGw?usp=share_link) to local directory `./jet_dataset`
 
 ##### Pre-trained model
-The pre-trained model parameters can be loaded from `ckpt` (checkpoints) files and can be downloaded from [pretrain_ckpt](https://drive.google.com/drive/folders/197fza_bldBGGF5cWhBtI7UpPVwkD8vMx?usp=share_link) to local directory `./pretrain_ckpt`.
+The pre-trained model parameters can be loaded from `ckpt` (checkpoints) files and can be downloaded from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link) to local directory `./pretrain_ckpt`.
 
 ##### Jupyter
 The main python scripts are written in jupyter format (`.ipynb`), for user who wants to use traditional python scripts (`.py`), you can download `ipynb-py-convert` package:
@@ -46,7 +46,7 @@ All main procedure can be executed through `./g_main.ipynb`, and most of the con
     - The default training mode is **quick start mode**, i.e., trained with `max_epochs=1` and `num_bin_data=1`, no matter whatever you set in `./config.json`. Set `config["quick_start"]=false` in `./config.json` for full training.
 
 - Prediction
-  - Make sure you have the `ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [pretrain_ckpt](https://drive.google.com/drive/folders/197fza_bldBGGF5cWhBtI7UpPVwkD8vMx?usp=share_link).
+  - Make sure you have the `ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link).
   - **Uncomment** and modify the code you want to test.
 
 ### File descriptions

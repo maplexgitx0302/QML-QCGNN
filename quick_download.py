@@ -9,6 +9,7 @@ import zipfile
 
 import gdown
 
+
 def gdrive_download(dir_name, url):
     """Download files (zip files) from Google Drive."""
 
@@ -24,10 +25,11 @@ def gdrive_download(dir_name, url):
     os.remove(zip_path)
     print(f"{zip_path} removed.")
 
+
 # `pretrain_ckpt` (pretrain models).
-url_pretrain_ckpt = "https://drive.google.com/file/d/1DfhesXsLDR8knq0RvvA8doUvbSYtiO1A/view?usp=share_link"
+url_pretrain_ckpt = "https://drive.google.com/file/d/1DcC2WetceAOkTg5HGoUdzUrBkFtMlYKk/view?usp=share_link"
 gdrive_download(dir_name="pretrain_ckpt", url=url_pretrain_ckpt)
 
 # `jet_dataset_0` (jet dataset without reclustering).
-url_jet_dataset = "https://drive.google.com/file/d/1r-3cDVEKQLFxhUrNVaLIMH7IcpBISZI-/view?usp=share_link"
+url_jet_dataset = "https://drive.google.com/file/d/1FP_SOqcbStRfvXim-wXEdh1-VVxRjKuF/view?usp=share_link"
 gdrive_download(dir_name="jet_dataset", url=url_jet_dataset)

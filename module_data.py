@@ -470,16 +470,16 @@ def save_hdf5(channel: str, data_info: str, ak_array: ak.Array):
     The codes below are followed from:
     https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#saving-awkward-arrays-to-hdf5
     """
-    _log(f"Start creating {channel}|{data_info}.hdf5 file")
+    _log(f"Start creating {channel}-{data_info}.hdf5 file")
     dir_path = os.path.join(os.path.dirname(__file__), "jet_dataset")
-    hdf5_name = f"{channel}|{data_info}.hdf5"
+    hdf5_name = f"{channel}-{data_info}.hdf5"
     hdf5_file = h5py.File(os.path.join(dir_path, hdf5_name), "w")
     hdf5_group = hdf5_file.create_group(channel)
     form, length, _ = ak.to_buffers(
         ak.to_packed(ak_array), container=hdf5_group)
     hdf5_group.attrs["form"] = form.to_json()
     hdf5_group.attrs["length"] = json.dumps(length)
-    _log(f"Successfully creating {channel}|{data_info}.hdf5 file")
+    _log(f"Successfully creating {channel}-{data_info}.hdf5 file")
 
 
 def load_hdf5(channel: str, data_info: str):
@@ -491,7 +491,7 @@ def load_hdf5(channel: str, data_info: str):
     https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#reading-awkward-arrays-from-hdf5
     """
     dir_path = os.path.join(os.path.dirname(__file__), "jet_dataset")
-    hdf5_name = f"{channel}|{data_info}.hdf5"
+    hdf5_name = f"{channel}-{data_info}.hdf5"
     hdf5_file = h5py.File(os.path.join(dir_path, hdf5_name), "r")
     hdf5_group = hdf5_file[channel]
     ak_array = ak.from_buffers(
