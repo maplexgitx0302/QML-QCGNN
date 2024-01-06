@@ -12,22 +12,28 @@ The code is fully written in **Python** environment.
 The main training workflow is based on [PyTorch](https://pytorch.org) and [Pennylane](https://pennylane.ai), and Python 3.9 or newer is required. To succesfully reproduce the output, install the packages through
 ```bash
 # /bin/bash
+# It is highyly recommended to install `PyTorch` seperately (see warning below).
 pip install -r requirements.txt
 ```
 
-> Note: It is highly recommended to install `PyTorch` independently, see [official website](https://pytorch.org) for corresponding installation.
+> **Warning**: It is highly recommended to install `PyTorch` independently, see [official website](https://pytorch.org) for corresponding installation.
 
 > Note: The version of `PennyLane` should be newer than `0.31.0` due to `qml.qnn.TorchLayer` [issue](https://discuss.pennylane.ai/t/inputs-dimension-mix-with-batch-dimension-in-qml-qnn-torchlayer/3824/8).
 
 > Note: The [fastjet](https://fastjet.readthedocs.io/en/latest/) package might not work in some system (e.g. Apple M1 above), ignore it if needed. The default code will not use it unless you need to recluster the particles into subjets.
 
-##### Dataset
-The jet dataset can be downloaded from [jet_dataset](https://drive.google.com/drive/folders/1i0wG-YqQr4hbMl4SNnhKbOK0UB_aHWGw?usp=share_link) to local directory `./jet_dataset`
+##### Dataset & Pre-trained models
 
-##### Pre-trained model
-The pre-trained model parameters can be loaded from `ckpt` (checkpoints) files and can be downloaded from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link) to local directory `./pretrain_ckpt`.
+- Quick download (through `gdown`):
+  1. Make sure `gdown` is installed (```pip install gdown```)
+  2. Automatically download through command line ```python quick_download.py```, this will create `./jet_dataset` and `./pretrain_ckpt` directories.
 
-##### Jupyter
+- Links to dataset and pre-trained models (optional):
+  - The full jet dataset can be downloaded from [jet_dataset](https://drive.google.com/drive/folders/1i0wG-YqQr4hbMl4SNnhKbOK0UB_aHWGw?usp=share_link) to local directory `./jet_dataset`
+
+  - The pre-trained model parameters can be loaded from `ckpt` (checkpoints) files and can be downloaded from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link) to local directory `./pretrain_ckpt`.
+
+##### Jupyter Environment (optional)
 The main python scripts are written in jupyter format (`.ipynb`), for user who wants to use traditional python scripts (`.py`), you can download `ipynb-py-convert` package:
 ```bash
 # /bin/bash
@@ -46,7 +52,7 @@ All main procedure can be executed through `./g_main.ipynb`, and most of the con
     - The default training mode is **quick start mode**, i.e., trained with `max_epochs=1` and `num_bin_data=1`, no matter whatever you set in `./config.json`. Set `config["quick_start"]=false` in `./config.json` for full training.
 
 - Prediction
-  - Make sure you have the `ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link).
+  - Make sure you have the `pretrain_ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link).
   - **Uncomment** and modify the code you want to test.
 
 ### File descriptions
@@ -63,6 +69,7 @@ All main procedure can be executed through `./g_main.ipynb`, and most of the con
 ### Generating original jet data by MG5
 The data in `./jet_dataset` is generated through [MadGraph5_aMC@NLO](https://launchpad.net/mg5amcnlo) with [Heavy Vector Triplets (HVT)](https://hepmdb.soton.ac.uk/index.php?mod=user&act=showmodel&id=0214.0151) model:
 ```bash
+# In MadGraph5_aMC command line interface
 import HVT
 
 # VzToQCD
