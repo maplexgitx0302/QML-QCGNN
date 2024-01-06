@@ -611,10 +611,9 @@ def execute(
             f"{data_config['abbrev']}_"
             f"cut({data_config['cut_pt'][0]},{data_config['cut_pt'][1]})"
         )
-        ckpt_key = (
-            f"{model_config['model_name']}_{model_config['model_suffix']}"
-            f"-{data_suffix}"
-        )
+        model_name = model_config['model_name']
+        model_suffix = model_config['model_suffix']
+        ckpt_key = f"{model_name}_{model_suffix}-{data_suffix}"
         # Train 8 particles only, and use the parameters to test other number 
         # of particles.
         if model_config['model_name'] == QuantumRotQCGNN.__name__:
@@ -869,7 +868,7 @@ def generate_data_config(
         "num_pt_ptcs": num_pt_ptcs,
     }
     data_config["data_suffix"] = (
-        f"{abbrev}_cut{cut_pt}_ptc{num_pt_ptcs}_bin{bin}"
+        f"{abbrev}_cut({cut_pt[0]},{cut_pt[1]})_ptc{num_pt_ptcs}_bin{bin}"
         f"-{num_bin_data}_R{subjet_radius}"
     )
 
