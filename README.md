@@ -5,10 +5,10 @@ Jet Discrimination with Quantum Complete Graph Neural Network
 
 ---
 
-### Prerequisites
+# Prerequisites
 The code is fully written in **Python** environment.
 
-##### Python packages
+### Python packages
 The main training workflow is based on [PyTorch](https://pytorch.org) and [Pennylane](https://pennylane.ai), and Python 3.9 or newer is required. To succesfully reproduce the output, install the packages through
 ```bash
 # /bin/bash
@@ -22,7 +22,7 @@ pip install -r requirements.txt
 
 > Note: The [fastjet](https://fastjet.readthedocs.io/en/latest/) package might not work in some system (e.g. Apple M1 above), ignore it if needed. The default code will not use it unless you need to recluster the particles into subjets.
 
-##### Dataset & Pre-trained models
+### Dataset & Pre-trained models
 
 - Quick download (through `gdown`):
   1. Make sure `gdown` is installed (```pip install gdown```)
@@ -33,7 +33,7 @@ pip install -r requirements.txt
 
   - The pre-trained model parameters can be loaded from `ckpt` (checkpoints) files and can be downloaded from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link) to local directory `./pretrain_ckpt`.
 
-##### Jupyter Environment (optional)
+### Jupyter Environment (optional)
 The main python scripts are written in jupyter format (`.ipynb`), for user who wants to use traditional python scripts (`.py`), you can download `ipynb-py-convert` package:
 ```bash
 # /bin/bash
@@ -42,8 +42,8 @@ ipynb-py-convert g_main.ipynb a.py
 python a.py
 ```
 
-### Quick Start
-##### Training and Prediction
+# Quick Start
+### Training and Prediction
 All main procedure can be executed through `./g_main.ipynb`, and most of the configuration can be setup in `./config.json`. You can simply uncomment the code you want to test in the last two sections (*Training Cell* and *Prediction Cell*).
 
 - Training
@@ -54,6 +54,10 @@ All main procedure can be executed through `./g_main.ipynb`, and most of the con
 - Prediction
   - Make sure you have the `pretrain_ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link).
   - **Uncomment** and modify the code you want to test.
+
+---
+
+# MISC
 
 ### File descriptions
 - Files with prefix `./module_`: Modules for detail of reading/loading data, constructing models, training procedures.
