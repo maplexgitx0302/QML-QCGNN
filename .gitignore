@@ -6,6 +6,7 @@ a.py
 
 # training result
 pred_outputs/
+old_pred_outputs/
 pretrain_ckpt/
 training_logs/
 

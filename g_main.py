@@ -699,6 +699,7 @@ def execute_classical(
         "gnn_in": 6, "gnn_out": go, "gnn_hidden": gh, "gnn_layers": gl,
         "mlp_hidden": 0, "mlp_layers": 0,
         "lr": lr, "model_suffix": model_suffix,
+        "base_model": module_model.ClassicalMLP.__name__,
     }
     model = ClassicalMPGNN(**model_config)
 
@@ -783,6 +784,7 @@ def execute_quantum(
         "gnn_reupload": gr,
         "lr": lr,
         "model_suffix": model_suffix,
+        "base_model": QCGNN.__name__,
     }
     model = QuantumRotQCGNN(
         num_ir_qubits=qidx,
@@ -911,7 +913,7 @@ for data_config, rnd_seed in product(data_config_list, range(10)):
     # execute_classical(general_config, data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="train")
 
     # # Quantum QCGNN with NR qubits = reuploads = {3, 6, 9}.
-    # for q in [3,6,9]:
+    # for q in [3, 6, 9]:
     #     execute_quantum(general_config, data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="train")
 
 # %%
