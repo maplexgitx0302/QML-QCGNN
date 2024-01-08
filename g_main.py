@@ -51,6 +51,9 @@ import module_training
 # Faster calculation on GPU but less precision.
 torch.set_float32_matmul_precision("medium")
 
+# QCGNN template to use
+QCGNN = module_model.QCGNN_IX
+
 # %%
 """
 ### Manual Settings
@@ -243,7 +246,7 @@ class ClassicalMPGNN(GraphMPGNN):
 """
 ### Quantum Complete Graph Neural Network (QCGNN)
 
-The main structure of QCGNN is written in the `module_model.py` script, and the following codes focus on how data is encoded to the quantum circuit (corresponding to the arguement `ctrl_enc` in `module_model.QCGNN`). In this paper, we test the encoding ansatz constructed through angle encoding.
+The main structure of QCGNN is written in the `module_model.py` script, and the following codes focus on how data is encoded to the quantum circuit (corresponding to the arguement `ctrl_enc` in `module_model.QCGNN_IX` or `module_model.QCGNN_0`). In this paper, we test the encoding ansatz constructed through angle encoding.
 
 Note that there are two encoding functions below (`pennylane_encoding` and `qiskit_encoding`), both are equivalent but run in different quantum devices.
 - `pennylane_encoding`: for simulation using PennyLane (such as "default.qubit").
@@ -389,7 +392,7 @@ class QuantumRotQCGNN(nn.Module):
         self.ctrl_enc = ctrl_enc
         
         # Constructing `phi` and `mlp` just like MPGNN.
-        self.phi = module_model.QCGNN(
+        self.phi = QCGNN(
             num_ir_qubits=num_ir_qubits,
             num_nr_qubits=num_nr_qubits,
             num_layers=num_layers,

@@ -152,7 +152,7 @@ class QuantumMLP(nn.Module):
         return self.net(x)
 
 
-class QCGNN(nn.Module):
+class QCGNN_IX(nn.Module):
     def __init__(
             self,
             num_ir_qubits: int,
@@ -166,7 +166,7 @@ class QCGNN(nn.Module):
             shots: int = 1024,
             scale: int = None
     ):
-        """Quantum Complete Graph Neural Network (QCGNN)
+        """Quantum Complete Graph Neural Network (QCGNN) in {I,X}
 
         We first specify the quantum device (either PennyLane simulator
         or IBM quantum systems). The default setup is PennyLane's
@@ -222,6 +222,9 @@ class QCGNN(nn.Module):
         # Scale factor for measurement expectation value outputs. The default
         # value is set corresponding to the aggregation function SUM.
         self.scale = (2**num_ir_qubits) if scale is None else scale
+        self.num_layers = num_layers
+        self.num_reupload = num_reupload
+        self.ctrl_enc = ctrl_enc
 
         # Initialize quantum registers (IR, NR). Note when executing on IBM
         # real devices, the multi-controlled gates need to be composed, so we
@@ -237,23 +240,57 @@ class QCGNN(nn.Module):
         _log(f"Quantum device  = {qdevice}")
         _log(f"Quantum backend = {qbackend}")
         _log(
-            f"Qubits (IR, WK, NR) = {num_ir_qubits, num_wk_qubits, num_nr_qubits}")
+            f"Qubits (IR, WK, NR) = "
+            f"{num_ir_qubits, num_wk_qubits, num_nr_qubits}"
+        )
 
         # `wires` range that will be used later in quantum "gates".
-        ir_wires = range(num_ir_qubits)
-        nr_wires = range(num_ir_qubits+num_wk_qubits, num_qubits)
+        self.ir_wires = range(num_ir_qubits)
+        self.nr_wires = range(num_ir_qubits+num_wk_qubits, num_qubits)
 
         # Create quantum device.
         if ("qiskit" in qdevice) and (qbackend is not None):
             # If real device -> specify backend and shots.
-            qml_device = qml.device(
+            self.qml_device = qml.device(
                 qdevice, wires=num_qubits, backend=qbackend, shots=shots)
         else:
-            qml_device = qml.device(qdevice, wires=num_qubits)
+            self.qml_device = qml.device(qdevice, wires=num_qubits)
+        self.diff_method = diff_method
 
-        # Set measurement operators (excluding working qubits).
-        # IR -> Measure in all combinations of {I,X} basis.
-        # NR -> Measure in Z basis for each qubits individually.
+        # Turn PennyLane quantum circuit into PyTorch layers.
+        circuit = self.build_full_circuit()
+        self.circuit = circuit
+        weight_shapes = {"weights": (
+            num_reupload+1, num_layers, num_nr_qubits, 3)}
+        torch_layer = qml.qnn.TorchLayer(circuit, weight_shapes=weight_shapes)
+        self.net = nn.Sequential(torch_layer)
+
+    def build_full_circuit(self) -> Callable:
+        """Build up the quantum circuit."""
+
+        @qml.qnode(self.qml_device, diff_method=self.diff_method)
+        def full_circuit(inputs, weights):
+            # Build up quantum gates.
+            self.circuit_before_measurement(inputs, weights)
+
+            # Get observable list.
+            observables = self.observables_of_IX_combinations()
+
+            return [qml.expval(obs_str) for obs_str in observables]
+
+        return full_circuit
+
+    def observables_of_IX_combinations(self) -> list:
+        """Observables of {I,X} combinations
+
+        Set measurement operators (excluding working qubits).
+        IR -> Measure in all combinations of {I,X} basis.
+        NR -> Measure in Z basis for each qubits individually.
+
+        Returns:
+            List: Observables of {I,X} combinations.
+        """
+
         def bin_repr_to_observable_str(bin_repr: str):
             """Turn binary representation string to Pauli observable string"""
             observable_list = []
@@ -271,78 +308,68 @@ class QCGNN(nn.Module):
         # Loop over all combinations {I,X} in IR.
         observable_str_list = []
         # `dec_repr` -> decimal representations.
-        for dec_repr in range(2**num_ir_qubits):
+        for dec_repr in range(2**self.num_ir_qubits):
             # `bin_repr` -> binary representations.
-            bin_repr = np.binary_repr(dec_repr, width=num_ir_qubits)
+            bin_repr = np.binary_repr(dec_repr, width=self.num_ir_qubits)
             # Observable string in IR.
             IR_observable_str = bin_repr_to_observable_str(bin_repr)
-            for wires in nr_wires:
+            for wires in self.nr_wires:
                 # Observable string in NR (treat each NR qubits individually).
                 NR_observable_str = qml.PauliZ(wires=wires)
-                observable_str = IR_observable_str @ NR_observable_str
+                observable_str = qml.prod(IR_observable_str, NR_observable_str)
                 observable_str_list.append(observable_str)
+        return observable_str_list
 
-        # Build up the quantum circuit.
-        @qml.qnode(qml_device, diff_method=diff_method)
-        def circuit(inputs, weights):
-            """Quantum circuit for QCGNN"""
-            # The `inputs` will be automatically reshape as (batch_size, D),
-            # where D is the dimension of a single flattened data. We reshape
-            # the `inputs` back to correct shape, by assuming the data
-            # constructed with only 3 features (pt, eta, phi). Note that in
-            # `pennylane==0.31.0` above, if original inputs shape is (N, M, D),
-            # it will automatically reshape to (N*M, D).
-            inputs = inputs.unflatten(dim=-1, sizes=(-1, 3))
+    def circuit_before_measurement(self, inputs, weights):
+        """Quantum circuit for QCGNN"""
+        # The `inputs` will be automatically reshape as (batch_size, D),
+        # where D is the dimension of a single flattened data. We reshape
+        # the `inputs` back to correct shape, by assuming the data
+        # constructed with only 3 features (pt, eta, phi). Note that in
+        # `pennylane==0.31.0` above, if original inputs shape is (N, M, D),
+        # it will automatically reshape to (N*M, D).
+        inputs = inputs.unflatten(dim=-1, sizes=(-1, 3))
 
-            # Now the shape becomes (batch_size, number_of_particles, 3).
-            num_ptcs = inputs.shape[-2]
+        # Now the shape becomes (batch_size, number_of_particles, 3).
+        num_ptcs = inputs.shape[-2]
 
-            # Quantum state initialization (assuming fixed number of particles).
-            if num_ptcs == 2**num_ir_qubits:
-                # Number of particles == 2**num_ir_qubits.
-                for i in range(num_ir_qubits):
-                    qml.Hadamard(wires=i)
-            else:
-                # Number of particles < 2**num_ir_qubits.
-                state_vector = num_ptcs * \
-                    [1/np.sqrt(num_ptcs)] + (2**num_ir_qubits - num_ptcs) * [0]
-                state_vector = np.array(state_vector) / \
-                    np.linalg.norm(state_vector)
-                qml.QubitStateVector(state_vector, wires=ir_wires)
+        # Quantum state initialization (assuming fixed number of particles).
+        if num_ptcs == 2**self.num_ir_qubits:
+            # Number of particles == 2**num_ir_qubits.
+            qml.broadcast(qml.Hadamard, pattern="single", wires=self.ir_wires)
+        else:
+            # Number of particles < 2**num_ir_qubits.
+            state_vector = num_ptcs * \
+                [1/np.sqrt(num_ptcs)] + \
+                (2**self.num_ir_qubits - num_ptcs) * [0]
+            state_vector = np.array(state_vector) / \
+                np.linalg.norm(state_vector)
+            qml.QubitStateVector(state_vector, wires=self.ir_wires)
 
-            # Data-reuploading (default at least once when `num_reupload` == 0).
-            for re_idx in range(num_reupload+1):
-                # Encoding data with multi-controlled gates.
-                for ir_idx in range(num_ptcs):
-                    # `np.binary_repr` returns string.
-                    control_values = np.binary_repr(
-                        ir_idx, width=num_ir_qubits)
-                    # `control_values` in pennylane needs list[int]
-                    control_values = list(map(int, control_values))
-                    # `pennylane==0.31.0` above handles whole batch simaltaneously.
-                    if len(inputs.shape) > 2:
-                        # `inputs` shape == (batch, num_ptcs, 3)
-                        # Note we feed in whole batch of data, but only one
-                        # particle information for each data.
-                        ctrl_enc(inputs[:, ir_idx],
-                                 control_values=control_values)
-                    else:
-                        # `inputs` shape == (num_ptcs, 3), i.e., single data
-                        # Note we feed in only one particle information.
-                        ctrl_enc(inputs[ir_idx], control_values=control_values)
-                # Using strongly entangling layers for VQC ansatz.
-                qml.StronglyEntanglingLayers(
-                    weights=weights[re_idx], wires=nr_wires)
-
-            # Return expectation values for each observables.
-            return [qml.expval(obs_str) for obs_str in observable_str_list]
-        self.circuit = circuit
-
-        # Turn PennyLane quantum circuit into PyTorch layers.
-        weight_shapes = {"weights": (
-            num_reupload+1, num_layers, num_nr_qubits, 3)}
-        torch_layer = qml.qnn.TorchLayer(circuit, weight_shapes=weight_shapes)
-        self.net = nn.Sequential(torch_layer)
+        # Data-reuploading (default at least once when `num_reupload` == 0).
+        for re_idx in range(self.num_reupload+1):
+            # Encoding data with multi-controlled gates.
+            for ir_idx in range(num_ptcs):
+                # `np.binary_repr` returns string.
+                control_values = np.binary_repr(
+                    ir_idx, width=self.num_ir_qubits)
+                # `control_values` in pennylane needs list[int]
+                control_values = list(map(int, control_values))
+                # `pennylane==0.31.0` above handles whole batch simaltaneously.
+                if len(inputs.shape) > 2:
+                    # `inputs` shape == (batch, num_ptcs, 3)
+                    # Note we feed in whole batch of data, but only one
+                    # particle information for each data.
+                    self.ctrl_enc(inputs[:, ir_idx],
+                                  control_values=control_values)
+                else:
+                    # `inputs` shape == (num_ptcs, 3), i.e., single data
+                    # Note we feed in only one particle information.
+                    self.ctrl_enc(inputs[ir_idx],
+                                  control_values=control_values)
+            # Using strongly entangling layers for VQC ansatz.
+            qml.StronglyEntanglingLayers(
+                weights=weights[re_idx], wires=self.nr_wires)
 
     def forward(self, x):
         # Original shape of `x` is (batch, num_ptcs, 3), with 3 representing
@@ -366,4 +393,75 @@ class QCGNN(nn.Module):
         x = torch.sum(x, dim=-1) * self.scale
 
         # `x` is now in shape (batch, NR).
+        return x
+
+
+class QCGNN_0(QCGNN_IX):
+    def __init__(
+            self,
+            num_ir_qubits: int,
+            num_nr_qubits: int,
+            num_layers: int,
+            num_reupload: int,
+            ctrl_enc: Callable,
+            qdevice: str = "default.qubit",
+            qbackend: str = None,
+            diff_method: str = "best",
+            shots: int = 1024,
+            scale: int = None
+    ):
+        """QCGNN with Hadamard transform at the last step.
+
+        Similar to QCGNN_IX, but we do the Hadamard transform to IR in
+        the last step. Also, the observable changes to measuring the 
+        probability of |0>'s qubits in IR.
+        """
+
+        super().__init__(
+            num_ir_qubits=num_ir_qubits,
+            num_nr_qubits=num_nr_qubits,
+            num_layers=num_layers,
+            num_reupload=num_reupload,
+            ctrl_enc=ctrl_enc,
+            qdevice=qdevice,
+            qbackend=qbackend,
+            diff_method=diff_method,
+            shots=shots,
+            scale=scale
+        )
+
+    def build_full_circuit(self) -> Callable:
+        """Build up the quantum circuit."""
+
+        @qml.qnode(self.qml_device, diff_method=self.diff_method)
+        def full_circuit(inputs, weights):
+            """
+            Returns:
+                A tensor constructed by concatenating:
+                    - IR_prob: Probalities of IR state.
+                    - NR_expval: Expectation values of NR.
+            """
+            # Build up quantum gates.
+            self.circuit_before_measurement(inputs, weights)
+            qml.broadcast(qml.Hadamard, pattern="single", wires=self.ir_wires)
+
+            # Get observable list.
+            observables = [qml.PauliZ(wires) for wires in self.nr_wires]
+            IR_prob_dim = 2 ** self.num_ir_qubits
+            prob0_obs = np.zeros((IR_prob_dim, IR_prob_dim))
+            prob0_obs[0][0] = 2 ** self.num_ir_qubits
+            prob0_obs = qml.Hermitian(prob0_obs, wires=self.ir_wires)
+
+            return [qml.expval(prob0_obs @ obs_str) for obs_str in observables]
+
+        return full_circuit
+
+    def forward(self, x):
+        # Original shape of `x` is (batch, num_ptcs, 3), with 3 representing
+        # features "pt", "eta" and "phi". Since PennyLane confuses with the
+        # dimension of batch and features, we need to reshape `x` as
+        # (batch, num_ptcs * 3), or (num_ptcs * 3) for single data only.
+        x = torch.flatten(x, start_dim=-2, end_dim=-1)
+        x = self.net(x) * self.scale
+
         return x
