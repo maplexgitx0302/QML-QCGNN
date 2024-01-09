@@ -129,11 +129,15 @@ class QuantumMLP(nn.Module):
             # Note the total VQC number is (num_reupload+1).
             for i in range(num_reupload+1):
                 # Data embedding.
-                qml.AngleEmbedding(features=inputs, wires=range(
-                    num_qubits), rotation='Y')
+                qml.AngleEmbedding(
+                    features=inputs,
+                    wires=range(num_qubits), rotation='Y'
+                )
                 # VQC layer with parameters.
                 qml.StronglyEntanglingLayers(
-                    weights=weights[i], wires=range(num_qubits))
+                    weights=weights[i],
+                    wires=range(num_qubits)
+                )
             # Turn measurements into observable list.
             observable_list = []
             for wires, pauli_str in measurements:

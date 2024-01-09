@@ -71,7 +71,8 @@ class FatJetEvents:
             channel: str,
             cut_pt: tuple[float, float] = None,
             subjet_radius: float = 0,
-            num_pt_ptcs: int = "Full",
+            max_num_ptcs: int = "Full",
+            pt_threshold: float = 0,
             use_hdf5: bool = True
     ):
         """Read MadGraph5 raw data.
@@ -86,9 +87,12 @@ class FatJetEvents:
                 The range of transverse momentum pt to be cut.
             subjet_radius : float (default 0)
                 Radius for reclustering jet particles into subjets.
-            num_pt_ptcs : int (default "Full")
+            max_num_ptcs : int (default "Full")
                 Number of particles to be selected within a jet. The 
                 selection criteria is by sorting with pt.
+            pt_threshold : float (default 0)
+                Retain particles with pt over threshold, with values
+                (1 > pt_threshold >= 0).
             use_hdf5 : bool (default True)
                 Whether to check if there is hdf5 file available, 
                 loading hdf5 is much more faster than mg5 war data.
@@ -97,14 +101,27 @@ class FatJetEvents:
         self.channel = channel
         self.cut_pt = cut_pt
         self.subjet_radius = subjet_radius
-        self.num_pt_ptcs = num_pt_ptcs
+        self.max_num_ptcs = max_num_ptcs
 
-        if use_hdf5:
-            # If hdf5 file exists, just load it.
-            data_info = f"c{cut_pt[0]}_{cut_pt[1]}_r{subjet_radius}"
-            self.events = load_hdf5(channel, data_info)
-            _log(f"Load {channel} {data_info} hdf5 file.")
+        # Abbreviation of the data information.
+        if cut_pt is None:
+            data_info = f"r{subjet_radius}"
         else:
+            assert cut_pt[1] > cut_pt[0], "Check `cut_pt` values."
+            data_info = f"c{cut_pt[0]}_{cut_pt[1]}_r{subjet_radius}"
+
+        # If `use_hdf5`, check existence and load it.
+        data_exist = False
+        if use_hdf5:
+            try:
+                events = load_hdf5(channel, data_info)
+                _log(f"Load {channel} {data_info} hdf5 file.")
+                data_exist = True
+            except FileNotFoundError as _error:
+                _log(f"{_error}")
+                _log(f"Creating new dataset from raw MG5 file to hdf5.")
+
+        if not data_exist:
             # Read original MadGraph5 root file through 'uproot'.
             dir_path = f"{os.path.dirname(__file__)}/jet_dataset"
             root_path = os.path.join(dir_path, f"{channel}.root")
@@ -167,12 +184,11 @@ class FatJetEvents:
                 events = events[cut]
 
             # Finish extracting information from mg5 data.
-            self.events = events
             _log(f"Successfully create {channel} with {len(events)} events.")
 
             if subjet_radius != 0:
                 # Reclustering fastjet events if subjet_radius > 0.
-                self.generate_fastjet_events(subjet_radius)
+                events = self.generate_fastjet_events(events, subjet_radius)
             else:
                 # We will use data with suffix start with "fast"
                 events['fast_pt'] = events['fatjet_daughter_pt']
@@ -184,23 +200,52 @@ class FatJetEvents:
                 events['fast_delta_phi'] = np.mod(
                     delta_phi+np.pi, 2*np.pi) - np.pi
 
+            # Sort by pt.
+            max_arg = ak.argsort(events["fast_pt"], ascending=False, axis=1)
+            for field in events.fields:
+                if "fast_" in field:
+                    events[field] = events[field][max_arg]
+
+            # Replace daughter information with fast.
+            fields = [field for field in events.fields if 'daughter' not in field]
+            events = events[fields]
+
+            # Save to `hdf5` file to skip above data loading.
+            save_hdf5(channel, data_info, events)
+
         # The number of particles in original events data is zig-zagged. For
-        # analysis, we specify the maximum number of particles by `num_pt_ptcs`
-        # argument. The default is set to `num_pt_ptcs="Full"`, which retrain
+        # analysis, we specify the maximum number of particles by `max_num_ptcs`
+        # argument. The default is set to `max_num_ptcs="Full"`, which retrain
         # all particles. Specify an integer for maximum number of particles.
-        if num_pt_ptcs != "Full":
-            self.generate_max_pt_events(num_pt_ptcs)
+        if max_num_ptcs != "Full":
+            for field in events.fields:
+                if "fast_" in field:
+                    events[field] = events[field][:, :max_num_ptcs]
+
+        # Retain particles with pt over threshold.
+        if pt_threshold > 0:
+            fast_pt = events["fast_pt"]
+            jet_pt = events["fatjet_pt"]
+            retain_idx = (fast_pt >= (pt_threshold * jet_pt))
+            for field in events.fields:
+                if "fast_" in field:
+                    events[field] = events[field][retain_idx]
+
+        self.events = events
 
     def generate_fastjet_events(
             self,
+            events: ak.Array,
             subjet_radius: int,
-    ) -> None:
+    ) -> ak.Array:
         '''Reclustering particles into subjets.
 
         Since the number of particles is too large for quantum machine
         learning, we decrease by reclustering the particles into subjets.
 
         Args:
+            events : ak.Array
+                Fatjet events.
             subjet_radius : int
                 Subjet radius for reclustering.
             # algorithm (default fastjet.antikt_algorithm)
@@ -213,7 +258,7 @@ class FatJetEvents:
 
         # Reclustering jets event by event.
         fastjet_list = []
-        for event in self.events:
+        for event in events:
             four_momentums = ak.Array({
                 "px": event["fatjet_daughter_px"],
                 "py": event["fatjet_daughter_py"],
@@ -231,8 +276,8 @@ class FatJetEvents:
         px = fastjet_events["px"]
         py = fastjet_events["py"]
         pz = fastjet_events["pz"]
-        jet_eta = self.events[f"fatjet_eta"]
-        jet_phi = self.events[f"fatjet_phi"]
+        jet_eta = events[f"fatjet_eta"]
+        jet_phi = events[f"fatjet_phi"]
         fastjet_events["e"] = E
         fastjet_events["p"] = (px**2 + py**2 + pz**2) ** 0.5
         fastjet_events["pt"] = (px**2 + py**2) ** 0.5
@@ -246,9 +291,10 @@ class FatJetEvents:
 
         # Finish reclustering and merge with original events.
         for field in fastjet_events.fields:
-            self.events[f"fast_{field}"] = fastjet_events[field]
+            events[f"fast_{field}"] = fastjet_events[field]
 
         _log(f"Finish reclustering {self.channel}")
+        return events
 
     def generate_uniform_pt_events(self, bin: int, num_bin_data: int) -> ak.Array:
         '''Uniformly generate events in each pt bin
@@ -292,27 +338,6 @@ class FatJetEvents:
 
         return ak.concatenate(events_buffer)
 
-    def generate_max_pt_events(self, num_pt_ptcs: int) -> None:
-        '''Reduce the number of particles in each jets
-
-        Since the number of particles in each jets is too many for QML, 
-        we retain certain `num_pt_ptcs` number of particles with highest
-        transverse momentum pt.
-
-        Args:
-            num_pt_ptcs : int
-                Number of particles to retain with highest pt.
-        '''
-
-        # Highest arguments sorted by pt.
-        max_arg = ak.argsort(self.events["fast_pt"], ascending=False, axis=1)
-        max_arg = max_arg[:, :num_pt_ptcs]
-
-        # Retain information start with "fast_".
-        for field in self.events.fields:
-            if "fast_" in field:
-                self.events[field] = self.events[field][max_arg]
-
 
 class TorchDataset(torch.utils.data.Dataset):
     def __init__(self, x: torch.tensor, y: torch.tensor):
@@ -341,7 +366,8 @@ class JetDataModule(pl.LightningDataModule):
             bkg_events: ak.Array,
             data_ratio: float,
             batch_size: int,
-            graph: bool
+            graph: bool,
+            max_num_ptcs: int = None,
     ):
         """Pytorch Lightning Data Module for jet.
 
@@ -363,6 +389,8 @@ class JetDataModule(pl.LightningDataModule):
             graph : bool
                 If True, the dataset is stored as graph (using pytorch-
                 grometric). Otherwise, the dataset is stored in tensors.
+            max_num_ptcs : int
+                Maximum number of particles within jets.
         """
 
         super().__init__()
@@ -371,10 +399,13 @@ class JetDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
 
         # Determine maximum number of particles within jets
-        self.max_num_ptcs = max(
-            max(ak.count(sig_events["fast_pt"], axis=1)),
-            max(ak.count(bkg_events["fast_pt"], axis=1)),
-        )
+        if max_num_ptcs is None:
+            self.max_num_ptcs = max(
+                max(ak.count(sig_events["fast_pt"], axis=1)),
+                max(ak.count(bkg_events["fast_pt"], axis=1)),
+            )
+        else:
+            self.max_num_ptcs = max_num_ptcs
         _log(f"Max number of particles = {self.max_num_ptcs}")
 
         # Preprocess the events.
@@ -470,8 +501,16 @@ def save_hdf5(channel: str, data_info: str, ak_array: ak.Array):
     The codes below are followed from:
     https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#saving-awkward-arrays-to-hdf5
     """
+
+    # Get `hdf5` saving directory.
+    with open("config.json", "r") as json_file:
+        # This json config might be loaded for other use in other python scripts.
+        json_config = json.load(json_file)
+
+    # Use `h5py` package to save `hdf5` file.
     _log(f"Start creating {channel}-{data_info}.hdf5 file")
-    dir_path = os.path.join(os.path.dirname(__file__), "jet_dataset")
+    dir_path = json_config["dataset_dir"]
+    os.makedirs(dir_path, exist_ok=True)
     hdf5_name = f"{channel}-{data_info}.hdf5"
     hdf5_file = h5py.File(os.path.join(dir_path, hdf5_name), "w")
     hdf5_group = hdf5_file.create_group(channel)
@@ -490,7 +529,14 @@ def load_hdf5(channel: str, data_info: str):
     The codes below are followed from:
     https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#reading-awkward-arrays-from-hdf5
     """
-    dir_path = os.path.join(os.path.dirname(__file__), "jet_dataset")
+
+    # Get `hdf5` saving directory.
+    with open("config.json", "r") as json_file:
+        # This json config might be loaded for other use in other python scripts.
+        json_config = json.load(json_file)
+
+    # Use `h5py` package to load `hdf5` file.
+    dir_path = json_config["dataset_dir"]
     hdf5_name = f"{channel}-{data_info}.hdf5"
     hdf5_file = h5py.File(os.path.join(dir_path, hdf5_name), "r")
     hdf5_group = hdf5_file[channel]

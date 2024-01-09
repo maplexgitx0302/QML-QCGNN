@@ -10,6 +10,8 @@
     "// dataset settings": "",
         "input_dim": 6,
         "data_ratio": 0.8,
+        "pt_threshold": 50,
+        "max_num_ptcs": 16,
     
     "// pytorch lightning trainer": "",
         "num_workers": 0,
@@ -20,9 +22,10 @@
     "// wandb settings (optional)": "",
         "use_wandb": false,
         "wandb_account": "ntuyianchen",
-        "wandb_project": "g_main",
+        "wandb_project": "g_fast",
     
     "// output directories": "",
+        "dataset_dir": "./jet_dataset",
         "pretrain_dir": "./pretrain_ckpt",
         "result_dir": "./training_logs",
         "predictions_dir": "./pred_outputs",
