@@ -22,7 +22,6 @@ import random
 from typing import Union
 
 import awkward as ak
-# import fastjet
 import lightning.pytorch as pl
 import numpy as np
 import torch
@@ -73,7 +72,9 @@ class FatJetEvents:
             subjet_radius: float = 0,
             max_num_ptcs: int = "Full",
             pt_threshold: float = 0,
-            use_hdf5: bool = True
+            trim_data: bool = True,
+            use_hdf5: bool = True,
+            save_to_hdf5: bool = True,
     ):
         """Read MadGraph5 raw data.
 
@@ -93,9 +94,14 @@ class FatJetEvents:
             pt_threshold : float (default 0)
                 Retain particles with pt over threshold, with values
                 (1 > pt_threshold >= 0).
+            trim_data : bool (default True)
+                Whether to trim unimportant data (daughter information),
+                retaining fastjet information by default.
             use_hdf5 : bool (default True)
                 Whether to check if there is hdf5 file available, 
                 loading hdf5 is much more faster than mg5 war data.
+            save_to_hdf5 : bool (default True)
+                Whether to save data into hdf5 file.
         """
 
         self.channel = channel
@@ -115,11 +121,16 @@ class FatJetEvents:
         if use_hdf5:
             try:
                 events = load_hdf5(channel, data_info)
-                _log(f"Load {channel} {data_info} hdf5 file.")
+                _log(
+                    f"Load {channel} {data_info} hdf5 file "
+                    f"with {len(events['fatjet_pt'])} events."
+                )
                 data_exist = True
             except FileNotFoundError as _error:
                 _log(f"{_error}")
                 _log(f"Creating new dataset from raw MG5 file to hdf5.")
+        else:
+            _log(f"Start reading from raw root file of channel {channel}.")
 
         if not data_exist:
             # Read original MadGraph5 root file through 'uproot'.
@@ -207,11 +218,14 @@ class FatJetEvents:
                     events[field] = events[field][max_arg]
 
             # Replace daughter information with fast.
-            fields = [field for field in events.fields if 'daughter' not in field]
-            events = events[fields]
+            if trim_data:
+                fields = [
+                    field for field in events.fields if 'daughter' not in field]
+                events = events[fields]
 
             # Save to `hdf5` file to skip above data loading.
-            save_hdf5(channel, data_info, events)
+            if save_to_hdf5:
+                save_hdf5(channel, data_info, events)
 
         # The number of particles in original events data is zig-zagged. For
         # analysis, we specify the maximum number of particles by `max_num_ptcs`
@@ -231,6 +245,11 @@ class FatJetEvents:
                 if "fast_" in field:
                     events[field] = events[field][retain_idx]
 
+        # Retain jets with number of particles greater than 2.
+        retain_idx = ak.num(events["fast_pt"]) >= 2
+        events = events[retain_idx]
+
+        # Finish data loading.
         self.events = events
 
     def generate_fastjet_events(
@@ -449,10 +468,12 @@ class JetDataModule(pl.LightningDataModule):
             dataset = []
             for i in range(len(events)):
                 x = events[i]
-                # Use fully-connected edges.
+
+                # Use fully-connected edges (including self loop).
                 edge_index = list(product(range(len(x)), range(len(x))))
                 edge_index = torch.tensor(edge_index, requires_grad=False)
                 edge_index = edge_index.transpose(0, 1)
+
                 # Turn into pytorch_geometric "Data" object
                 dataset.append(Data(x=x, edge_index=edge_index, y=y))
         else:

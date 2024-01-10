@@ -13,6 +13,9 @@ from pennylane import numpy as np
 import torch
 import torch.nn as nn
 
+# See https://discuss.pennylane.ai/t/qml-prod-vs-direct-operators-product/3873
+qml.operation.enable_new_opmath()
+
 # Pauli matrices dictionary.
 PM = {"I": qml.Identity, "X": qml.PauliX,
       "Y": qml.PauliY, "Z": qml.PauliZ}
@@ -108,9 +111,8 @@ class QuantumMLP(nn.Module):
                 Number of layers in a single strongly entangling layer.
                 Equivalent to the depth of a "single" VQC ansatz.
             num_reupload : int
-                Number of times that reupload the whole ansatz. Note if 
-                `num_reupload=2` means the whole VQC ansatz will be 
-                reuploaded (2+1) times.
+                Number of times of the whole VQC ansatz (and data 
+                reupload), at least 1.
             measurements : list[int, str]
                 A list containing tuples with two elements. The first
                 element is an integer, which corresponds to the index of\
@@ -126,8 +128,8 @@ class QuantumMLP(nn.Module):
         # Quantum circuit.
         @qml.qnode(qml.device(qdevice, wires=num_qubits))
         def circuit(inputs, weights):
-            # Note the total VQC number is (num_reupload+1).
-            for i in range(num_reupload+1):
+            # Data reupload with for loop.
+            for i in range(num_reupload):
                 # Data embedding.
                 qml.AngleEmbedding(
                     features=inputs,
@@ -148,7 +150,7 @@ class QuantumMLP(nn.Module):
 
         # Turn the quantum circuit into a torch layer.
         weight_shapes = {"weights": (
-            num_reupload+1, num_layers, num_qubits, 3)}
+            num_reupload, num_layers, num_qubits, 3)}
         self.net = nn.Sequential(qml.qnn.TorchLayer(
             circuit, weight_shapes=weight_shapes))
 
@@ -192,9 +194,8 @@ class QCGNN_IX(nn.Module):
                 Number of layers in a single strongly entangling layer.
                 Equivalent to the depth of a "single" VQC ansatz.
             num_reupload : int
-                Number of times that reupload the whole ansatz. Note if 
-                `num_reupload=2` means the whole VQC ansatz will be 
-                reuploaded (2+1) times.
+                Number of times of the whole VQC ansatz (and data 
+                reupload), at least 1.
             ctrl_enc : Callable
                 The ansatz for encoding the data into the quantum
                 circuit. Since the encoding methos is the important part
@@ -265,7 +266,7 @@ class QCGNN_IX(nn.Module):
         circuit = self.build_full_circuit()
         self.circuit = circuit
         weight_shapes = {"weights": (
-            num_reupload+1, num_layers, num_nr_qubits, 3)}
+            num_reupload, num_layers, num_nr_qubits, 3)}
         torch_layer = qml.qnn.TorchLayer(circuit, weight_shapes=weight_shapes)
         self.net = nn.Sequential(torch_layer)
 
@@ -334,26 +335,23 @@ class QCGNN_IX(nn.Module):
         # it will automatically reshape to (N*M, D).
         inputs = inputs.unflatten(dim=-1, sizes=(-1, 3))
 
-        # Now the shape becomes (batch_size, number_of_particles, 3).
-        num_ptcs = inputs.shape[-2]
+        # `pt`, `eta`, `phi` will be padded with zero to size 2**num_ir_qubits.
+        # We check how many particles in each events by (pt > 0).
+        pt = inputs[..., 0]
 
-        # Quantum state initialization (assuming fixed number of particles).
-        if num_ptcs == 2**self.num_ir_qubits:
-            # Number of particles == 2**num_ir_qubits.
+        if pt.all() == True:
+            # Typically only happens with one event.
             qml.broadcast(qml.Hadamard, pattern="single", wires=self.ir_wires)
         else:
-            # Number of particles < 2**num_ir_qubits.
-            state_vector = num_ptcs * \
-                [1/np.sqrt(num_ptcs)] + \
-                (2**self.num_ir_qubits - num_ptcs) * [0]
-            state_vector = np.array(state_vector) / \
-                np.linalg.norm(state_vector)
+            state_vector = (pt > 0).float()
+            state_vector = state_vector / \
+                torch.norm(state_vector, dim=-1, keepdim=True)
             qml.QubitStateVector(state_vector, wires=self.ir_wires)
 
-        # Data-reuploading (default at least once when `num_reupload` == 0).
-        for re_idx in range(self.num_reupload+1):
+        # Data-reuploading (need `num_reupload` >= 1).
+        for re_idx in range(self.num_reupload):
             # Encoding data with multi-controlled gates.
-            for ir_idx in range(num_ptcs):
+            for ir_idx in range(2**self.num_ir_qubits):
                 # `np.binary_repr` returns string.
                 control_values = np.binary_repr(
                     ir_idx, width=self.num_ir_qubits)
@@ -400,7 +398,7 @@ class QCGNN_IX(nn.Module):
         return x
 
 
-class QCGNN_0(QCGNN_IX):
+class QCGNN_H(QCGNN_IX):
     def __init__(
             self,
             num_ir_qubits: int,

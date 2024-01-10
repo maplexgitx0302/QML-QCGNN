@@ -51,6 +51,9 @@ import module_training
 # Faster calculation on GPU but less precision.
 torch.set_float32_matmul_precision("medium")
 
+# See https://discuss.pennylane.ai/t/qml-prod-vs-direct-operators-product/3873
+qml.operation.enable_new_opmath()
+
 # QCGNN template to use
 QCGNN = module_model.QCGNN_IX
 
@@ -485,12 +488,28 @@ def generate_datamodule(
     """
 
     # Generate uniform pt events.
-    sig_fatjet_events = module_data.FatJetEvents(channel=data_config["sig"], cut_pt=data_config["cut_pt"], subjet_radius=data_config["subjet_radius"], num_pt_ptcs=data_config["num_pt_ptcs"])
-    bkg_fatjet_events = module_data.FatJetEvents(channel=data_config["bkg"], cut_pt=data_config["cut_pt"], subjet_radius=data_config["subjet_radius"], num_pt_ptcs=data_config["num_pt_ptcs"])
-    sig_events  = sig_fatjet_events.generate_uniform_pt_events(bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
-    bkg_events  = bkg_fatjet_events.generate_uniform_pt_events(bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
+    fatjet_events = lambda channel: module_data.FatJetEvents(
+        channel=channel,
+        cut_pt=data_config["cut_pt"],
+        subjet_radius=data_config["subjet_radius"],
+        max_num_ptcs=data_config["max_num_ptcs"],
+        pt_threshold=data_config["pt_threshold"],
+    )
+    sig_fatjet_events = fatjet_events(data_config["sig"])
+    bkg_fatjet_events = fatjet_events(data_config["bkg"])
+    sig_events = sig_fatjet_events.generate_uniform_pt_events(
+        bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
+    bkg_events = bkg_fatjet_events.generate_uniform_pt_events(
+        bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
 
-    return module_data.JetDataModule(sig_events, bkg_events, data_ratio=data_ratio, batch_size=batch_size, graph=graph)
+    return module_data.JetDataModule(
+        sig_events=sig_events,
+        bkg_events=bkg_events,
+        data_ratio=data_ratio,
+        batch_size=batch_size,
+        graph=graph,
+        max_num_ptcs=data_config["max_num_ptcs"]
+    )
 
 # %%
 """
@@ -550,7 +569,8 @@ def execute(
 
     # Additional model information (used for wandb filter).
     model_config["model_name"] = model.__class__.__name__
-    model_config["group_rnd"] = f"{model.__class__.__name__}_{model_config['model_suffix']}-{data_config['data_suffix']}"
+    model_config["group_rnd"] = f"{model_config['base_model']}_{model_config['model_suffix']}-{data_config['data_suffix']}"
+    model_config["group_rnd_full"] = f"{model_config['model_name']}-{model_config['group_rnd']}"
 
     # Monitor (either CSVLogger or WandbLogger) configuration and setup.
     logger_config = {}
@@ -771,7 +791,7 @@ def execute_quantum(
     """
 
     # Number of IR qubits
-    qidx = int(np.ceil(np.log2(data_config["num_pt_ptcs"])))
+    qidx = int(np.ceil(np.log2(data_config["max_num_ptcs"])))
 
     # Suffix used for wandb filter and training result.
     model_suffix = f"qidx{qidx}_qnn{qnn}_gl{gl}_gr{gr}"
@@ -834,7 +854,8 @@ def generate_data_config(
         bin: int,
         subjet_radius: float,
         num_bin_data: int,
-        num_pt_ptcs: int
+        max_num_ptcs: int,
+        pt_threshold: float,
     ):
     """Generate a dictionary of data configurations
     
@@ -855,8 +876,10 @@ def generate_data_config(
             How many bins that will uniformly distributed over cut_pt.
         num_bin_data : int
             Number of data that uniformly generated in each bin.
-        num_pt_ptcs : int
+        max_num_ptcs : int
             Maximum number of particles in each jet.
+        pt_threshold : int
+            Ratio of particle pt / jet pt.
 
     Returns:
         dict : Dictionary of data configurations.
@@ -870,11 +893,12 @@ def generate_data_config(
         "subjet_radius": subjet_radius,
         "bin": bin,
         "num_bin_data": num_bin_data,
-        "num_pt_ptcs": num_pt_ptcs,
+        "max_num_ptcs": max_num_ptcs,
+        "pt_threshold": pt_threshold,
     }
     data_config["data_suffix"] = (
-        f"{abbrev}_cut({cut_pt[0]},{cut_pt[1]})_ptc{num_pt_ptcs}_bin{bin}"
-        f"-{num_bin_data}_R{subjet_radius}"
+        f"{abbrev}_ptc{max_num_ptcs}_thres{pt_threshold}"
+        f"-nb{num_bin_data}_R{subjet_radius}"
     )
 
     return data_config
@@ -883,15 +907,19 @@ data_config_list = [
     # 2-prong v.s. 1-prong.
     generate_data_config(
         sig="VzToZhToVevebb", bkg="VzToQCD", abbrev="BB-QCD",
-        cut_pt=(800, 1000), subjet_radius=0, 
-        bin=10, num_bin_data=general_config["num_bin_data"], num_pt_ptcs=8
+        cut_pt=(800, 1000), subjet_radius=0, bin=10,
+        num_bin_data=general_config["num_bin_data"],
+        max_num_ptcs=general_config["max_num_ptcs"],
+        pt_threshold=general_config["pt_threshold"],
     ),
     
     # 3-prong v.s. 1-prong.
     generate_data_config(
         sig="VzToTt", bkg="VzToQCD", abbrev="TT-QCD",
-        cut_pt=(800, 1000), subjet_radius=0, 
-        bin=10, num_bin_data=general_config["num_bin_data"], num_pt_ptcs=8
+        cut_pt=(800, 1000), subjet_radius=0, bin=10,
+        num_bin_data=general_config["num_bin_data"],
+        max_num_ptcs=general_config["max_num_ptcs"],
+        pt_threshold=general_config["pt_threshold"],
     ),
 ]
 
@@ -902,7 +930,7 @@ data_config_list = [
 
 # %%
 # Uncomment the model you want to train.
-for data_config, rnd_seed in product(data_config_list, range(10)):
+for data_config, rnd_seed in product(data_config_list, range(3)):
     general_config["rnd_seed"] = rnd_seed
     
     # # Classical MPGNN with hidden neurons {3, 6, 9} and 2 layers.
@@ -933,8 +961,8 @@ num_ptcs_range = range(2, 16 + 1, 2)
 prediction_tuple = product(range(3), num_ptcs_range, data_config_list)
 
 # Uncomment the model you want to predict.
-for rnd_seed, num_pt_ptcs, data_config in prediction_tuple:
-    data_config["num_pt_ptcs"] = num_pt_ptcs
+for rnd_seed, max_num_ptcs, data_config in prediction_tuple:
+    data_config["max_num_ptcs"] = max_num_ptcs
     general_config["rnd_seed"] = rnd_seed
 
     # # Prediction for classical MPGNN.
