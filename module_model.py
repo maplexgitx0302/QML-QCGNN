@@ -373,7 +373,7 @@ class QCGNN_IX(nn.Module):
         # Count number of particles (since we pad 0).
         if self.aggregation == "SUM":
             pt = x[..., 0]
-            num_ptcs = torch.sum((pt > 0).float(), axis=-1)
+            num_ptcs = torch.sum((pt > 0).float(), axis=-1, keepdim=True)
 
         # Original shape of `x` is (batch, num_ptcs, 3), with 3 representing
         # features "pt", "eta" and "phi". Since PennyLane confuses with the
@@ -467,7 +467,7 @@ class QCGNN_H(QCGNN_IX):
         # Count number of particles (since we pad 0).
         if self.aggregation == "SUM":
             pt = x[..., 0]
-            num_ptcs = torch.sum((pt > 0).float(), axis=-1)
+            num_ptcs = torch.sum((pt > 0).float(), axis=-1, keepdim=True)
 
         # Original shape of `x` is (batch, num_ptcs, 3), with 3 representing
         # features "pt", "eta" and "phi". Since PennyLane confuses with the

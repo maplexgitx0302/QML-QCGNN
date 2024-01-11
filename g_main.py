@@ -945,7 +945,7 @@ data_config_list = [
 
 # %%
 # Uncomment the model you want to train.
-for data_config, rnd_seed in product(data_config_list, range(1)):
+for rnd_seed, data_config in product(range(2), data_config_list):
     general_config["rnd_seed"] = rnd_seed
     
     # # Classical MPGNN with hidden neurons {3, 6, 9} and 2 layers.
