@@ -371,9 +371,8 @@ class QCGNN_IX(nn.Module):
 
     def forward(self, x):
         # Count number of particles (since we pad 0).
-        if self.aggregation == "SUM":
-            pt = x[..., 0]
-            num_ptcs = torch.sum((pt > 0).float(), axis=-1, keepdim=True)
+        pt = x[..., 0]
+        num_ptcs = torch.sum((pt > 0).float(), axis=-1, keepdim=True)
 
         # Original shape of `x` is (batch, num_ptcs, 3), with 3 representing
         # features "pt", "eta" and "phi". Since PennyLane confuses with the
@@ -396,8 +395,9 @@ class QCGNN_IX(nn.Module):
         x = torch.sum(x, dim=-1)
 
         if self.aggregation == "SUM":
-            # Turn `MEAN` to `SUM`.
             x = x * num_ptcs
+        elif self.aggregation == "MEAN":
+            x = x / num_ptcs
 
         # `x` is now in shape (batch, NR).
         return x
@@ -465,9 +465,8 @@ class QCGNN_H(QCGNN_IX):
 
     def forward(self, x):
         # Count number of particles (since we pad 0).
-        if self.aggregation == "SUM":
-            pt = x[..., 0]
-            num_ptcs = torch.sum((pt > 0).float(), axis=-1, keepdim=True)
+        pt = x[..., 0]
+        num_ptcs = torch.sum((pt > 0).float(), axis=-1, keepdim=True)
 
         # Original shape of `x` is (batch, num_ptcs, 3), with 3 representing
         # features "pt", "eta" and "phi". Since PennyLane confuses with the
@@ -476,8 +475,9 @@ class QCGNN_H(QCGNN_IX):
         x = torch.flatten(x, start_dim=-2, end_dim=-1)
         x = self.net(x)
 
-        # Turn `MEAN` to `SUM`.
         if self.aggregation == "SUM":
             x = x * num_ptcs
+        elif self.aggregation == "MEAN":
+            x = x / num_ptcs
 
         return x
