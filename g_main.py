@@ -133,7 +133,7 @@ This classical model is built with GNN structure followed by a simple shallow fu
 
 # %%
 class MessagePassing(MessagePassing):
-    def __init__(self, phi):
+    def __init__(self, phi, aggr):
         """Undirected message passing model.
         
         Args:
@@ -142,7 +142,7 @@ class MessagePassing(MessagePassing):
                 for futher details.
         """
 
-        super().__init__(aggr="add", flow="target_to_source")
+        super().__init__(aggr=aggr, flow="target_to_source")
         self.phi = phi
     
     def forward(self, x, edge_index):
@@ -156,7 +156,7 @@ class MessagePassing(MessagePassing):
 
 
 class GraphMPGNN(nn.Module):
-    def __init__(self, phi, mlp):
+    def __init__(self, phi, mlp, aggr):
         """MPGNN with SUM as the aggregation function.
         
         Instead of combining this part with the class `ClassicalMPGNN` 
@@ -172,7 +172,8 @@ class GraphMPGNN(nn.Module):
         """
 
         super().__init__()
-        self.gnn = MessagePassing(phi)
+        self.aggr = aggr
+        self.gnn = MessagePassing(phi, aggr)
         self.mlp = mlp
 
     def forward(self, x, edge_index, batch):
@@ -180,7 +181,10 @@ class GraphMPGNN(nn.Module):
         x = self.gnn(x, edge_index)
 
         # Graph aggregation.
-        x = torch_geometric.nn.global_add_pool(x, batch)
+        if self.aggr == "add":
+            x = torch_geometric.nn.global_add_pool(x, batch)
+        elif self.aggr == "mean":
+            x = x = torch_geometric.nn.global_mean_pool(x, batch)
 
         # Shallow linear model.
         x = self.mlp(x)
@@ -195,6 +199,7 @@ class ClassicalMPGNN(GraphMPGNN):
             gnn_out: int,
             gnn_hidden: int,
             gnn_layers: int,
+            aggregation: str,
             mlp_hidden:int = 0,
             mlp_layers:int = 0,
             **kwargs
@@ -243,7 +248,7 @@ class ClassicalMPGNN(GraphMPGNN):
             num_layers=mlp_layers
             )
 
-        super().__init__(phi, mlp)
+        super().__init__(phi, mlp, aggr=aggregation)
 
 # %%
 """
@@ -379,6 +384,7 @@ class QuantumRotQCGNN(nn.Module):
             num_layers: int,
             num_reupload: int,
             quantum_config: dict,
+            aggregation: str,
     ):
         
         super().__init__()
@@ -401,6 +407,7 @@ class QuantumRotQCGNN(nn.Module):
             num_layers=num_layers,
             num_reupload=num_reupload,
             ctrl_enc=ctrl_enc,
+            aggregation=aggregation,
             **quantum_config
             )
         self.mlp = module_model.ClassicalMLP(
@@ -569,7 +576,7 @@ def execute(
 
     # Additional model information (used for wandb filter).
     model_config["model_name"] = model.__class__.__name__
-    model_config["group_rnd"] = f"{model_config['base_model']}_{model_config['model_suffix']}-{data_config['data_suffix']}"
+    model_config["group_rnd"] = f"{model_config['base_model']}_{model_config['model_suffix']}_{model_config['aggregation']}-{data_config['data_suffix']}"
     model_config["group_rnd_full"] = f"{model_config['model_name']}-{model_config['group_rnd']}"
 
     # Monitor (either CSVLogger or WandbLogger) configuration and setup.
@@ -713,11 +720,17 @@ def execute_classical(
     
     # Suffix used for wandb filter and training result.
     model_suffix = f"go{go}_gh{gh}_gl{gl}_mh0_ml0"
+
+    # Determine the aggregation function
+    if general_config["aggregation"] == "SUM":
+        aggregation = "add"
+    elif general_config["aggregation"] == "MEAN":
+        aggregation = "mean"
     
     # Configurations for constructing MPGNN.
     model_config = {
         "gnn_in": 6, "gnn_out": go, "gnn_hidden": gh, "gnn_layers": gl,
-        "mlp_hidden": 0, "mlp_layers": 0,
+        "mlp_hidden": 0, "mlp_layers": 0, "aggregation": aggregation,
         "lr": lr, "model_suffix": model_suffix,
         "base_model": module_model.ClassicalMLP.__name__,
     }
@@ -805,13 +818,15 @@ def execute_quantum(
         "lr": lr,
         "model_suffix": model_suffix,
         "base_model": QCGNN.__name__,
+        "aggregation": general_config["aggregation"],
     }
     model = QuantumRotQCGNN(
         num_ir_qubits=qidx,
         num_nr_qubits=qnn,
         num_layers=gl,
         num_reupload=gr,
-        quantum_config=quantum_config
+        quantum_config=quantum_config,
+        aggregation=general_config["aggregation"],
     )
     
     # Execute training for quantum models.
@@ -930,7 +945,7 @@ data_config_list = [
 
 # %%
 # Uncomment the model you want to train.
-for data_config, rnd_seed in product(data_config_list, range(3)):
+for data_config, rnd_seed in product(data_config_list, range(1)):
     general_config["rnd_seed"] = rnd_seed
     
     # # Classical MPGNN with hidden neurons {3, 6, 9} and 2 layers.

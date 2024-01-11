@@ -170,7 +170,7 @@ class QCGNN_IX(nn.Module):
             qbackend: str = None,
             diff_method: str = "best",
             shots: int = 1024,
-            scale: int = None
+            aggregation: str = "SUM",
     ):
         """Quantum Complete Graph Neural Network (QCGNN) in {I,X}
 
@@ -215,21 +215,16 @@ class QCGNN_IX(nn.Module):
                 values are ideal expectation values. For IBM quantum
                 systems, `shots` is default as 1024. Note large shots
                 might cause crashed when using IBM quantum systems.
-            scale : int (default 2**num_ir_qubits)
-                Since the QCGNN is built with aggregation function SUM,
-                the output value of expectation values will be scaled
-                with factor $2^{num_ir_qubits}$. Note when specifying as
-                1, it is equivalent to aggregation function MEAN.
+            aggregation : str (default "SUM")
+                Aggregation function ("SUM" or "MEAN").
         """
 
         super().__init__()
 
-        # Scale factor for measurement expectation value outputs. The default
-        # value is set corresponding to the aggregation function SUM.
-        self.scale = (2**num_ir_qubits) if scale is None else scale
         self.num_layers = num_layers
         self.num_reupload = num_reupload
         self.ctrl_enc = ctrl_enc
+        self.aggregation = aggregation
 
         # Initialize quantum registers (IR, NR). Note when executing on IBM
         # real devices, the multi-controlled gates need to be composed, so we
@@ -341,6 +336,7 @@ class QCGNN_IX(nn.Module):
 
         if pt.all() == True:
             # Typically only happens with one event.
+            _log(f"**Warning** -> Using Hadamard initializaion.")
             qml.broadcast(qml.Hadamard, pattern="single", wires=self.ir_wires)
         else:
             state_vector = (pt > 0).float()
@@ -374,6 +370,11 @@ class QCGNN_IX(nn.Module):
                 weights=weights[re_idx], wires=self.nr_wires)
 
     def forward(self, x):
+        # Count number of particles (since we pad 0).
+        if self.aggregation == "SUM":
+            pt = x[..., 0]
+            num_ptcs = torch.sum((pt > 0).float(), axis=-1)
+
         # Original shape of `x` is (batch, num_ptcs, 3), with 3 representing
         # features "pt", "eta" and "phi". Since PennyLane confuses with the
         # dimension of batch and features, we need to reshape `x` as
@@ -392,7 +393,11 @@ class QCGNN_IX(nn.Module):
         x = x.mT
 
         # Summing up (2**IR) {I,X} combinations in IR.
-        x = torch.sum(x, dim=-1) * self.scale
+        x = torch.sum(x, dim=-1)
+
+        if self.aggregation == "SUM":
+            # Turn `MEAN` to `SUM`.
+            x = x * num_ptcs
 
         # `x` is now in shape (batch, NR).
         return x
@@ -410,7 +415,7 @@ class QCGNN_H(QCGNN_IX):
             qbackend: str = None,
             diff_method: str = "best",
             shots: int = 1024,
-            scale: int = None
+            aggregation: str = "SUM",
     ):
         """QCGNN with Hadamard transform at the last step.
 
@@ -429,7 +434,7 @@ class QCGNN_H(QCGNN_IX):
             qbackend=qbackend,
             diff_method=diff_method,
             shots=shots,
-            scale=scale
+            aggregation=aggregation,
         )
 
     def build_full_circuit(self) -> Callable:
@@ -459,11 +464,20 @@ class QCGNN_H(QCGNN_IX):
         return full_circuit
 
     def forward(self, x):
+        # Count number of particles (since we pad 0).
+        if self.aggregation == "SUM":
+            pt = x[..., 0]
+            num_ptcs = torch.sum((pt > 0).float(), axis=-1)
+
         # Original shape of `x` is (batch, num_ptcs, 3), with 3 representing
         # features "pt", "eta" and "phi". Since PennyLane confuses with the
         # dimension of batch and features, we need to reshape `x` as
         # (batch, num_ptcs * 3), or (num_ptcs * 3) for single data only.
         x = torch.flatten(x, start_dim=-2, end_dim=-1)
-        x = self.net(x) * self.scale
+        x = self.net(x)
+
+        # Turn `MEAN` to `SUM`.
+        if self.aggregation == "SUM":
+            x = x * num_ptcs
 
         return x

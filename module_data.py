@@ -251,6 +251,10 @@ class FatJetEvents:
 
         # Finish data loading.
         self.events = events
+        _log(
+            f"After preprocessing, remaining num_events"
+            f" = {len(events['fatjet_pt'])}"
+        )
 
     def generate_fastjet_events(
             self,
@@ -315,7 +319,12 @@ class FatJetEvents:
         _log(f"Finish reclustering {self.channel}")
         return events
 
-    def generate_uniform_pt_events(self, bin: int, num_bin_data: int) -> ak.Array:
+    def generate_uniform_pt_events(
+        self,
+        bin: int,
+        num_bin_data: int,
+        print_log: bool = False,
+    ) -> ak.Array:
         '''Uniformly generate events in each pt bin
 
         Args:
@@ -323,6 +332,8 @@ class FatJetEvents:
                 Number of pt bins.
             num_bin_data: int
                 Number of data (events) in each bin.
+            print_log : bool (default False)
+                Whether to print logging info.
 
         Returns:
             ak.Array: Concatenated events in each bin.
@@ -349,8 +360,14 @@ class FatJetEvents:
             # Randomly select uniform events in each pt bin.
             if num_bin_data > len(bin_events):
                 raise ValueError(
-                    f"num_bin_data {num_bin_data} > {len(bin_events)}")
+                    f"num_bin_data {num_bin_data} > {len(bin_events)}"
+                )
             else:
+                if print_log:
+                    _log(
+                        f"({i+1}/{bin}) logging info -> "
+                        f"sampling data {num_bin_data}/{len(bin_events)}."
+                    )
                 rnd_range = range(len(bin_events))
                 rnd_index = random.sample(rnd_range, num_bin_data)
                 events_buffer.append(bin_events[rnd_index])
