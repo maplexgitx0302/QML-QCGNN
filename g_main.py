@@ -587,7 +587,19 @@ def execute(
     logger_config["id"] = logger_config["name"]
     logger_config["save_dir"] = general_config["result_dir"]
     if use_wandb:
-        logger = module_training.wandb_monitor(model, logger_config, general_config, model_config, data_config)
+        try:
+            account = general_config["wandb_account"]
+            project = general_config["wandb_project"]
+            run_id = logger_config["id"]
+            run = api.run(f"{account}/{project}/{run_id}")
+            if run.summary["epoch"] == general_config["max_epochs"]:
+                _log(f"{run_id} has been successfully trained, ignored.\n")
+                return run_id, run.summary
+        except ValueError:
+            _log(f"{run_id} does not exist, start training now.")
+        except:
+            _log(f"{run_id} exists but not trained successfully, retraining now.")
+        logger = module_training.wandb_monitor(model, logger_config, general_config, model_config, data_config)   
     else:
         logger = module_training.default_monitor(logger_config, general_config, model_config, data_config)
 
@@ -667,9 +679,9 @@ def execute(
         wandb.finish()
 
     # Summary of training results.
-    train_summary.update({"data_mode":"train"})
-    test_summary.update({"data_mode":"test"})
-    for _summary in [train_summary,test_summary]:
+    train_summary.update({"data_mode": "train"})
+    test_summary.update({"data_mode": "test"})
+    for _summary in [train_summary, test_summary]:
         _summary.update(general_config)
         _summary.update(data_config)
         _summary.update(model_config)
@@ -945,7 +957,7 @@ data_config_list = [
 
 # %%
 # Uncomment the model you want to train.
-for rnd_seed, data_config in product(range(2), data_config_list):
+for rnd_seed, data_config in product(range(1), data_config_list):
     general_config["rnd_seed"] = rnd_seed
     
     # # Classical MPGNN with hidden neurons {3, 6, 9} and 2 layers.
@@ -958,6 +970,13 @@ for rnd_seed, data_config in product(range(2), data_config_list):
     # # Quantum QCGNN with NR qubits = reuploads = {3, 6, 9}.
     # for q in [3, 6, 9]:
     #     execute_quantum(general_config, data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="train")
+
+    # for q, aggr in product([2, 4, 6], ["SUM", "MEAN"]):
+    #     general_config["aggregation"] = aggr
+    #     execute_quantum(general_config, data_config, qnn=q, gl=1, gr=1, lr=1E-3, mode="train")
+    #     execute_quantum(general_config, data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="train")
+    #     execute_quantum(general_config, data_config, qnn=q, gl=q, gr=1, lr=1E-3, mode="train")
+    #     execute_quantum(general_config, data_config, qnn=q, gl=(q//2), gr=(q//2), lr=1E-3, mode="train")
 
 # %%
 """
