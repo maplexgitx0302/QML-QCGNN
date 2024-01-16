@@ -568,6 +568,7 @@ def execute(
     L.seed_everything(general_config["rnd_seed"])
 
     # Record the total training time.
+    general_config["ctime"] = time.strftime("%Y%m%d_%H%M%S", time.localtime())
     time_start = time.time()
 
     # Use suffix for the training if needed.
@@ -957,26 +958,19 @@ data_config_list = [
 
 # %%
 # Uncomment the model you want to train.
-for rnd_seed, data_config in product(range(1), data_config_list):
+for rnd_seed, data_config in product(range(3), data_config_list):
     general_config["rnd_seed"] = rnd_seed
     
-    # # Classical MPGNN with hidden neurons {3, 6, 9} and 2 layers.
-    # for g_dim in [3,6,9]:
+    # # Classical MPGNN with hidden neurons {3, 5, 7} and 2 layers.
+    # for g_dim in [3, 5, 7]:
     #     execute_classical(general_config, data_config, go=g_dim, gh=g_dim, gl=2, lr=1E-3, mode="train")
 
     # # Best classical MPGNN with hidden neurons 1024 and 4 layers.
     # execute_classical(general_config, data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="train")
 
-    # # Quantum QCGNN with NR qubits = reuploads = {3, 6, 9}.
-    # for q in [3, 6, 9]:
+    # # Quantum QCGNN with NR qubits = reuploads = {3, 5, 7}.
+    # for q in [3, 5, 7]:
     #     execute_quantum(general_config, data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="train")
-
-    # for q, aggr in product([2, 4, 6], ["SUM", "MEAN"]):
-    #     general_config["aggregation"] = aggr
-    #     execute_quantum(general_config, data_config, qnn=q, gl=1, gr=1, lr=1E-3, mode="train")
-    #     execute_quantum(general_config, data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="train")
-    #     execute_quantum(general_config, data_config, qnn=q, gl=q, gr=1, lr=1E-3, mode="train")
-    #     execute_quantum(general_config, data_config, qnn=q, gl=(q//2), gr=(q//2), lr=1E-3, mode="train")
 
 # %%
 """
@@ -1000,7 +994,7 @@ for rnd_seed, max_num_ptcs, data_config in prediction_tuple:
     general_config["rnd_seed"] = rnd_seed
 
     # # Prediction for classical MPGNN.
-    # for gnn_dim in [3,6,9]:
+    # for gnn_dim in [3, 5, 7]:
     #     # Get summary of prediction result.
     #     _, summary = execute_classical(
     #         general_config, data_config, go=gnn_dim, gh=gnn_dim, gl=2, lr=1E-3, mode="predict")
@@ -1018,7 +1012,7 @@ for rnd_seed, max_num_ptcs, data_config in prediction_tuple:
     # b_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
 
     # # Prediction for quantum QCGNN.
-    # for qnn_dim in [3,6,9]:
+    # for qnn_dim in [3, 5, 7]:
     #     # Get summary of prediction result.
     #     _, summary = execute_quantum(
     #         general_config, data_config, qnn=qnn_dim, gl=1, gr=qnn_dim, lr=1E-3, mode="predict")
