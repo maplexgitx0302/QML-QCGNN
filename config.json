@@ -21,7 +21,7 @@
         "log_every_n_steps": 50,
     
     "// wandb settings (optional)": "",
-        "use_wandb": true,
+        "use_wandb": false,
         "wandb_account": "ntuyianchen",
         "wandb_project": "g_var",
     

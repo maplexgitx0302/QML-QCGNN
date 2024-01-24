@@ -30,6 +30,11 @@ from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader as GeoDataLoader
 import uproot
 
+# Get `hdf5` saving directory.
+with open("config.json", "r") as json_file:
+    # This json config might be loaded for other use in other python scripts.
+    json_config = json.load(json_file)
+
 
 # PID table.
 pdgid_table = {
@@ -323,6 +328,7 @@ class FatJetEvents:
         self,
         bin: int,
         num_bin_data: int,
+        num_ptcs_range: tuple[int, int] = None,
         print_log: bool = False,
     ) -> ak.Array:
         '''Uniformly generate events in each pt bin
@@ -332,6 +338,9 @@ class FatJetEvents:
                 Number of pt bins.
             num_bin_data: int
                 Number of data (events) in each bin.
+            num_ptcs_range : tuple[int, int] (default None)
+                If num_ptcs_range == (a, b), only select jets with 
+                number of particles >= a and <= b.
             print_log : bool (default False)
                 Whether to print logging info.
 
@@ -351,25 +360,39 @@ class FatJetEvents:
         # Uniformly generate events in each pt bin.
         events_buffer = []
         pt = self.events['fatjet_pt']
+        if print_log and num_ptcs_range is not None:
+            _log(f"Select jets with number of particles in {num_ptcs_range}")
         for i in range(bin):
             bin_lower = low + bin_interval * i
             bin_upper = low + bin_interval * (i+1)
             bin_selected = (pt >= bin_lower) * (pt < bin_upper)
+            if num_ptcs_range is not None:
+                _pt = self.events['fast_pt']
+                bin_selected = bin_selected & \
+                    (ak.num(_pt) >= num_ptcs_range[0]) & \
+                    (ak.num(_pt) <= num_ptcs_range[1])
             bin_events = self.events[bin_selected]
 
+            # Determine the value of `num_bin_data`.
+            if num_bin_data is None:
+                num_sample = min(
+                    len(bin_events), json_config["num_bin_data"])
+            else:
+                num_sample = num_bin_data
+
             # Randomly select uniform events in each pt bin.
-            if num_bin_data > len(bin_events):
+            if (num_sample > len(bin_events)) and (num_bin_data is not None):
                 raise ValueError(
-                    f"num_bin_data {num_bin_data} > {len(bin_events)}"
+                    f"num_bin_data {num_sample} > {len(bin_events)}"
                 )
             else:
                 if print_log:
                     _log(
                         f"({i+1}/{bin}) logging info -> "
-                        f"sampling data {num_bin_data}/{len(bin_events)}."
+                        f"sampling data {num_sample}/{len(bin_events)}."
                     )
                 rnd_range = range(len(bin_events))
-                rnd_index = random.sample(rnd_range, num_bin_data)
+                rnd_index = random.sample(rnd_range, num_sample)
                 events_buffer.append(bin_events[rnd_index])
 
         return ak.concatenate(events_buffer)
@@ -540,11 +563,6 @@ def save_hdf5(channel: str, data_info: str, ak_array: ak.Array):
     https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#saving-awkward-arrays-to-hdf5
     """
 
-    # Get `hdf5` saving directory.
-    with open("config.json", "r") as json_file:
-        # This json config might be loaded for other use in other python scripts.
-        json_config = json.load(json_file)
-
     # Use `h5py` package to save `hdf5` file.
     _log(f"Start creating {channel}-{data_info}.hdf5 file")
     dir_path = json_config["dataset_dir"]
@@ -567,11 +585,6 @@ def load_hdf5(channel: str, data_info: str):
     The codes below are followed from:
     https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#reading-awkward-arrays-from-hdf5
     """
-
-    # Get `hdf5` saving directory.
-    with open("config.json", "r") as json_file:
-        # This json config might be loaded for other use in other python scripts.
-        json_config = json.load(json_file)
 
     # Use `h5py` package to load `hdf5` file.
     dir_path = json_config["dataset_dir"]

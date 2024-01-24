@@ -505,9 +505,17 @@ def generate_datamodule(
     sig_fatjet_events = fatjet_events(data_config["sig"])
     bkg_fatjet_events = fatjet_events(data_config["bkg"])
     sig_events = sig_fatjet_events.generate_uniform_pt_events(
-        bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
+        bin=data_config["bin"],
+        num_bin_data=data_config["num_bin_data"],
+        num_ptcs_range=data_config["num_ptcs_range"],
+        print_log=data_config["print_log"],
+    )
     bkg_events = bkg_fatjet_events.generate_uniform_pt_events(
-        bin=data_config["bin"], num_bin_data=data_config["num_bin_data"])
+        bin=data_config["bin"],
+        num_bin_data=data_config["num_bin_data"],
+        num_ptcs_range=data_config["num_ptcs_range"],
+        print_log=data_config["print_log"],
+    )
 
     return module_data.JetDataModule(
         sig_events=sig_events,
@@ -650,18 +658,12 @@ def execute(
         )[0] # The output is like [summary_object], so use [0] to get the item.
     elif mode == "predict":
         # The ckpt key helped for finding correct checkpoints file.
-        data_suffix = (
-            f"{data_config['abbrev']}_"
-            f"cut({data_config['cut_pt'][0]},{data_config['cut_pt'][1]})"
-        )
-        model_name = model_config['model_name']
-        model_suffix = model_config['model_suffix']
-        ckpt_key = f"{model_name}_{model_suffix}-{data_suffix}"
+        ckpt_key = model_config["group_rnd"]
         # Train 8 particles only, and use the parameters to test other number 
         # of particles.
         if model_config['model_name'] == QuantumRotQCGNN.__name__:
             gnn_idx_qubits = model_config['gnn_idx_qubits']
-            ckpt_key = ckpt_key.replace(f"qidx{gnn_idx_qubits}", "qidx3")
+            ckpt_key = ckpt_key.replace(f"qidx{gnn_idx_qubits}", "qidx4")
         # Get the correct checkpoints file path.
         ckpt_path = get_ckpt_path(ckpt_key)
         train_summary = trainer.test(
@@ -923,6 +925,8 @@ def generate_data_config(
         "num_bin_data": num_bin_data,
         "max_num_ptcs": max_num_ptcs,
         "pt_threshold": pt_threshold,
+        "num_ptcs_range": None,
+        "print_log": False,
     }
     data_config["data_suffix"] = (
         f"{abbrev}_ptc{max_num_ptcs}_thres{pt_threshold}"
@@ -958,7 +962,7 @@ data_config_list = [
 
 # %%
 # Uncomment the model you want to train.
-for rnd_seed, data_config in product(range(3), data_config_list):
+for rnd_seed, data_config in product(range(10), data_config_list):
     general_config["rnd_seed"] = rnd_seed
     
     # # Classical MPGNN with hidden neurons {3, 5, 7} and 2 layers.
@@ -985,31 +989,33 @@ q_df = pd.DataFrame()
 pred_dir = os.path.join(general_config["predictions_dir"], "ideal_model")
 os.makedirs(pred_dir, exist_ok=True)
 
-num_ptcs_range = range(2, 16 + 1, 2)
-prediction_tuple = product(range(3), num_ptcs_range, data_config_list)
+# num_ptcs_range_list = [(2, 4), (8, 10), (14, 16)]
+# prediction_tuple = product(range(1), num_ptcs_range_list, data_config_list)
 
-# Uncomment the model you want to predict.
-for rnd_seed, max_num_ptcs, data_config in prediction_tuple:
-    data_config["max_num_ptcs"] = max_num_ptcs
-    general_config["rnd_seed"] = rnd_seed
+# # Uncomment the model you want to predict.
+# for rnd_seed, num_ptcs_range, data_config in prediction_tuple:
+#     data_config["num_bin_data"] = None
+#     data_config["num_ptcs_range"] = num_ptcs_range
+#     data_config["print_log"] = True
+#     general_config["rnd_seed"] = rnd_seed
 
-    # # Prediction for classical MPGNN.
-    # for gnn_dim in [3, 5, 7]:
-    #     # Get summary of prediction result.
-    #     _, summary = execute_classical(
-    #         general_config, data_config, go=gnn_dim, gh=gnn_dim, gl=2, lr=1E-3, mode="predict")
-    #     # Concatenating to prediction buffers.
-    #     c_df = pd.concat((c_df, summary))
-    # # Saving prediction summary to csv file.
-    # csv_file = f"classical-{general_config['num_bin_data']}_{rnd_seed}.csv"
-    # c_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
+#     # Prediction for classical MPGNN.
+#     for gnn_dim in [3, 5, 7]:
+#         # Get summary of prediction result.
+#         _, summary = execute_classical(
+#             general_config, data_config, go=gnn_dim, gh=gnn_dim, gl=2, lr=1E-3, mode="predict")
+#         # Concatenating to prediction buffers.
+#         c_df = pd.concat((c_df, summary))
+#     # Saving prediction summary to csv file.
+#     csv_file = f"classical-{general_config['num_bin_data']}_{rnd_seed}.csv"
+#     c_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
 
-    # # Prediction for best classical MPGNN.
-    # _, summary = execute_classical(
-    #     general_config, data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="predict")
-    # b_df = pd.concat((b_df, summary))
-    # csv_file = f"best_classical-{general_config['num_bin_data']}_{rnd_seed}.csv"
-    # b_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
+#     # Prediction for best classical MPGNN.
+#     _, summary = execute_classical(
+#         general_config, data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="predict")
+#     b_df = pd.concat((b_df, summary))
+#     csv_file = f"best_classical-{general_config['num_bin_data']}_{rnd_seed}.csv"
+#     b_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
 
     # # Prediction for quantum QCGNN.
     # for qnn_dim in [3, 5, 7]:

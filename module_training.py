@@ -194,8 +194,11 @@ class BinaryLitModel(L.LightningModule):
         self.log("epoch_time", delta_time, on_step=False, on_epoch=True)
 
         # Calculate AUC.
-        roc_auc = metrics.roc_auc_score(
-            self.y_train_true_buffer, self.y_train_score_buffer)
+        try:
+            roc_auc = metrics.roc_auc_score(
+                self.y_train_true_buffer, self.y_train_score_buffer)
+        except ValueError:
+            roc_auc = 0
         self.log("train_roc_auc", roc_auc, on_step=False, on_epoch=True)
 
         # Clean up buffer at the end of each epochs.
@@ -220,8 +223,11 @@ class BinaryLitModel(L.LightningModule):
         self.y_valid_score_buffer = torch.tensor([])
 
     def on_validation_epoch_end(self):
-        roc_auc = metrics.roc_auc_score(
-            self.y_valid_true_buffer, self.y_valid_score_buffer)
+        try:
+            roc_auc = metrics.roc_auc_score(
+                self.y_valid_true_buffer, self.y_valid_score_buffer)
+        except ValueError:
+            roc_auc = 0
         self.log("val_roc_auc", roc_auc, on_step=False, on_epoch=True)
         del self.y_valid_true_buffer
         del self.y_valid_score_buffer
@@ -238,8 +244,11 @@ class BinaryLitModel(L.LightningModule):
         self.y_test_score_buffer = torch.tensor([])
 
     def on_test_epoch_end(self):
-        roc_auc = metrics.roc_auc_score(
-            self.y_test_true_buffer, self.y_test_score_buffer)
+        try:
+            roc_auc = metrics.roc_auc_score(
+                self.y_test_true_buffer, self.y_test_score_buffer)
+        except ValueError:
+            roc_auc = 0
         self.log("test_roc_auc", roc_auc, on_step=False, on_epoch=True)
         del self.y_test_true_buffer
         del self.y_test_score_buffer
