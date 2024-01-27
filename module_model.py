@@ -171,6 +171,7 @@ class QCGNN_IX(nn.Module):
             diff_method: str = "best",
             shots: int = 1024,
             aggregation: str = "SUM",
+            return_meas: bool = False,
     ):
         """Quantum Complete Graph Neural Network (QCGNN) in {I,X}
 
@@ -217,6 +218,8 @@ class QCGNN_IX(nn.Module):
                 might cause crashed when using IBM quantum systems.
             aggregation : str (default "SUM")
                 Aggregation function ("SUM" or "MEAN").
+            return_meas : bool (default False)
+                Whether to return measurement outputs.
         """
 
         super().__init__()
@@ -225,6 +228,7 @@ class QCGNN_IX(nn.Module):
         self.num_reupload = num_reupload
         self.ctrl_enc = ctrl_enc
         self.aggregation = aggregation
+        self.return_meas = return_meas
 
         # Initialize quantum registers (IR, NR). Note when executing on IBM
         # real devices, the multi-controlled gates need to be composed, so we
@@ -391,6 +395,10 @@ class QCGNN_IX(nn.Module):
         x = torch.unflatten(
             x, dim=-1, sizes=(2**self.num_ir_qubits, self.num_nr_qubits))
 
+        # Whether returning measurement outputs.
+        if self.return_meas:
+            meas = x.detach()
+
         # Transpose to shape (batch, NR, (2**IR)).
         x = x.mT
 
@@ -403,7 +411,10 @@ class QCGNN_IX(nn.Module):
             x = x / num_ptcs
 
         # `x` is now in shape (batch, NR).
-        return x
+        if self.return_meas:
+            return x, meas
+        else:
+            return x
 
 
 class QCGNN_H(QCGNN_IX):
@@ -419,6 +430,7 @@ class QCGNN_H(QCGNN_IX):
             diff_method: str = "best",
             shots: int = 1024,
             aggregation: str = "SUM",
+            return_meas: bool = False,
     ):
         """QCGNN with Hadamard transform at the last step.
 
@@ -438,6 +450,7 @@ class QCGNN_H(QCGNN_IX):
             diff_method=diff_method,
             shots=shots,
             aggregation=aggregation,
+            return_meas=return_meas,
         )
 
     def build_full_circuit(self) -> Callable:
@@ -478,9 +491,15 @@ class QCGNN_H(QCGNN_IX):
         x = torch.flatten(x, start_dim=-2, end_dim=-1)
         x = self.net(x)
 
+        if self.return_meas:
+            meas = x.detach()
+
         if self.aggregation == "SUM":
             x = x * num_ptcs
         elif self.aggregation == "MEAN":
             x = x / num_ptcs
 
-        return x
+        if self.return_meas:
+            return x, meas
+        else:
+            return x

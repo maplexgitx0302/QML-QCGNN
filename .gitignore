@@ -5,6 +5,9 @@ _*
 a.py
 log.txt
 
+# gmail
+gmail.json
+
 # training result
 pred_outputs/
 old_pred_outputs/
