@@ -14,7 +14,7 @@ import torch
 import torch.nn as nn
 
 # See https://discuss.pennylane.ai/t/qml-prod-vs-direct-operators-product/3873
-qml.operation.enable_new_opmath()
+# qml.operation.enable_new_opmath()
 
 # Pauli matrices dictionary.
 PM = {"I": qml.Identity, "X": qml.PauliX,
@@ -274,51 +274,54 @@ class QCGNN_IX(nn.Module):
             self.circuit_before_measurement(inputs, weights)
 
             # Get observable list.
-            observables = self.observables_of_IX_combinations()
+            pws = self.pauli_words_of_IX_combinations()
 
-            return [qml.expval(obs_str) for obs_str in observables]
+            return [qml.expval(pw) for pw in pws]
 
         return full_circuit
 
-    def observables_of_IX_combinations(self) -> list:
-        """Observables of {I,X} combinations
+    def pauli_words_of_IX_combinations(self) -> list:
+        """Pauli products of {I,X} combinations
 
         Set measurement operators (excluding working qubits).
         IR -> Measure in all combinations of {I,X} basis.
         NR -> Measure in Z basis for each qubits individually.
 
         Returns:
-            List: Observables of {I,X} combinations.
+            List: Pauli strings of {I,X} combinations.
         """
 
-        def bin_repr_to_observable_str(bin_repr: str):
-            """Turn binary representation string to Pauli observable string"""
-            observable_list = []
-            for i in range(len(bin_repr)):
-                # `i` also corresponds to the i-th qubit in IR.
-                bit = bin_repr[i]
-                if bit == "0":
-                    observable = qml.Identity
-                elif bit == "1":
-                    observable = qml.PauliX
-                observable_list.append(observable(wires=i))
-            observable_str = reduce(lambda x, y: x @ y, observable_list)
-            return observable_str
-
         # Loop over all combinations {I,X} in IR.
-        observable_str_list = []
+        pauli_word_list = []
+
         # `dec_repr` -> decimal representations.
-        for dec_repr in range(2**self.num_ir_qubits):
+        for dec_repr in range(2 ** self.num_ir_qubits):
+
             # `bin_repr` -> binary representations.
             bin_repr = np.binary_repr(dec_repr, width=self.num_ir_qubits)
-            # Observable string in IR.
-            IR_observable_str = bin_repr_to_observable_str(bin_repr)
-            for wires in self.nr_wires:
-                # Observable string in NR (treat each NR qubits individually).
-                NR_observable_str = qml.PauliZ(wires=wires)
-                observable_str = qml.prod(IR_observable_str, NR_observable_str)
-                observable_str_list.append(observable_str)
-        return observable_str_list
+
+            # Pauli string in IR.
+            ir_pauli_str = ""
+            for bit in bin_repr:
+                if bit == "0":
+                    ir_pauli_str += "I"
+                elif bit == "1":
+                    ir_pauli_str += "X"
+
+            # Pauli string in WR.
+            wr_pauli_str = "I" * self.num_wk_qubits
+
+            # Pauli string in NR (treat each NR qubits individually).
+            for wires in range(self.num_nr_qubits):
+                nr_pauli_str = "I" * wires
+                nr_pauli_str += "Z"
+                nr_pauli_str += "I" * (self.num_nr_qubits - wires - 1)
+
+                pauli_str = ir_pauli_str + wr_pauli_str + nr_pauli_str
+                pauli_word = qml.pauli.string_to_pauli_word(pauli_str)
+                pauli_word_list.append(pauli_word)
+
+        return pauli_word_list
 
     def circuit_before_measurement(self, inputs, weights):
         """Quantum circuit for QCGNN"""

@@ -426,7 +426,7 @@ class JetDataModule(pl.LightningDataModule):
             data_ratio: float,
             batch_size: int,
             graph: bool,
-            max_num_ptcs: int = None,
+            pad_num_ptcs: int = None,
     ):
         """Pytorch Lightning Data Module for jet.
 
@@ -448,8 +448,8 @@ class JetDataModule(pl.LightningDataModule):
             graph : bool
                 If True, the dataset is stored as graph (using pytorch-
                 grometric). Otherwise, the dataset is stored in tensors.
-            max_num_ptcs : int
-                Maximum number of particles within jets.
+            pad_num_ptcs : int
+                Pad number of particles within jets.
         """
 
         super().__init__()
@@ -458,14 +458,14 @@ class JetDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
 
         # Determine maximum number of particles within jets
-        if max_num_ptcs is None:
-            self.max_num_ptcs = max(
+        if pad_num_ptcs is None:
+            self.pad_num_ptcs = max(
                 max(ak.count(sig_events["fast_pt"], axis=1)),
                 max(ak.count(bkg_events["fast_pt"], axis=1)),
             )
         else:
-            self.max_num_ptcs = max_num_ptcs
-        _log(f"Max number of particles = {self.max_num_ptcs}")
+            self.pad_num_ptcs = pad_num_ptcs
+        _log(f"Max (pad) number of particles = {self.pad_num_ptcs}")
 
         # Preprocess the events.
         sig_events = self._preprocess(sig_events)
@@ -521,7 +521,7 @@ class JetDataModule(pl.LightningDataModule):
             def pad(x):
                 return torch.nn.functional.pad(
                     input=x,
-                    pad=(0, 0, 0, self.max_num_ptcs-len(x)),
+                    pad=(0, 0, 0, self.pad_num_ptcs-len(x)),
                     mode="constant",
                     value=0,
                 )

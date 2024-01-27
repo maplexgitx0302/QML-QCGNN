@@ -3,6 +3,7 @@
 __pycache__/
 _*
 a.py
+log.txt
 
 # training result
 pred_outputs/
@@ -19,4 +20,5 @@ jet_dataset/
 slurm*
 
 # pennylane-qiskit plugin
+.ibmq.json
 config.toml

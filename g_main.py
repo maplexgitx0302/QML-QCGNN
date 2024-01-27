@@ -51,9 +51,6 @@ import module_training
 # Faster calculation on GPU but less precision.
 torch.set_float32_matmul_precision("medium")
 
-# See https://discuss.pennylane.ai/t/qml-prod-vs-direct-operators-product/3873
-qml.operation.enable_new_opmath()
-
 # QCGNN template to use
 QCGNN = module_model.QCGNN_IX
 
@@ -450,19 +447,20 @@ class QuantumRotQCGNN(nn.Module):
 """
 
 # %%
-def get_ckpt_path(ckpt_key: str):
+def get_ckpt_path(ckpt_key: str, rnd_seed: int):
     """Returns the ckpt path for the given key
 
     Args:
         ckpt_key : str
             The key that helps finding the correct ckpt directory.
+        rnd_seed : int
+            Random seed.
     """
 
     # Find the correct ckpt file path.
     pretrain_dir = general_config["pretrain_dir"]
     for dir_name in os.listdir(pretrain_dir):
-        rnd_seed = int(dir_name[-1])
-        if (ckpt_key in dir_name) and (rnd_seed == general_config["rnd_seed"]):
+        if (ckpt_key in dir_name) and (int(dir_name[-1]) == rnd_seed):
             ckpt_dir = os.path.join(pretrain_dir, dir_name, "checkpoints")
             ckpt_file = os.listdir(ckpt_dir)[0]
             ckpt_path = os.path.join(ckpt_dir, ckpt_file)
@@ -523,7 +521,7 @@ def generate_datamodule(
         data_ratio=data_ratio,
         batch_size=batch_size,
         graph=graph,
-        max_num_ptcs=data_config["max_num_ptcs"]
+        pad_num_ptcs=data_config["pad_num_ptcs"]
     )
 
 # %%
@@ -659,13 +657,13 @@ def execute(
     elif mode == "predict":
         # The ckpt key helped for finding correct checkpoints file.
         ckpt_key = model_config["group_rnd"]
-        # Train 8 particles only, and use the parameters to test other number 
+        # Train 16 particles only, and use the parameters to test other number 
         # of particles.
         if model_config['model_name'] == QuantumRotQCGNN.__name__:
             gnn_idx_qubits = model_config['gnn_idx_qubits']
             ckpt_key = ckpt_key.replace(f"qidx{gnn_idx_qubits}", "qidx4")
         # Get the correct checkpoints file path.
-        ckpt_path = get_ckpt_path(ckpt_key)
+        ckpt_path = get_ckpt_path(ckpt_key, general_config["rnd_seed"])
         train_summary = trainer.test(
             model=litmodel,
             dataloaders=data_module.train_dataloader(),
@@ -885,7 +883,10 @@ def generate_data_config(
         subjet_radius: float,
         num_bin_data: int,
         max_num_ptcs: int,
+        pad_num_ptcs: int,
         pt_threshold: float,
+        num_ptcs_range: tuple[int, int] = None,
+        print_log: bool = False,
     ):
     """Generate a dictionary of data configurations
     
@@ -910,6 +911,10 @@ def generate_data_config(
             Maximum number of particles in each jet.
         pt_threshold : int
             Ratio of particle pt / jet pt.
+        num_ptcs_range : tuple[int, int]
+            Number of particles in range [a, b] (>=a & <=b).
+        print_log : bool
+            Print log when generating data.
 
     Returns:
         dict : Dictionary of data configurations.
@@ -924,9 +929,10 @@ def generate_data_config(
         "bin": bin,
         "num_bin_data": num_bin_data,
         "max_num_ptcs": max_num_ptcs,
+        "pad_num_ptcs": pad_num_ptcs,
         "pt_threshold": pt_threshold,
-        "num_ptcs_range": None,
-        "print_log": False,
+        "num_ptcs_range": num_ptcs_range,
+        "print_log": print_log,
     }
     data_config["data_suffix"] = (
         f"{abbrev}_ptc{max_num_ptcs}_thres{pt_threshold}"
@@ -942,6 +948,7 @@ data_config_list = [
         cut_pt=(800, 1000), subjet_radius=0, bin=10,
         num_bin_data=general_config["num_bin_data"],
         max_num_ptcs=general_config["max_num_ptcs"],
+        pad_num_ptcs=general_config["max_num_ptcs"],
         pt_threshold=general_config["pt_threshold"],
     ),
     
@@ -951,6 +958,7 @@ data_config_list = [
         cut_pt=(800, 1000), subjet_radius=0, bin=10,
         num_bin_data=general_config["num_bin_data"],
         max_num_ptcs=general_config["max_num_ptcs"],
+        pad_num_ptcs=general_config["max_num_ptcs"],
         pt_threshold=general_config["pt_threshold"],
     ),
 ]
@@ -990,7 +998,8 @@ pred_dir = os.path.join(general_config["predictions_dir"], "ideal_model")
 os.makedirs(pred_dir, exist_ok=True)
 
 # num_ptcs_range_list = [(2, 4), (8, 10), (14, 16)]
-# prediction_tuple = product(range(1), num_ptcs_range_list, data_config_list)
+# num_ptcs_range_list = [(2, 2), (4, 4), (8, 8)]
+# prediction_tuple = product(range(3), num_ptcs_range_list, data_config_list)
 
 # # Uncomment the model you want to predict.
 # for rnd_seed, num_ptcs_range, data_config in prediction_tuple:

@@ -1,3 +1,6 @@
+# simulator
+ibmq_qasm_simulator
+
 # 27 Qubits
 ibmq_kolkata
 ibm_algiers
