@@ -139,6 +139,7 @@ def generate_data_config(sig, bkg, abbrev, general_config):
     pad_num_ptcs = general_config["pad_num_ptcs"]
     pt_threshold = general_config["pt_threshold"]
     subjet_radius = general_config["subjet_radius"]
+    num_ptcs_range = general_config["num_ptcs_range"]
 
     data_config = {
         "sig": sig,  # Signal channel.
@@ -151,7 +152,7 @@ def generate_data_config(sig, bkg, abbrev, general_config):
         "max_num_ptcs": max_num_ptcs,  # Drop particles if exceed this number.
         "pad_num_ptcs": pad_num_ptcs,  # Pad to this number with zero pt.
         "pt_threshold": pt_threshold,  # Drop particles less than this threshold.
-        "num_ptcs_range": None,  # This is used for running on real device.
+        "num_ptcs_range": num_ptcs_range,  # This is used for running on real device.
         "print_log": True,  # Whether print random sampling message.
     }
     

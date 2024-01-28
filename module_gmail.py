@@ -2,16 +2,18 @@
 
 from email.message import EmailMessage
 import json
+import os
 import platform
 import smtplib
 import ssl
 import time
 
-with open("gmail.json", "r") as json_file:
-    gmail_json = json.load(json_file)
-    email_sender = gmail_json["from"]
-    email_receiver = gmail_json["to"]
-    email_passwd = gmail_json["passwd"]
+if os.path.isfile("gmail.json"):
+    with open("gmail.json", "r") as json_file:
+        gmail_json = json.load(json_file)
+        email_sender = gmail_json["from"]
+        email_receiver = gmail_json["to"]
+        email_passwd = gmail_json["passwd"]
 
 
 def dict_to_table_str(dictionary):

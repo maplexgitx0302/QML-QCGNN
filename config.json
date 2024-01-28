@@ -1,6 +1,6 @@
 {
     "// basic settings": "",
-        "quick_test": true,
+        "quick_test": false,
         "input_dim": 6,
         "data_ratio": 0.8,
         "max_epochs": 30,
@@ -17,6 +17,7 @@
         "pad_num_ptcs": 16,
         "cut_pt_low": 800,
         "cut_pt_high": 1000,
+        "num_ptcs_range": null, 
     
     "// pytorch lightning trainer": "",
         "num_workers": 0,
