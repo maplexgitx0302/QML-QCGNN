@@ -38,22 +38,24 @@ The main python scripts are written in jupyter format (`.ipynb`), for user who w
 ```bash
 # /bin/bash
 pip install ipynb-py-convert
-ipynb-py-convert g_main.ipynb a.py
-python a.py
+ipynb-py-convert g_main.ipynb g_main.py
+python g_main.py
 ```
 
-# Quick Start
-### Training and Prediction
-All main procedure can be executed through `./g_main.ipynb`, and most of the configuration can be setup in `./config.json`. You can simply uncomment the code you want to test in the last two sections (*Training Cell* and *Prediction Cell*).
+# Quick Guide
+### Training
+All training procedure can be executed through `./g_main.ipynb` (or `g_main.py`), and most of the configuration can be setup in `./config.json`. You can simply uncomment the code you want to test in the last section (*Training Cell*).
 
-- Training
-    - **Uncomment** and modify the model hyperparameters you want to train, also set up the random seeds if needed.
-    - The dataset hyperparameters can be set in `data_config` dictionaries. 
-    - The default training mode is **quick start mode**, i.e., trained with `max_epochs=1` and `num_bin_data=1`, no matter whatever you set in `./config.json`. Set `config["quick_start"]=false` in `./config.json` for full training.
+- **Uncomment** and modify the model hyperparameters you want to train, also set up the random seeds if needed.
+- The dataset hyperparameters can be set in `./config.json`, for detail usage, see function `generate_data_config` in `./g_main.ipynb` (or `./g_main.py`).
+- The default training mode is **quick start mode**, i.e., trained with `max_epochs=1` and `num_bin_data=1`, independent of settings in `./config.json`. Set `config["quick_start"]=false` in `./config.json` for full training.
 
-- Prediction
-  - Make sure you have the `pretrain_ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link).
-  - **Uncomment** and modify the code you want to test.
+### Run on IBMQ device (backend)
+To run with IBMQ real devices, see `./g_ibmq.ipynb` for detail.
+- Make sure you have the `pretrain_ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link).
+- You can send the email when finish running on IBMQ device, see `./module_gmail.py` and [gmail notification tutorial](https://www.youtube.com/watch?v=g_j6ILT-X0k) (default turned on if `gmail.json` file exists).
+
+> In case you trained your own model, the pretrained `ckpt` will be stored in `./training_logs`, move the corresponding directories to `./pretrain_ckpt` so that when running on IBMQ, the pretrained model can be loaded.
 
 ---
 

@@ -11,6 +11,7 @@ About the modules `module_*.py`:
 - `module_data.py`: Reading data and constructing data modules.
 - `module_model.py`: Some detail construction of classical and quantum models.
 - `module_training.py`: Related to routine training procedure.
+- `module_gmail.py`: Not used in this script (for gmail notification).
 """
 
 # %%
@@ -32,7 +33,6 @@ About the modules `module_*.py`:
 import argparse
 from itertools import product
 import json
-import os
 import time
 
 import lightning as L
@@ -49,16 +49,16 @@ import module_model
 import module_training
 
 # Faster calculation on GPU but less precision.
-torch.set_float32_matmul_precision("medium")
+# torch.set_float32_matmul_precision("medium")
 
-# QCGNN template to use
+# Choose QCGNN base model.
 QCGNN = module_model.QCGNN_IX
 
 # %%
 """
 ### Manual Settings
 
-Most of the configuration setup can be done in `./config.json`, some explanation of the arguments in `./config.json`.
+Most of the configuration setup can be done in `./config.json`, some explanation of the arguments in `./config.json` is listed below:
 - Set `quick_test` to true to test whether the code can run in your environment.
 - Set `computing_platform` to "slurm" if running in *slurm* (optional).
 - Set `use_wandb` to true if you want to monitor the trainning procedure through [Wandb](https://wandb.ai/site), otherwise the training result will be saved as a `csv` file.
@@ -115,6 +115,104 @@ if __name__ == "__main__":
     if general_config["quick_test"] == True:
         general_config["max_epochs"] = 1
         general_config["num_bin_data"] = 1
+
+# %%
+"""
+### Dataset
+"""
+
+# %%
+"""
+##### Data configuration settings
+
+The dictionary that contains the information of dataset. The channels will be determined in the training loop below.
+"""
+
+# %%
+def generate_data_config(sig, bkg, abbrev, general_config):
+    """Set up dataset configurations."""
+
+    bin = general_config["bin"]
+    cut_pt = (general_config["cut_pt_low"], general_config["cut_pt_high"])
+    num_bin_data = general_config["num_bin_data"]
+    max_num_ptcs = general_config["max_num_ptcs"]
+    pad_num_ptcs = general_config["pad_num_ptcs"]
+    pt_threshold = general_config["pt_threshold"]
+    subjet_radius = general_config["subjet_radius"]
+
+    data_config = {
+        "sig": sig,  # Signal channel.
+        "bkg": bkg,  # Background channel.
+        "abbrev": abbrev,  # Abbreviation name for the classification.
+        "cut_pt": cut_pt,  # Select jets with pt in this range.
+        "subjet_radius": subjet_radius,  # The radius for subjet reclustering.
+        "bin": bin,  # Number of bins uniform distributed in range `cut_pt`.
+        "num_bin_data": num_bin_data,  # Number of data in each bin.
+        "max_num_ptcs": max_num_ptcs,  # Drop particles if exceed this number.
+        "pad_num_ptcs": pad_num_ptcs,  # Pad to this number with zero pt.
+        "pt_threshold": pt_threshold,  # Drop particles less than this threshold.
+        "num_ptcs_range": None,  # This is used for running on real device.
+        "print_log": True,  # Whether print random sampling message.
+    }
+    
+    data_config["data_suffix"] = (
+        f"{abbrev}_ptc{max_num_ptcs}_thres{pt_threshold}"
+        f"-nb{num_bin_data}_R{subjet_radius}"
+    )
+    
+    return data_config
+
+# %%
+def generate_datamodule(
+        data_config: dict,
+        data_ratio: float,
+        batch_size: int,
+        graph: bool
+    ):
+    """Generate datamodule for `execute` usage
+    
+    Args:
+        data_config : dict
+            See code below for detail usage.
+        data_ratio : float
+            Ratio of (# of training) / (# of training + testing).
+        batch_size : int
+            Number of data per batch.
+        graph : bool
+            Whether the dataset is generated in graph structure or not.
+    """
+
+    # Generate uniform pt events.
+    fatjet_events = lambda channel: module_data.FatJetEvents(
+        channel=channel,
+        cut_pt=data_config["cut_pt"],
+        subjet_radius=data_config["subjet_radius"],
+        max_num_ptcs=data_config["max_num_ptcs"],
+        pt_threshold=data_config["pt_threshold"],
+    )
+    sig_fatjet_events = fatjet_events(data_config["sig"])
+    bkg_fatjet_events = fatjet_events(data_config["bkg"])
+    sig_events = sig_fatjet_events.generate_uniform_pt_events(
+        bin=data_config["bin"],
+        num_bin_data=data_config["num_bin_data"],
+        num_ptcs_range=data_config["num_ptcs_range"],
+        print_log=data_config["print_log"],
+    )
+    bkg_events = bkg_fatjet_events.generate_uniform_pt_events(
+        bin=data_config["bin"],
+        num_bin_data=data_config["num_bin_data"],
+        num_ptcs_range=data_config["num_ptcs_range"],
+        print_log=data_config["print_log"],
+    )
+
+    return module_data.JetDataModule(
+        sig_events=sig_events,
+        bkg_events=bkg_events,
+        data_ratio=data_ratio,
+        batch_size=batch_size,
+        graph=graph,
+        pad_num_ptcs=data_config["pad_num_ptcs"],
+    )
 
 # %%
 """
@@ -381,20 +479,48 @@ class QuantumRotQCGNN(nn.Module):
             num_layers: int,
             num_reupload: int,
             quantum_config: dict,
-            aggregation: str,
+            aggregation: str = "SUM",
+            return_meas: bool = False,
     ):
+        """The quantum model that will be mainly used.
+
+        This quantum model is based on the QCGNN_IX in `modeul_model.py`.
+
+        Args:
+            num_ir_qubits : int
+                Number of qubits in IR.
+            num_nr_qubits : int
+                Number of qubits in NR.
+            num_layers : int
+                Number of VQC layers (per data re-uploading).
+            num_reupload : int
+                Number of data re-uploading.
+            quantum_config : dict
+                Arguments related in creating quantum device.
+            aggregation : str (default "SUM")
+                Aggregation method, either "SUM" or "MEAN".
+            return_meas : bool (default False)
+                Whether record the measurement output (for IBMQ).
+        """
         
         super().__init__()
+        self.aggregation = aggregation
+        self.return_meas = return_meas
         
-        # Detemine the encoding method.
-        qdevice = quantum_config["qdevice"] # quantum device
-        qbackend = quantum_config["qbackend"] # quantum backend
+        # Detemine the encoding method due to the quantum device.
+        qdevice = quantum_config["qdevice"]
+        qbackend = quantum_config["qbackend"]
+
+        # Real device (qiskit / IBMQ).
         if ("qiskit" in qdevice) or ("qiskit" in qbackend):
             ctrl_enc = lambda ptc_input, control_values: \
                 qiskit_encoding(ptc_input, control_values, num_ir_qubits, num_nr_qubits)
+        
+        # Quantum simulators.
         else:
             ctrl_enc = lambda ptc_input, control_values: \
                 pennylane_encoding(ptc_input, control_values, num_ir_qubits, num_nr_qubits)
+        
         self.ctrl_enc = ctrl_enc
         
         # Constructing `phi` and `mlp` just like MPGNN.
@@ -405,23 +531,29 @@ class QuantumRotQCGNN(nn.Module):
             num_reupload=num_reupload,
             ctrl_enc=ctrl_enc,
             aggregation=aggregation,
+            return_meas=return_meas,
             **quantum_config
-            )
+        )
+
         self.mlp = module_model.ClassicalMLP(
             in_channel=num_nr_qubits,
             out_channel=1,
             hidden_channel=0,
             num_layers=0
-            )
+        )
     
     def forward(self, x):
-        # QCGNN.
-        x = self.phi(x)
-
-        # Shallow linear model.
-        x = self.mlp(x)
+        # Run on real devices (will return measurement outputs).
+        if self.return_meas:
+            x, meas = self.phi(x)
+            x = self.mlp(x)
+            return x, meas
         
-        return x
+        # Run on quantum simulators.
+        else:
+            x = self.phi(x)
+            x = self.mlp(x)
+            return x
 
 # %%
 """
@@ -440,89 +572,6 @@ class QuantumRotQCGNN(nn.Module):
     - `mode="train"` will create a new training, with results saving at `result_dir` in `./config.json`.
     - `mode="predict"` will load `ckpt` files from `ckpt_dir` in `./config.json`.
 """
-
-# %%
-"""
-##### Functions will be used in `execute` function.
-"""
-
-# %%
-def get_ckpt_path(ckpt_key: str, rnd_seed: int):
-    """Returns the ckpt path for the given key
-
-    Args:
-        ckpt_key : str
-            The key that helps finding the correct ckpt directory.
-        rnd_seed : int
-            Random seed.
-    """
-
-    # Find the correct ckpt file path.
-    pretrain_dir = general_config["pretrain_dir"]
-    for dir_name in os.listdir(pretrain_dir):
-        if (ckpt_key in dir_name) and (int(dir_name[-1]) == rnd_seed):
-            ckpt_dir = os.path.join(pretrain_dir, dir_name, "checkpoints")
-            ckpt_file = os.listdir(ckpt_dir)[0]
-            ckpt_path = os.path.join(ckpt_dir, ckpt_file)
-            break
-    else:
-        raise ValueError(f"ckpt NOT found in {pretrain_dir}: key = {ckpt_key}")
-    
-    _log(f"ckpt found at {ckpt_path}")
-
-    return ckpt_path
-
-
-def generate_datamodule(
-        data_config: dict,
-        data_ratio: float,
-        batch_size: int,
-        graph: bool
-    ):
-    """Generate datamodule for `execute` usage
-    
-    Args:
-        data_config : dict
-            See code below for detail usage.
-        data_ratio : float
-            Ratio of (# of training) / (# of training + testing).
-        batch_size : int
-            Number of data per batch.
-        graph : bool
-            Whether the dataset is generated in graph structure or not.
-    """
-
-    # Generate uniform pt events.
-    fatjet_events = lambda channel: module_data.FatJetEvents(
-        channel=channel,
-        cut_pt=data_config["cut_pt"],
-        subjet_radius=data_config["subjet_radius"],
-        max_num_ptcs=data_config["max_num_ptcs"],
-        pt_threshold=data_config["pt_threshold"],
-    )
-    sig_fatjet_events = fatjet_events(data_config["sig"])
-    bkg_fatjet_events = fatjet_events(data_config["bkg"])
-    sig_events = sig_fatjet_events.generate_uniform_pt_events(
-        bin=data_config["bin"],
-        num_bin_data=data_config["num_bin_data"],
-        num_ptcs_range=data_config["num_ptcs_range"],
-        print_log=data_config["print_log"],
-    )
-    bkg_events = bkg_fatjet_events.generate_uniform_pt_events(
-        bin=data_config["bin"],
-        num_bin_data=data_config["num_bin_data"],
-        num_ptcs_range=data_config["num_ptcs_range"],
-        print_log=data_config["print_log"],
-    )
-
-    return module_data.JetDataModule(
-        sig_events=sig_events,
-        bkg_events=bkg_events,
-        data_ratio=data_ratio,
-        batch_size=batch_size,
-        graph=graph,
-        pad_num_ptcs=data_config["pad_num_ptcs"]
-    )
 
 # %%
 """
@@ -587,7 +636,7 @@ def execute(
     model_config["group_rnd_full"] = f"{model_config['model_name']}-{model_config['group_rnd']}"
 
     # Monitor (either CSVLogger or WandbLogger) configuration and setup.
-    logger_config = {}
+    logger_config = {"resume":True}
     logger_config["project"] = general_config["wandb_project"]
     logger_config["group"] = f"{data_config['sig']}_{data_config['bkg']}"
     logger_config["name"] = f"{model_config['group_rnd']}-{general_config['time']}_{general_config['device']}{suffix}_{general_config['rnd_seed']}"
@@ -620,12 +669,12 @@ def execute(
     
     # pytorch-lightning trainer.
     trainer = L.Trainer(
-        logger = logger, 
-        accelerator = general_config["accelerator"],
-        max_epochs = general_config["max_epochs"],
-        fast_dev_run = general_config["fast_dev_run"],
-        log_every_n_steps = general_config["log_every_n_steps"],
-        num_sanity_val_steps = 0,
+        logger=logger, 
+        accelerator=general_config["accelerator"],
+        max_epochs=general_config["max_epochs"],
+        fast_dev_run=general_config["fast_dev_run"],
+        log_every_n_steps=general_config["log_every_n_steps"],
+        num_sanity_val_steps=0,
     )
     
     # pytorch-lightning data module.
@@ -633,14 +682,14 @@ def execute(
         data_config=data_config, 
         data_ratio=general_config["data_ratio"],
         batch_size=general_config["batch_size"],
-        graph=graph
-        )
+        graph=graph,
+    )
     
     # pytorch-lightning model.
     litmodel = module_training.BinaryLitModel(
         model=model,
         lr=model_config["lr"],
-        graph=graph
+        graph=graph,
     )
     
     # Training or prediction.
@@ -654,6 +703,7 @@ def execute(
             model=litmodel,
             dataloaders=data_module.test_dataloader()
         )[0] # The output is like [summary_object], so use [0] to get the item.
+    
     elif mode == "predict":
         # The ckpt key helped for finding correct checkpoints file.
         ckpt_key = model_config["group_rnd"]
@@ -663,7 +713,7 @@ def execute(
             gnn_idx_qubits = model_config['gnn_idx_qubits']
             ckpt_key = ckpt_key.replace(f"qidx{gnn_idx_qubits}", "qidx4")
         # Get the correct checkpoints file path.
-        ckpt_path = get_ckpt_path(ckpt_key, general_config["rnd_seed"])
+        ckpt_path = module_training.get_ckpt_path(ckpt_key, general_config["rnd_seed"])
         train_summary = trainer.test(
             model=litmodel,
             dataloaders=data_module.train_dataloader(),
@@ -750,6 +800,7 @@ def execute_classical(
     model = ClassicalMPGNN(**model_config)
 
     # Execute training for classical models.
+    general_config["accelerator"] = json_config["accelerator"]
     run_id, summary = execute(
         model=model,
         general_config=general_config,
@@ -763,7 +814,10 @@ def execute_classical(
     # Check whether the model is trained successfully above threshold.
     test_acc = summary["test_acc_epoch"]
     acc_threshold = general_config["retrain_threshold"]
-    below_threshold = (test_acc < acc_threshold).any()
+    try:
+        below_threshold = (test_acc < acc_threshold).any()
+    except:
+        below_threshold = (test_acc < acc_threshold)
     
     # Too small model might not trainable, we retrain with random seed += 10.
     if (mode == "train") and general_config["retrain"] and below_threshold:
@@ -843,6 +897,7 @@ def execute_quantum(
     )
     
     # Execute training for quantum models.
+    general_config["accelerator"] = "cpu"
     run_id, summary = execute(
         model=model,
         general_config=general_config,
@@ -874,92 +929,21 @@ Jet dataset using 3 features $p_T$, $\Delta\eta$, $\Delta\phi$.
 """
 
 # %%
-def generate_data_config(
-        sig: str,
-        bkg: str,
-        abbrev: str,
-        cut_pt: tuple[float, float],
-        bin: int,
-        subjet_radius: float,
-        num_bin_data: int,
-        max_num_ptcs: int,
-        pad_num_ptcs: int,
-        pt_threshold: float,
-        num_ptcs_range: tuple[int, int] = None,
-        print_log: bool = False,
-    ):
-    """Generate a dictionary of data configurations
-    
-    For detail construction, see `module_data.py`.
-
-    Args:
-        sig : str
-            Signal channel (the directory name in `./jet_dataset`).
-        bkg : str
-            Background channel (the directory name in `./jet_dataset`).
-        abbrev : str
-            Abbreviation of the jet discrimination.
-        cut_pt : tuple[float, float]
-            Minimum and maximum range of jet pt.
-        subjet_radius : float
-            The radius for reclustering.
-        bin : int
-            How many bins that will uniformly distributed over cut_pt.
-        num_bin_data : int
-            Number of data that uniformly generated in each bin.
-        max_num_ptcs : int
-            Maximum number of particles in each jet.
-        pt_threshold : int
-            Ratio of particle pt / jet pt.
-        num_ptcs_range : tuple[int, int]
-            Number of particles in range [a, b] (>=a & <=b).
-        print_log : bool
-            Print log when generating data.
-
-    Returns:
-        dict : Dictionary of data configurations.
-    """
-
-    data_config = {
-        "sig": sig,
-        "bkg": bkg,
-        "abbrev": abbrev,
-        "cut_pt": cut_pt,
-        "subjet_radius": subjet_radius,
-        "bin": bin,
-        "num_bin_data": num_bin_data,
-        "max_num_ptcs": max_num_ptcs,
-        "pad_num_ptcs": pad_num_ptcs,
-        "pt_threshold": pt_threshold,
-        "num_ptcs_range": num_ptcs_range,
-        "print_log": print_log,
-    }
-    data_config["data_suffix"] = (
-        f"{abbrev}_ptc{max_num_ptcs}_thres{pt_threshold}"
-        f"-nb{num_bin_data}_R{subjet_radius}"
-    )
-
-    return data_config
-
 data_config_list = [
     # 2-prong v.s. 1-prong.
     generate_data_config(
-        sig="VzToZhToVevebb", bkg="VzToQCD", abbrev="BB-QCD",
-        cut_pt=(800, 1000), subjet_radius=0, bin=10,
-        num_bin_data=general_config["num_bin_data"],
-        max_num_ptcs=general_config["max_num_ptcs"],
-        pad_num_ptcs=general_config["max_num_ptcs"],
-        pt_threshold=general_config["pt_threshold"],
+        sig="VzToZhToVevebb",
+        bkg="VzToQCD",
+        abbrev="BB-QCD",
+        general_config=general_config,
     ),
     
     # 3-prong v.s. 1-prong.
     generate_data_config(
-        sig="VzToTt", bkg="VzToQCD", abbrev="TT-QCD",
-        cut_pt=(800, 1000), subjet_radius=0, bin=10,
-        num_bin_data=general_config["num_bin_data"],
-        max_num_ptcs=general_config["max_num_ptcs"],
-        pad_num_ptcs=general_config["max_num_ptcs"],
-        pt_threshold=general_config["pt_threshold"],
+        sig="VzToTt",
+        bkg="VzToQCD",
+        abbrev="TT-QCD",
+        general_config=general_config,
     ),
 ]
 
@@ -983,56 +967,3 @@ for rnd_seed, data_config in product(range(10), data_config_list):
     # # Quantum QCGNN with NR qubits = reuploads = {3, 5, 7}.
     # for q in [3, 5, 7]:
     #     execute_quantum(general_config, data_config, qnn=q, gl=1, gr=q, lr=1E-3, mode="train")
-
-# %%
-"""
-### Prediction Cell
-"""
-
-# %%
-# Pandas data frame buffers for saving prediction values.
-c_df = pd.DataFrame()
-b_df = pd.DataFrame()
-q_df = pd.DataFrame()
-pred_dir = os.path.join(general_config["predictions_dir"], "ideal_model")
-os.makedirs(pred_dir, exist_ok=True)
-
-# num_ptcs_range_list = [(2, 4), (8, 10), (14, 16)]
-# num_ptcs_range_list = [(2, 2), (4, 4), (8, 8)]
-# prediction_tuple = product(range(3), num_ptcs_range_list, data_config_list)
-
-# # Uncomment the model you want to predict.
-# for rnd_seed, num_ptcs_range, data_config in prediction_tuple:
-#     data_config["num_bin_data"] = None
-#     data_config["num_ptcs_range"] = num_ptcs_range
-#     data_config["print_log"] = True
-#     general_config["rnd_seed"] = rnd_seed
-
-#     # Prediction for classical MPGNN.
-#     for gnn_dim in [3, 5, 7]:
-#         # Get summary of prediction result.
-#         _, summary = execute_classical(
-#             general_config, data_config, go=gnn_dim, gh=gnn_dim, gl=2, lr=1E-3, mode="predict")
-#         # Concatenating to prediction buffers.
-#         c_df = pd.concat((c_df, summary))
-#     # Saving prediction summary to csv file.
-#     csv_file = f"classical-{general_config['num_bin_data']}_{rnd_seed}.csv"
-#     c_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
-
-#     # Prediction for best classical MPGNN.
-#     _, summary = execute_classical(
-#         general_config, data_config, go=1024, gh=1024, gl=4, lr=1E-3, mode="predict")
-#     b_df = pd.concat((b_df, summary))
-#     csv_file = f"best_classical-{general_config['num_bin_data']}_{rnd_seed}.csv"
-#     b_df.to_csv(os.path.join(pred_dir, csv_file), index=False)
-
-    # # Prediction for quantum QCGNN.
-    # for qnn_dim in [3, 5, 7]:
-    #     # Get summary of prediction result.
-    #     _, summary = execute_quantum(
-    #         general_config, data_config, qnn=qnn_dim, gl=1, gr=qnn_dim, lr=1E-3, mode="predict")
-    #     # Concatenating to prediction buffers.
-    #     q_df = pd.concat((q_df, summary))
-    # # Saving prediction summary to csv file.
-    # csv_file = f"quantum-{general_config['num_bin_data']}_{rnd_seed}.csv"
-    # q_df.to_csv(os.path.join(pred_dir, csv_file), index=False)

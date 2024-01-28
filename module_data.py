@@ -54,7 +54,6 @@ pdgid_table = {
 # fastjet.ClusterSequence(_array, _jet_def)
 
 
-# The logging function.
 def _log(message: str) -> None:
     """Printing function for log."""
     print(f"# DataLog: {message}")

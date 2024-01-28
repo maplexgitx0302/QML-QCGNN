@@ -10,6 +10,7 @@ parameters. It can also be combined with `Wandb`, which monitoring
 hardware information and training procedure.
 """
 
+import json
 import os
 import time
 from typing import Callable, Union
@@ -21,6 +22,17 @@ import torch
 import torch.nn as nn
 from torch_geometric.data import Data
 import wandb
+
+
+# Get `hdf5` saving directory.
+with open("config.json", "r") as json_file:
+    # This json config might be loaded for other use in other python scripts.
+    json_config = json.load(json_file)
+
+
+def _log(message: str) -> None:
+    """Printing function for log."""
+    print(f"# TrainingLog: {message}")
 
 
 def default_monitor(logger_config: dict, *args: dict):
@@ -258,3 +270,50 @@ class BinaryLitModel(L.LightningModule):
         _, acc = self.forward(data, mode="test")
         self.log("test_acc", acc, on_step=True,
                  on_epoch=True, batch_size=batch_size)
+
+
+def get_ckpt_path(ckpt_key: str, rnd_seed: int):
+    """Returns the ckpt path for the given key
+
+    Args:
+        ckpt_key : str
+            The key that helps finding the correct ckpt directory.
+        rnd_seed : int
+            Random seed.
+    """
+
+    # Find the correct ckpt file path.
+    pretrain_dir = json_config["pretrain_dir"]
+    for dir_name in os.listdir(pretrain_dir):
+        if (ckpt_key in dir_name) and (int(dir_name[-1]) == rnd_seed):
+            ckpt_dir = os.path.join(pretrain_dir, dir_name, "checkpoints")
+            ckpt_file = os.listdir(ckpt_dir)[0]
+            ckpt_path = os.path.join(ckpt_dir, ckpt_file)
+            break
+    else:
+        raise ValueError(f"ckpt NOT found in {pretrain_dir}: key = {ckpt_key}")
+
+    _log(f"ckpt found at {ckpt_path}")
+
+    return ckpt_path
+
+
+def load_state_dict(model: nn.Module, ckpt_path: str):
+    """Load model checkpoints parameters.
+
+    Args:
+        model : nn.Module
+            Model to be load state dict.
+        ckpt_path : str
+            Path of checkpoints.
+    """
+
+    # The keys of ckpt state_dict somehow different than loading keys.
+    old_state_dict = torch.load(ckpt_path)["state_dict"]
+    new_state_dict = {}
+    for old_key in old_state_dict.keys():
+        # Containing prefix "model.", no need this prefix.
+        new_key = old_key[6:]
+        print(f"state_dict key updated: {old_key} ---> {new_key}")
+        new_state_dict[new_key] = old_state_dict[old_key]
+    model.load_state_dict(new_state_dict)

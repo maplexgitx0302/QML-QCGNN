@@ -1,29 +1,33 @@
 {
     "// basic settings": "",
         "quick_test": false,
-        "max_epochs": 30,
-        "num_bin_data": 500,
-        "batch_size": 50,
-        "quantum_config": "pennylane_config",
-        "computing_platform": "",
-        "aggregation": "SUM",
-    
-    "// dataset settings": "",
         "input_dim": 6,
         "data_ratio": 0.8,
+        "max_epochs": 30,
+        "batch_size": 50,
+        "computing_platform": "",
+        "aggregation": "SUM",
+        
+    "// jet dataset settings": "",
+        "bin": 10,
+        "num_bin_data": 500,
+        "subjet_radius": 0,
         "pt_threshold": 0.05,
         "max_num_ptcs": 16,
+        "pad_num_ptcs": 16,
+        "cut_pt_low": 800,
+        "cut_pt_high": 1000,
     
     "// pytorch lightning trainer": "",
         "num_workers": 0,
-        "accelerator": "cpu",
+        "accelerator": "gpu",
         "fast_dev_run": false,
         "log_every_n_steps": 50,
     
     "// wandb settings (optional)": "",
         "use_wandb": false,
         "wandb_account": "ntuyianchen",
-        "wandb_project": "g_var",
+        "wandb_project": "QCGNN_main",
     
     "// output directories": "",
         "dataset_dir": "./jet_dataset",
@@ -32,7 +36,7 @@
         "predictions_dir": "./pred_outputs",
     
     "// re-training for classical shallow models": "",
-        "retrain": true,
+        "retrain": false,
         "retrain_cycle": 10,
         "retrain_threshold": 0.6
 }
