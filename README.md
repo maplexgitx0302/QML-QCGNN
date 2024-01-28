@@ -31,7 +31,7 @@ pip install -r requirements.txt
 - Links to dataset and pre-trained models (optional):
   - The full jet dataset can be downloaded from [jet_dataset](https://drive.google.com/drive/folders/1i0wG-YqQr4hbMl4SNnhKbOK0UB_aHWGw?usp=share_link) to local directory `./jet_dataset`
 
-  - The pre-trained model parameters can be loaded from `ckpt` (checkpoints) files and can be downloaded from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link) to local directory `./pretrain_ckpt`.
+  - The pre-trained model parameters can be loaded from `ckpt` (checkpoints) files and can be downloaded from [pretrain_ckpt](https://drive.google.com/file/d/1DcC2WetceAOkTg5HGoUdzUrBkFtMlYKk/view?usp=share_link) to local directory `./pretrain_ckpt`.
 
 ### Jupyter Environment (optional)
 The main python scripts are written in jupyter format (`.ipynb`), for user who wants to use traditional python scripts (`.py`), you can download `ipynb-py-convert` package:
@@ -52,7 +52,7 @@ All training procedure can be executed through `./g_main.ipynb` (or `g_main.py`)
 
 ### Run on IBMQ device (backend)
 To run with IBMQ real devices, see `./g_ibmq.ipynb` for detail.
-- Make sure you have the `pretrain_ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`, or simply download the pretrained models from [pretrain_ckpt](https://drive.google.com/drive/folders/1yAEV5jiHGTpHcaPzBhBPZNguxWcGs_kI?usp=share_link).
+- Make sure you have the `pretrain_ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`.
 - You can send the email when finish running on IBMQ device, see `./module_gmail.py` and [gmail notification tutorial](https://www.youtube.com/watch?v=g_j6ILT-X0k) (default turned on if `gmail.json` file exists).
 
 > In case you trained your own model, the pretrained `ckpt` will be stored in `./training_logs`, move the corresponding directories to `./pretrain_ckpt` so that when running on IBMQ, the pretrained model can be loaded.
