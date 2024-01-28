@@ -14,6 +14,12 @@ The main training workflow is based on [PyTorch](https://pytorch.org) and [Penny
 # /bin/bash
 # It is highyly recommended to install `PyTorch` seperately (see warning below).
 pip install -r requirements.txt
+
+# Check your own PyTorch version
+pip install torch
+
+# Install additional package for using IBMQ device
+pip install pennylane-qiskit
 ```
 
 > **Warning**: It is highly recommended to install `PyTorch` independently, see [official website](https://pytorch.org) for corresponding installation.
@@ -29,9 +35,9 @@ pip install -r requirements.txt
   2. Automatically download through command line ```python quick_download.py```, this will create `./jet_dataset` and `./pretrain_ckpt` directories.
 
 - Links to dataset and pre-trained models (optional):
-  - The full jet dataset can be downloaded from [jet_dataset](https://drive.google.com/drive/folders/1i0wG-YqQr4hbMl4SNnhKbOK0UB_aHWGw?usp=share_link) to local directory `./jet_dataset`
+  - The full jet dataset can be downloaded from [jet_dataset](https://drive.google.com/file/d/1FP_SOqcbStRfvXim-wXEdh1-VVxRjKuF/view?usp=sharing) to local directory `./jet_dataset`
 
-  - The pre-trained model parameters can be loaded from `ckpt` (checkpoints) files and can be downloaded from [pretrain_ckpt](https://drive.google.com/file/d/1DcC2WetceAOkTg5HGoUdzUrBkFtMlYKk/view?usp=share_link) to local directory `./pretrain_ckpt`.
+  - The pre-trained model parameters can be loaded from `ckpt` (checkpoints) files and can be downloaded from [pretrain_ckpt](https://drive.google.com/file/d/1DcC2WetceAOkTg5HGoUdzUrBkFtMlYKk/view?usp=sharing) to local directory `./pretrain_ckpt`.
 
 ### Jupyter Environment (optional)
 The main python scripts are written in jupyter format (`.ipynb`), for user who wants to use traditional python scripts (`.py`), you can download `ipynb-py-convert` package:
@@ -51,9 +57,11 @@ All training procedure can be executed through `./g_main.ipynb` (or `g_main.py`)
 - The default training mode is **quick start mode**, i.e., trained with `max_epochs=1` and `num_bin_data=1`, independent of settings in `./config.json`. Set `config["quick_start"]=false` in `./config.json` for full training.
 
 ### Run on IBMQ device (backend)
-To run with IBMQ real devices, see `./g_ibmq.ipynb` for detail.
-- Make sure you have the `pretrain_ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`.
-- You can send the email when finish running on IBMQ device, see `./module_gmail.py` and [gmail notification tutorial](https://www.youtube.com/watch?v=g_j6ILT-X0k) (default turned on if `gmail.json` file exists).
+To run with IBMQ real devices, see `./g_ibmq.ipynb` for detail. Here is some prerequisites:
+1. Install additional package by `pip install pennylane-qiskit`.
+2. Create `./config.toml` file, see [PennyLane Configuration File](https://docs.pennylane.ai/en/latest/introduction/configuration.html#format) for further detail
+3. Make sure the `pretrain_ckpt` files placed correctly, e.g., `./pretrain_ckpt/MODEL_DESCRIPTION/checkpoints/EPOCH-STEP.ckpt`.
+4. You can send the email when finish running on IBMQ device, see `./module_gmail.py` and [gmail notification tutorial](https://www.youtube.com/watch?v=g_j6ILT-X0k) (default turned on if `gmail.json` file exists).
 
 > In case you trained your own model, the pretrained `ckpt` will be stored in `./training_logs`, move the corresponding directories to `./pretrain_ckpt` so that when running on IBMQ, the pretrained model can be loaded.
 
@@ -62,10 +70,10 @@ To run with IBMQ real devices, see `./g_ibmq.ipynb` for detail.
 # MISC
 
 ### File descriptions
-- Files with prefix `./module_`: Modules for detail of reading/loading data, constructing models, training procedures.
-- Files with prefix `./demo_`: Demo for reading out or extracting the information of data, comparing encodings, etc.
-- Files with prefix `./result_`: Related to getting training results.
-- Files in `./jet_dataset`:
+- File with prefix `./module_`: Modules for detail of reading/loading data, constructing models, training procedures.
+- File with prefix `./demo_`: Demo for reading out or extracting the information of data, comparing encodings, etc.
+- File with prefix `./result_`: Related to getting training results.
+- File in `./jet_dataset`:
   - `VzToQCD`: 1-prong light quark QCD jets.
   - `VzToZhToVevebb`: 2-prong jets from $H\rightarrow b\bar{b}$.
   - `VzToTt`: 3-prong jets from $t\rightarrow bW^+$.

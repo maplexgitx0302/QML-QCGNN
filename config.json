@@ -1,6 +1,6 @@
 {
     "// basic settings": "",
-        "quick_test": false,
+        "quick_test": true,
         "input_dim": 6,
         "data_ratio": 0.8,
         "max_epochs": 30,

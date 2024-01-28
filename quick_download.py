@@ -27,9 +27,9 @@ def gdrive_download(dir_name, url):
 
 
 # `pretrain_ckpt` (pretrain models).
-url_pretrain_ckpt = "https://drive.google.com/file/d/1DcC2WetceAOkTg5HGoUdzUrBkFtMlYKk/view?usp=share_link"
+url_pretrain_ckpt = "https://drive.google.com/file/d/1DcC2WetceAOkTg5HGoUdzUrBkFtMlYKk/view?usp=sharing"
 gdrive_download(dir_name="pretrain_ckpt", url=url_pretrain_ckpt)
 
 # `jet_dataset_0` (jet dataset without reclustering).
-url_jet_dataset = "https://drive.google.com/file/d/1FP_SOqcbStRfvXim-wXEdh1-VVxRjKuF/view?usp=share_link"
+url_jet_dataset = "https://drive.google.com/file/d/1FP_SOqcbStRfvXim-wXEdh1-VVxRjKuF/view?usp=sharing"
 gdrive_download(dir_name="jet_dataset", url=url_jet_dataset)
