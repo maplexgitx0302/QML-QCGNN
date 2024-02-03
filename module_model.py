@@ -172,6 +172,7 @@ class QCGNN_IX(nn.Module):
             shots: int = 1024,
             aggregation: str = "SUM",
             return_meas: bool = False,
+            noise_prob: float = 0,
     ):
         """Quantum Complete Graph Neural Network (QCGNN) in {I,X}
 
@@ -220,6 +221,8 @@ class QCGNN_IX(nn.Module):
                 Aggregation function ("SUM" or "MEAN").
             return_meas : bool (default False)
                 Whether to return measurement outputs.
+            noise_prob : float (default 0)
+                The probability of noise.
         """
 
         super().__init__()
@@ -229,6 +232,7 @@ class QCGNN_IX(nn.Module):
         self.ctrl_enc = ctrl_enc
         self.aggregation = aggregation
         self.return_meas = return_meas
+        self.noise_prob = noise_prob
 
         # Initialize quantum registers (IR, NR). Note when executing on IBM
         # real devices, the multi-controlled gates need to be composed, so we
@@ -241,6 +245,7 @@ class QCGNN_IX(nn.Module):
         self.num_wk_qubits = num_wk_qubits  # Working qubits.
         self.num_nr_qubits = num_nr_qubits  # NR quantum register.
         num_qubits = num_ir_qubits + num_wk_qubits + num_nr_qubits
+        self.num_qubits = num_qubits
         _log(f"Quantum device  = {qdevice}")
         _log(f"Quantum backend = {qbackend}")
         _log(
@@ -257,6 +262,9 @@ class QCGNN_IX(nn.Module):
             # If real device -> specify backend and shots.
             self.qml_device = qml.device(
                 qdevice, wires=num_qubits, backend=qbackend, shots=shots)
+        elif qdevice == "default.mixed":
+            self.qml_device = qml.device(
+                qdevice, wires=num_qubits, shots=shots)
         else:
             self.qml_device = qml.device(qdevice, wires=num_qubits)
         self.diff_method = diff_method
@@ -327,8 +335,26 @@ class QCGNN_IX(nn.Module):
 
         return pauli_word_list
 
+    def random_noise(self):
+        """Randomly apply a noise channel."""
+
+        for wires in range(self.num_qubits):
+            rnd_noise = np.random.randint(2)
+
+            if rnd_noise == 0:
+                qml.DepolarizingChannel(
+                    p=self.noise_prob,
+                    wires=wires
+                )
+            elif rnd_noise == 1:
+                qml.GeneralizedAmplitudeDamping(
+                    gamma=self.noise_prob,
+                    p=0.5,
+                    wires=wires
+                )
+
     def circuit_before_measurement(self, inputs, weights):
-        """Quantum circuit for QCGNN"""
+        """Quantum circuit for QCGNN."""
         # The `inputs` will be automatically reshape as (batch_size, D),
         # where D is the dimension of a single flattened data. We reshape
         # the `inputs` back to correct shape, by assuming the data
@@ -351,6 +377,10 @@ class QCGNN_IX(nn.Module):
                 torch.norm(state_vector, dim=-1, keepdim=True)
             qml.QubitStateVector(state_vector, wires=self.ir_wires)
 
+        # Noise channel 1.
+        if self.noise_prob > 0:
+            self.random_noise()
+
         # Data-reuploading (need `num_reupload` >= 1).
         for re_idx in range(self.num_reupload):
             # Encoding data with multi-controlled gates.
@@ -372,9 +402,15 @@ class QCGNN_IX(nn.Module):
                     # Note we feed in only one particle information.
                     self.ctrl_enc(inputs[ir_idx],
                                   control_values=control_values)
+                # Noise channel 2.
+                if self.noise_prob > 0:
+                    self.random_noise()
             # Using strongly entangling layers for VQC ansatz.
             qml.StronglyEntanglingLayers(
                 weights=weights[re_idx], wires=self.nr_wires)
+            # Noise channel 3.
+            if self.noise_prob > 0:
+                self.random_noise()
 
     def forward(self, x):
         # Count number of particles (since we pad 0).
@@ -408,6 +444,9 @@ class QCGNN_IX(nn.Module):
         if self.aggregation == "SUM":
             x = x * num_ptcs
         elif self.aggregation == "MEAN":
+            # Remember in classical, we have 2 MEAN aggregations, one for node,
+            # and one for graph, which means we have total (1/N)^2 factor. So
+            # we divide with an additional factor 1/N here.
             x = x / num_ptcs
 
         # `x` is now in shape (batch, NR).

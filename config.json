@@ -35,6 +35,7 @@
         "pretrain_dir": "./pretrain_ckpt",
         "result_dir": "./training_logs",
         "predictions_dir": "./pred_outputs",
+        "figures_dir": "./figures",
     
     "// re-training for classical shallow models": "",
         "retrain": false,
