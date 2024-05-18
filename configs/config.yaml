@@ -1,0 +1,34 @@
+# Configurations used in `main.ipynb` (or `main.py`)
+
+Settings:
+  mode: '110'         # Stands for ('train', 'valid', 'test').
+  use_wandb: true     # Whether using wandb to monitor training procedure.
+  suffix: 'first_run' # Suffix description of this training.
+
+
+Data:
+  sig: 'VzToTt'          # Signal channel.
+  bkg: 'VzToQCD'         # Background channel.
+  num_train: 4000        # Number of training data per channel.
+  num_valid: 1000        # Number of validation data per channel.
+  batch_size: 50         # Batch size.
+  pad_num_ptcs: 16       # Pad particle torch tensors.
+  pt_min: 800            # Minimum of jet pt.
+  pt_max: 1000           # Maximum of jet pt.
+  pt_threshold: 0.05     # Percentage of daughter pt to jet pt threshold.
+  max_num_ptcs: 16       # Maximum number of particles per jet.
+  num_bins: 10           # Number of bins in pt range.
+  num_data_per_bin: 500  # Number of data per bin.
+  num_ptcs_range: null   # Range of number of particles per jet.
+
+
+Train:
+  max_epochs: 30           # Maximum number of epochs.
+  lr: 1e-3                 # Learning rate.
+  log_every_n_steps: 25    # Log every n steps.
+  num_sanity_val_steps: 0  # To avoid calculating AUC for single class.
+
+
+Model:
+  aggregation: 'add'  # Aggregation method.
+  score_dim: 2        # Dimension of output (score).

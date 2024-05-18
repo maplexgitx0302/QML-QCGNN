@@ -1,28 +1,26 @@
-# local files
+# from setup.py
+build/
+*.egg-info
+
+# system
 .DS_Store
 __pycache__/
+.python-version
+
+# testing files
 _*
 a.py
 b.py
-log.txt
 
-# gmail
-gmail.json
-
-# training result
-pred_outputs/
-old_pred_outputs/
-pretrain_ckpt/
-training_logs/
-
-# data
-jet_dataset/
+# large data
+dataset/
 *.root
 *.hdf5
 
-# slurm
-slurm*
-
-# pennylane-qiskit plugin
-.ibmq.json
+# private information
+gmail.yaml
 config.toml
+wandb.yaml
+
+# training result
+result/
