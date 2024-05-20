@@ -16,7 +16,7 @@ import h5py
 import numpy as np
 import uproot
 
-from src.utils.path import root_path
+from source.utils.path import root_path
 
 data_dir = os.path.join(root_path, 'dataset')
 

@@ -1,11 +1,13 @@
 """Lightning data module"""
 
+import functools
 import itertools
 
 import awkward as ak
 import lightning as L
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader as TorchDataLoader
 from torch_geometric.data import Data
 from torch_geometric.loader import DataLoader as GeoDataLoader
@@ -34,8 +36,7 @@ class TorchDataset(torch.utils.data.Dataset):
 class JetTorchDataModule(L.LightningDataModule):
     def __init__(
             self,
-            sig_events: ak.Array,
-            bkg_events: ak.Array,
+            events: list[ak.Array],
             num_train: int,
             num_valid: int,
             batch_size: int,
@@ -50,10 +51,8 @@ class JetTorchDataModule(L.LightningDataModule):
         want to monitor the behavior during training.
 
         Args:
-            sig_events : ak.Array
-                Typically just FatJetEvents.events of signal channel.
-            bkg_events : ak.Array
-                Typically just FatJetEvents.events of backgound channel.
+            events : list[ak.Array]
+                List of FatJetEvents, label will be the sequence order.
             num_train : int
                 Number of training data.
             num_valid : int
@@ -70,25 +69,22 @@ class JetTorchDataModule(L.LightningDataModule):
 
         # Determine maximum number of particles within jets
         if pad_num_ptcs is None:
-            pad_num_ptcs = max(
-                max(ak.count(sig_events['pt'], axis=1)),
-                max(ak.count(bkg_events['pt'], axis=1)),
-            )
+            pad_num_ptcs = max([max(ak.count(_events['pt'], axis=1)) for _events in events])
         self.pad_num_ptcs = pad_num_ptcs
 
         # Preprocess the events.
-        sig_events = self._preprocess(sig_events)
-        bkg_events = self._preprocess(bkg_events)
+        events = [self._preprocess(_events) for _events in events]
 
         # Prepare dataset for dataloaders.
-        sig_train = sig_events[:num_train]
-        bkg_train = bkg_events[:num_train]
-        sig_valid = sig_events[num_train : num_train + num_valid]
-        bkg_valid = bkg_events[num_train : num_train + num_valid]
+        train_events = [_events[:num_train] for _events in events]
+        valid_events = [_events[num_train : num_train + num_valid] for _events in events]
 
-        self.train_dataset = self._dataset(sig_train, 1) + self._dataset(bkg_train, 0)
-        self.valid_dataset = self._dataset(sig_valid, 1) + self._dataset(bkg_valid, 0)
+        train_events = [self._dataset(_events, i) for i, _events in enumerate(train_events)]
+        valid_events = [self._dataset(_events, i) for i, _events in enumerate(valid_events)]
 
+        self.train_dataset = functools.reduce(lambda x, y: x + y, train_events)
+        self.valid_dataset = functools.reduce(lambda x, y: x + y, valid_events)
+        
     def _preprocess(self, events: ak.Array) -> list[torch.tensor]:
         """Function for preprocessing events."""
         
@@ -110,7 +106,7 @@ class JetTorchDataModule(L.LightningDataModule):
     def _dataset(self, events, y) -> TorchDataset:
         
         # Create padded tensor dataset
-        pad_function = lambda x: torch.nn.functional.pad(
+        pad_function = lambda x: nn.functional.pad(
             input=x,
             pad=(0, 0, 0, self.pad_num_ptcs - len(x)),
             mode="constant",

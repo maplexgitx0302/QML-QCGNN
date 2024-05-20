@@ -3,12 +3,10 @@
 Settings:
   mode: '110'         # Stands for ('train', 'valid', 'test').
   use_wandb: true     # Whether using wandb to monitor training procedure.
-  suffix: 'first_run' # Suffix description of this training.
+  suffix: '3_class' # Suffix description of this training.
 
 
 Data:
-  sig: 'VzToTt'          # Signal channel.
-  bkg: 'VzToQCD'         # Background channel.
   num_train: 4000        # Number of training data per channel.
   num_valid: 1000        # Number of validation data per channel.
   batch_size: 50         # Batch size.
@@ -31,4 +29,4 @@ Train:
 
 Model:
   aggregation: 'add'  # Aggregation method.
-  score_dim: 2        # Dimension of output (score).
+  score_dim: 3        # Dimension of output (score).

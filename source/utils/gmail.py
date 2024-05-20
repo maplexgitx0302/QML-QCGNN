@@ -11,7 +11,7 @@ import ssl
 import time
 import yaml
 
-from src.utils.path import root_path
+from source.utils.path import root_path
 
 configs_dir = os.path.join(root_path, 'configs')
 gmail_config_path = os.path.join(configs_dir, 'gmail.yaml')

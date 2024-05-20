@@ -6,8 +6,8 @@ import yaml
 from lightning.pytorch.loggers import WandbLogger, CSVLogger
 import torch
 
-from src.utils.device import get_cpu_name, get_gpu_name
-from src.utils.path import root_path
+from source.utils.device import get_cpu_name, get_gpu_name
+from source.utils.path import root_path
 
 training_logs_dir = 'result/training_logs'
 
