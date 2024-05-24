@@ -39,8 +39,9 @@ class JetTorchDataModule(L.LightningDataModule):
             events: list[ak.Array],
             num_train: int,
             num_valid: int,
+            num_test: int,
             batch_size: int,
-            pad_num_ptcs: int = None,
+            max_num_ptcs: int = None,
             **kwargs
         ):
         """Pytorch Lightning Data Module for jet.
@@ -53,13 +54,11 @@ class JetTorchDataModule(L.LightningDataModule):
         Args:
             events : list[ak.Array]
                 List of FatJetEvents, label will be the sequence order.
-            num_train : int
-                Number of training data.
-            num_valid : int
-                Number of validation data.
+            num_train / num_valid / num_test : int
+                Number of training / validation / testing data.
             batch_size : int
                 Batch size for data loaders.
-            pad_num_ptcs : int (default None)
+            max_num_ptcs : int (default None)
                 Pad number of particles within jets, used for non-graph
                 data, i.e., `graph == False`.
         """
@@ -68,9 +67,9 @@ class JetTorchDataModule(L.LightningDataModule):
         self.batch_size = batch_size
 
         # Determine maximum number of particles within jets
-        if pad_num_ptcs is None:
-            pad_num_ptcs = max([max(ak.count(_events['pt'], axis=1)) for _events in events])
-        self.pad_num_ptcs = pad_num_ptcs
+        if max_num_ptcs is None:
+            max_num_ptcs = max([max(ak.count(_events['pt'], axis=1)) for _events in events])
+        self.max_num_ptcs = max_num_ptcs
 
         # Preprocess the events.
         events = [self._preprocess(_events) for _events in events]
@@ -78,12 +77,15 @@ class JetTorchDataModule(L.LightningDataModule):
         # Prepare dataset for dataloaders.
         train_events = [_events[:num_train] for _events in events]
         valid_events = [_events[num_train : num_train + num_valid] for _events in events]
+        test_events  = [_events[num_train + num_valid : num_train + num_valid + num_test] for _events in events]
 
         train_events = [self._dataset(_events, i) for i, _events in enumerate(train_events)]
         valid_events = [self._dataset(_events, i) for i, _events in enumerate(valid_events)]
+        test_events  = [self._dataset(_events, i) for i, _events in enumerate(test_events)]
 
         self.train_dataset = functools.reduce(lambda x, y: x + y, train_events)
         self.valid_dataset = functools.reduce(lambda x, y: x + y, valid_events)
+        self.test_dataset  = functools.reduce(lambda x, y: x + y, test_events)
         
     def _preprocess(self, events: ak.Array) -> list[torch.tensor]:
         """Function for preprocessing events."""
@@ -108,9 +110,9 @@ class JetTorchDataModule(L.LightningDataModule):
         # Create padded tensor dataset
         pad_function = lambda x: nn.functional.pad(
             input=x,
-            pad=(0, 0, 0, self.pad_num_ptcs - len(x)),
+            pad=(0, 0, 0, self.max_num_ptcs - len(x)),
             mode="constant",
-            value=0
+            value=float('nan')
         )
         
         x = list(map(pad_function, events))
@@ -124,12 +126,12 @@ class JetTorchDataModule(L.LightningDataModule):
         return TorchDataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True)
 
     def val_dataloader(self):
-        """Validation data loader (same as testing data)"""
+        """Validation data loader"""
         return TorchDataLoader(self.valid_dataset, batch_size=self.batch_size, shuffle=False)
 
     def test_dataloader(self):
-        """Testing data loader (same as validation data)"""
-        return TorchDataLoader(self.valid_dataset, batch_size=self.batch_size, shuffle=False)
+        """Testing data loader"""
+        return TorchDataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False)
 
 
 class JetGraphDataModule(JetTorchDataModule):
@@ -160,4 +162,4 @@ class JetGraphDataModule(JetTorchDataModule):
         return GeoDataLoader(self.valid_dataset, batch_size=self.batch_size, shuffle=False)
 
     def test_dataloader(self):
-        return GeoDataLoader(self.valid_dataset, batch_size=self.batch_size, shuffle=False)
+        return GeoDataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False)

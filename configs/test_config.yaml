@@ -1,20 +1,20 @@
-# Configurations used in `main.ipynb` (or `main.py`)
+# Configurations for testing codes.
 
 Settings:
   mode: '110'         # Stands for ('train', 'valid', 'test').
-  use_wandb: true     # Whether using wandb to monitor training procedure.
-  suffix: ' '         # Suffix description of this training.
-  print_log: true     # Whether print logs during training.
+  use_wandb: false    # Whether using wandb to monitor training procedure.
+  suffix: ''          # Suffix description of this training.
+  print_log: false    # Whether print logs during training.
 
 
 Data:
-  num_train: 15000        # Number of training data per channel.
-  num_valid: 1500         # Number of validation data per channel.
-  num_test: 1500          # Number of testing data per channel.
+  num_train: 10000        # Number of training data per channel.
+  num_valid: 10000         # Number of validation data per channel.
+  num_test: 1000          # Number of testing data per channel.
   batch_size: 512         # Batch size.
   pt_min: 800             # Minimum of jet pt.
   pt_max: 1000            # Maximum of jet pt.
-  pt_threshold: 0         # Percentage of daughter pt to jet pt threshold.
+  pt_threshold: 0.05         # Percentage of daughter pt to jet pt threshold.
   max_num_ptcs: 16        # Maximum number of particles per jet.
   num_bins: 10            # Number of bins in pt range.
   num_ptcs_range: null    # Range of number of particles per jet.
@@ -23,7 +23,7 @@ Data:
 Train:
   max_epochs: 30           # Maximum number of epochs.
   lr: 1e-3                 # Learning rate.
-  log_every_n_steps: 20    # Log every n steps.
+  log_every_n_steps: 50    # Log every n steps, will affect `training_steps`.
   num_sanity_val_steps: 0  # To avoid calculating AUC for single class.
 
 

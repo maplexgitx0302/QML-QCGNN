@@ -9,7 +9,7 @@ import torch
 from source.utils.device import get_cpu_name, get_gpu_name
 from source.utils.path import root_path
 
-training_logs_dir = 'result/training_logs'
+training_logs_dir = 'training_logs'
 
 device_info = {
     'cpu': get_cpu_name().replace(' ', '_').replace('-', '_'),
@@ -25,7 +25,7 @@ def csv_logger(training_info: dict):
     save_dir = os.path.join(root_path, training_logs_dir, 'CSVLogger')
     os.makedirs(save_dir, exist_ok=True)
 
-    logger = CSVLogger(save_dir=save_dir, name=training_info['name'])
+    logger = CSVLogger(save_dir=save_dir, name=training_info['name'], version='lastest_run')
     
     log_info = training_info.copy()
     log_info.update(device_info)

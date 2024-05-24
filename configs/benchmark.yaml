@@ -1,0 +1,38 @@
+# Hyperparameters of Particle Transformer.
+
+ParticleTransformer:
+
+  ParEmbed:
+    input_dim: 3 # 16
+    embed_dim: [64, 64] # [128, 512, 128]
+
+  ParAtteBlock:
+    num_heads: 4 # 8
+    fc_dim: 256 # 512
+    dropout: 0.1 # 0.1
+
+  ClassAtteBlock:
+    num_heads: 4 # 8
+    fc_dim: 256 # 512
+    dropout: 0.0 # 0.0
+
+  num_ParAtteBlock: 4 # 8
+  num_ClassAtteBlock: 2 # 2
+
+# Hyperparameters of Particle Net.
+
+ParticleNet:
+
+  input_dim: 3
+
+  edge_conv: [
+      # [top_k_neighbor, [[channel_1_in, channel_1_out], [channel_2_in, channel_2_out], ...]]
+      [4, [[32, 32], [32, 32], [32, 32]]], # [7, [[32, 32], [32, 32], [32, 32]]]
+      [4, [[32, 64], [64, 64], [64, 64]]], # [7, [[32, 64], [64, 64], [64, 64]]]
+  ]
+
+  fc: [
+      # [dropout_rate, [channel_in, channel_out]]
+      [0.1, [64, 128]], # [0.1, [64, 128]]
+      [0.1, [128, 128]], # 0.1, [128, 128]]
+  ]
