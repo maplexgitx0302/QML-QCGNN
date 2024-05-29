@@ -18,7 +18,7 @@ import uproot
 
 from source.utils.path import root_path
 
-data_dir = os.path.join(root_path, 'dataset')
+dataset_dir = os.path.join(root_path, 'dataset')
 
 # PID table.
 pdgid_table = {
@@ -40,7 +40,7 @@ def _log(message: str) -> None:
 def read_full_data(channel):
     """Read original MadGraph5 root file through 'uproot'."""
 
-    hdf5_path = os.path.join(data_dir, f"{channel}.root")
+    hdf5_path = os.path.join(dataset_dir, 'hvt', f"{channel}.root")
     events = uproot.open(hdf5_path + ':Delphes;1')
 
     # Set aliases of branches for uproot reading data
@@ -94,48 +94,6 @@ def read_full_data(channel):
     return events
 
 
-def save_ak_to_hdf5(channel: str, data_info: str, ak_array: ak.Array):
-    """Save events data to HDF5 file
-
-    Save FatJetEvents.events to HDF5 file that have already been
-    preprocessed.
-
-    The codes below are followed from:
-    https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#saving-awkward-arrays-to-hdf5
-    """
-
-    # Use `h5py` package to save `hdf5` file.
-    _log(f"Start creating {channel}-{data_info}.hdf5 file")
-    hdf5_name = f"{channel}-{data_info}.hdf5"
-    hdf5_file = h5py.File(os.path.join(data_dir, hdf5_name), 'w')
-    hdf5_group = hdf5_file.create_group(channel)
-    form, length, _ = ak.to_buffers(ak.to_packed(ak_array), container=hdf5_group)
-    hdf5_group.attrs['form'] = form.to_json()
-    hdf5_group.attrs['length'] = json.dumps(length)
-    _log(f"Successfully creating {channel}-{data_info}.hdf5 file")
-
-
-def load_hdf5_to_ak(channel: str, data_info: str):
-    """Load events data to HDF5 file
-
-    Load HDF5 file that have already been preprocessed.
-
-    The codes below are followed from:
-    https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#reading-awkward-arrays-from-hdf5
-    """
-
-    # Use `h5py` package to load `hdf5` file.
-    hdf5_name = f"{channel}-{data_info}.hdf5"
-    hdf5_file = h5py.File(os.path.join(data_dir, hdf5_name), 'r')
-    hdf5_group = hdf5_file[channel]
-    ak_array = ak.from_buffers(
-        ak.forms.from_json(hdf5_group.attrs['form']),
-        json.loads(hdf5_group.attrs['length']),
-        {k: np.asarray(v) for k, v in hdf5_group.items()},
-    )
-    return ak_array
-
-
 class FatJetEvents:
     def __init__(
             self,
@@ -182,10 +140,9 @@ class FatJetEvents:
         self.fields = ['fatjet_pt', 'pt', 'delta_eta', 'delta_phi']
 
         # If `load_hdf5`, check existence and load it.
-        data_info = f"pt_{pt_min}_{pt_max}"
         try:
-            events = load_hdf5_to_ak(channel, data_info)
-            _log(f"Load {channel}-{data_info}.hdf5 file with {len(events['fatjet_pt'])} events.")
+            events = self.load_hdf5_to_ak()
+            _log(f"Load {channel}-pt_{pt_min}_{pt_max}.hdf5 file with {len(events['fatjet_pt'])} events.")
         
         except FileNotFoundError as _error:
             _log(_error)
@@ -215,7 +172,7 @@ class FatJetEvents:
             for field in ['pt', 'delta_eta', 'delta_phi']:
                 events[field] = events[field][pt_arg_sort]
 
-            save_ak_to_hdf5(channel, data_info, events)
+            self.save_ak_to_hdf5(events)
 
         # Set maximum number of daughter particles per jet.
         if max_num_ptcs != -1:
@@ -284,3 +241,44 @@ class FatJetEvents:
             bin_selected = (events['fatjet_pt'] >= bin_lower) * (events['fatjet_pt'] < bin_upper)
             bin_events = events[bin_selected]
             print(f" * Number of events in pt ({bin_lower:.0f}, {bin_upper:.0f}) = {len(bin_events)}")
+
+    def save_ak_to_hdf5(self, ak_array: ak.Array):
+        """Save events data to HDF5 file
+
+        Save FatJetEvents.events to HDF5 file that have already been
+        preprocessed.
+
+        The codes below are followed from:
+        https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#saving-awkward-arrays-to-hdf5
+        """
+
+        # Use `h5py` package to save `hdf5` file.
+        hdf5_name = f"{self.channel}-pt_{self.pt_min}_{self.pt_max}.hdf5"
+        _log(f"Start creating {hdf5_name}.hdf5 file")
+        hdf5_file = h5py.File(os.path.join(dataset_dir, hdf5_name), 'w')
+        hdf5_group = hdf5_file.create_group(self.channel)
+        form, length, _ = ak.to_buffers(ak.to_packed(ak_array), container=hdf5_group)
+        hdf5_group.attrs['form'] = form.to_json()
+        hdf5_group.attrs['length'] = json.dumps(length)
+        _log(f"Successfully creating {hdf5_name}.hdf5 file")
+
+
+    def load_hdf5_to_ak(self):
+        """Load events data to HDF5 file
+
+        Load HDF5 file that have already been preprocessed.
+
+        The codes below are followed from:
+        https://awkward-array.org/doc/main/user-guide/how-to-convert-buffers.html#reading-awkward-arrays-from-hdf5
+        """
+
+        # Use `h5py` package to load `hdf5` file.
+        hdf5_name = f"{self.channel}-pt_{self.pt_min}_{self.pt_max}.hdf5"
+        hdf5_file = h5py.File(os.path.join(dataset_dir, 'hvt', hdf5_name), 'r')
+        hdf5_group = hdf5_file[self.channel]
+        ak_array = ak.from_buffers(
+            ak.forms.from_json(hdf5_group.attrs['form']),
+            json.loads(hdf5_group.attrs['length']),
+            {k: np.asarray(v) for k, v in hdf5_group.items()},
+        )
+        return ak_array

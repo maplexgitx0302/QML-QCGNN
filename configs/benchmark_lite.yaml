@@ -4,24 +4,24 @@ ParticleTransformer:
 
   ParEmbed: # (pt_rel, delta_eta, delta_phi)
     input_dim: 3 # 16
-    embed_dim: [128, 512, 128]
+    embed_dim: [64, 64] # [128, 512, 128]
 
   IntEmbed: # (delta, kt, z)
     input_dim: 3 # 4
-    embed_dim: [64, 64, 64]
+    embed_dim: [16, 16] # [64, 64]
 
   ParAtteBlock:
-    num_heads: 8
-    fc_dim: 512
-    dropout: 0.1
+    num_heads: 4 # 8
+    fc_dim: 64 # 512
+    dropout: 0.1 # 0.1
 
   ClassAtteBlock:
-    num_heads: 8
-    fc_dim: 512
-    dropout: 0.0
+    num_heads: 4 # 8
+    fc_dim: 64 # 512
+    dropout: 0.0 # 0.0
 
-  num_ParAtteBlock: 8
-  num_ClassAtteBlock: 2
+  num_ParAtteBlock: 4 # 8
+  num_ClassAtteBlock: 1 # 2
 
 # Hyperparameters of Particle Net.
 
@@ -31,12 +31,12 @@ ParticleNet:
 
   edge_conv: [
       # [top_k_neighbor, [[channel_1_in, channel_1_out], [channel_2_in, channel_2_out], ...]]
-      [7, [[32, 32], [32, 32], [32, 32]]],
-      [7, [[32, 64], [64, 64], [64, 64]]],
+      [4, [[16, 16], [16, 16]]], # [7, [[32, 32], [32, 32], [32, 32]]]
+      [4, [[16, 16], [16, 16]]], # [7, [[32, 64], [64, 64], [64, 64]]]
   ]
 
   fc: [
       # [dropout_rate, [channel_in, channel_out]]
-      [0.1, [64, 128]],
-      [0.1, [128, 128]],
+      [0.1, [16, 16]],
+      [0.1, [16, 16]],
   ]

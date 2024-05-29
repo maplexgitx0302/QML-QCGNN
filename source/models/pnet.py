@@ -1,45 +1,6 @@
 import torch
 from torch import nn
 
-@torch.jit.script
-def knn(points, K: int = 2):
-    """Calculate k-nearest neighbors."""
-
-    # Calculate the distance of all points.
-    distance = torch.norm(points.unsqueeze(-2) - points.unsqueeze(-3), dim=-1)
-
-    # Find out the indices of k nearest neighbor
-    _, topk_index = torch.topk(-distance, k=(K + 1))
-
-    return topk_index[..., 1:]
-
-
-@torch.jit.script
-def extend_neighbor_distance(x: torch.Tensor, knn_index: torch.Tensor):
-    """Extend with neighbor distance (in feature space).
-
-        Args:
-            x : torch.Tensor
-                Shape = (N, P, C).
-            knn_index : torch.Tensor
-                Shape = (N, P, K).
-    """
-
-    N = knn_index.shape[0]
-    P = knn_index.shape[1]
-    K = knn_index.shape[2]
-    C = x.shape[2]
-
-    knn_index = knn_index.reshape(N, P * K) # (N, P * K)
-
-    f_neighbor = torch.cat([x[i, sub_index] for i, sub_index in enumerate(knn_index)]) # (N * P * K, C)
-    f_neighbor = f_neighbor.reshape(N, P, K, C)
-
-    f_center = torch.tile(torch.unsqueeze(x, dim=-2), (1, 1, K, 1)) # (N, P, K, C)
-    f_extend = torch.cat([f_center, torch.subtract(f_center, f_neighbor)], dim=-1) # (N, P, K, 2 * C)
-
-    return torch.permute(f_extend, (0, 3, 1, 2)) # (N, 2 * C, P, K)
-
 
 class EdgeConv(nn.Module):
 
@@ -80,13 +41,21 @@ class EdgeConv(nn.Module):
         x_residual = self.residual(x.transpose(-1, -2)) # (N, C', P)
         x_residual = x_residual.transpose(-1, -2) # (N, P, C')
 
-        # knn method
+        # k-nn (k-nearest neighbors) method.
         if direction is None:
-            direction = x.masked_fill(mask.unsqueeze(-1), float('inf'))
-        knn_index = knn(direction, K=self.K) # (N, P, K)
-        x = extend_neighbor_distance(x, knn_index) # (N, 2 * C, P, K), 2 means x and x'
+            direction = x.masked_fill(mask.unsqueeze(-1), float('inf')) # (N, P, C)
+        distance = torch.norm(direction.unsqueeze(-2) - direction.unsqueeze(-3), dim=-1) # (N, P, P)
+        _, knn_index = torch.topk(distance, k=(self.K + 1), largest=False) # _, (N, P, K + 1)
+        knn_index = knn_index[..., 1:] # (N, P, K)
 
-        # Mask of K
+        # Extend features with neighbor features subtraction.
+        f_center = x.unsqueeze(-2).expand(-1, -1, self.K, -1) # (N, P, K, C)
+        f_neighbor = x.unsqueeze(-2).expand(-1, -1, self.K, -1) # (N, P, K, C)
+        f_neighbor = f_neighbor.gather(-1, knn_index.unsqueeze(-1)) # (N, P, K, C)
+        x = torch.cat([f_center, f_center - f_neighbor], dim=-1) # (N, P, K, 2 * C)
+        x = x.permute(0, 3, 1, 2) # (N, 2 * C, P, K)
+
+        # Mask of K (remove connection of padded particles from k-nn).
         mask_K = mask.shape[1] - torch.sum(mask, dim=-1) # (N)
         mask_K = (knn_index >= mask_K.unsqueeze(dim=-1).unsqueeze(dim=-1)) # (N, P, K)
 
@@ -141,9 +110,9 @@ class ParticleNet(nn.Module):
             mask = torch.isnan(x[..., 0]) # (N, P)
             x = x.masked_fill(torch.isnan(x), 0.)
 
-        # Direction for knn of the first edge convolution.
-        direction = x[..., -2:] # Last two are `delta_eta` and `delta_phi`.
-        direction = direction.masked_fill(mask.unsqueeze(-1), float('inf'))
+            # Direction for knn of the first edge convolution.
+            direction = x[..., -2:].clone() # Last two are `delta_eta` and `delta_phi`.
+            direction = direction.masked_fill(mask.unsqueeze(-1), float('inf'))
 
         # Transform the dimension of the input.
         x = x.transpose(-1, -2) # (N, P, C) -> (N, C, P)

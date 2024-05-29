@@ -2,6 +2,7 @@
 
 import functools
 import itertools
+from typing import Optional
 
 import awkward as ak
 import lightning as L
@@ -41,7 +42,8 @@ class JetTorchDataModule(L.LightningDataModule):
             num_valid: int,
             num_test: int,
             batch_size: int,
-            max_num_ptcs: int = None,
+            max_num_ptcs: Optional[int] = None,
+            pi_scale: Optional[bool] = False,
             **kwargs
         ):
         """Pytorch Lightning Data Module for jet.
@@ -72,7 +74,7 @@ class JetTorchDataModule(L.LightningDataModule):
         self.max_num_ptcs = max_num_ptcs
 
         # Preprocess the events.
-        events = [self._preprocess(_events) for _events in events]
+        events = [self._preprocess(_events, pi_scale) for _events in events]
 
         # Prepare dataset for dataloaders.
         train_events = [_events[:num_train] for _events in events]
@@ -87,16 +89,19 @@ class JetTorchDataModule(L.LightningDataModule):
         self.valid_dataset = functools.reduce(lambda x, y: x + y, valid_events)
         self.test_dataset  = functools.reduce(lambda x, y: x + y, test_events)
         
-    def _preprocess(self, events: ak.Array) -> list[torch.tensor]:
+    def _preprocess(self, events: ak.Array, pi_scale: bool) -> list[torch.tensor]:
         """Function for preprocessing events."""
         
-        # Jet (fatjet) radius used in MadGraph5.
-        R = 0.8
-        
-        # Use pt, eta, phi as features f1, f2, f3
-        f1 = np.arctan(events['pt'] / events['fatjet_pt'])
-        f2 = events['delta_eta'] / R * (np.pi / 2)
-        f3 = events['delta_phi'] / R * (np.pi / 2)
+        if pi_scale: # Rescale features in [-pi / 2, pi / 2]
+            R = 0.8
+            f1 = np.arctan(events['pt'] / events['fatjet_pt'])
+            f2 = events['delta_eta'] / R * (np.pi / 2)
+            f3 = events['delta_phi'] / R * (np.pi / 2)
+
+        else:
+            f1 = events['pt'] / events['fatjet_pt']
+            f2 = events['delta_eta']
+            f3 = events['delta_phi']
         
         # Since the data size is zig-zag, use list.
         arrays = ak.zip([f1, f2, f3])
@@ -105,7 +110,7 @@ class JetTorchDataModule(L.LightningDataModule):
         
         return events
 
-    def _dataset(self, events, y) -> TorchDataset:
+    def _dataset(self, events: torch.Tensor, y: int) -> TorchDataset:
         
         # Create padded tensor dataset
         pad_function = lambda x: nn.functional.pad(
@@ -137,7 +142,7 @@ class JetTorchDataModule(L.LightningDataModule):
 class JetGraphDataModule(JetTorchDataModule):
     """Data module for torch_geometric.data.Data."""
     
-    def _dataset(self, events, y) -> list:
+    def _dataset(self, events: torch.Tensor, y: int) -> list:
 
         # Create graph structure dataset
         dataset = []

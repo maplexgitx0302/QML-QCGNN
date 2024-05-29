@@ -577,6 +577,7 @@ class HybridQCGNN(nn.Module):
             x = x.masked_fill(torch.isnan(x), 0.) # (N, P, 3)
 
         x = self.embed(x) # (N, P, num_reupload * num_nr_qubits)
+        x = torch.atan(x)
         x = x.masked_fill(mask.unsqueeze(-1), 0.)
 
         x = self.phi(x, mask)

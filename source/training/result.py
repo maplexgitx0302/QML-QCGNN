@@ -40,7 +40,7 @@ def read_csv(name: str, num_classes: int = 2):
 def plot_metrics(name:str, num_classes: int = 2):
     metrics = read_csv(name, num_classes)
 
-    num_cols = 5 if num_classes >= 3 else 2
+    num_cols = 5 if num_classes >= 3 else 3
     fig, axes = plt.subplots(1, num_cols, figsize=(4 * num_cols, 4))
 
     def normalized_plot(ax, metric):

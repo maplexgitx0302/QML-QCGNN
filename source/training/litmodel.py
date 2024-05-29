@@ -49,7 +49,16 @@ class TorchLightningModule(L.LightningModule):
         x, y_true = batch
         y = self.model(x)
         
-        assert torch.isfinite(y).all(), "Model output contains NaN or Inf."
+        loss = self._calculate_score_and_loss(y=y, y_true=y_true, mode=mode)
+
+        return loss
+
+    def configure_optimizers(self):
+        return self.optimizer
+    
+    def _calculate_score_and_loss(self, y: torch.Tensor, y_true: torch.Tensor, mode: str) -> torch.Tensor:
+
+        assert torch.isfinite(y).all(), f" # ({mode}) Model output contains NaN or Inf."
 
         if self.score_dim == 1:
             # Sigmoid.
@@ -63,6 +72,7 @@ class TorchLightningModule(L.LightningModule):
         self.y_score_buffer[mode] = torch.cat((self.y_score_buffer[mode], y_score.detach().cpu()))
         
         if mode != 'test':
+            
             if self.score_dim == 1:
                 # BCEWithLogitsLoss needs to cast to float for y_true.
                 loss = self.loss_function(y, y_true.float())
@@ -70,25 +80,23 @@ class TorchLightningModule(L.LightningModule):
                 # CrossEntropyLoss cannot use float for y_true.
                 loss = self.loss_function(y, y_true)
             
-            assert torch.isfinite(loss).all(), "Loss contains NaN or Inf."
-            
+            assert torch.isfinite(loss).all(), f" # (mode) Loss contains NaN or Inf."
+
             return loss
+        
+        else: # mode == 'test'.
+            return None
 
-    def configure_optimizers(self):
-        return self.optimizer
-
-    def calculate_metrics(self, mode: str):
+    def _calculate_metrics(self, mode: str):
         
         y_true = self.y_true_buffer[mode]
         y_score = self.y_score_buffer[mode]
-
 
         if self.score_dim == 1:
             y_pred = (y_score > 0.5)
 
         elif self.score_dim == 2:
-            # Defect of sklearn roc_auc_score.
-            y_score = y_score[:, 1]
+            y_score = y_score[:, 1] # Defect of sklearn roc_auc_score.
             y_pred = (y_score > 0.5)
             
         else:
@@ -97,10 +105,6 @@ class TorchLightningModule(L.LightningModule):
         auc = metrics.roc_auc_score(y_true=y_true.int(), y_score=y_score, average='macro', multi_class='ovo')
         accuracy = metrics.accuracy_score(y_true=y_true, y_pred=y_pred)
 
-        if self.score_dim >= 3:
-            ovr_accuracies = [torch.mean(((y_true == i) == (y_pred == i)).float()) for i in range(self.score_dim)]
-            accuracy = (accuracy, ovr_accuracies)
-        
         return auc, accuracy
     
     def on_train_epoch_start(self):
@@ -128,53 +132,32 @@ class TorchLightningModule(L.LightningModule):
         self.log('valid_loss', loss, on_step=True)
     
     def test_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int):
-        self.forward(batch, mode='test')
+        _ = self.forward(batch, mode='test')
 
     def on_train_epoch_end(self):
 
         time_cost = time.time() - self.epoch_start_time
-        auc, accuracy = self.calculate_metrics(mode='train')
-
-        # If score_dim >= 3, accuracy is tuple of (accuracy, ovr_accuracies).
-        if self.score_dim >= 3:
-            accuracy, ovr_accuracies = accuracy
-            for i, ovr_accuracy in enumerate(ovr_accuracies):
-                self.log(f'train_ovr_accuracy_{i}', ovr_accuracy, on_epoch=True)
-
         self.log('epoch_time', time_cost, on_epoch=True)
-        self.log('train_auc', auc, on_epoch=True)
-        self.log('train_accuracy', accuracy, on_epoch=True)
 
-
-        if self.print_log:
-            print(f"\n - (Train) Epoch {self.current_epoch}: Accuracy = {accuracy} | AUC = {auc}\n")
+        self._epoch_end_log_metrics(mode='train')
 
     def on_validation_epoch_end(self):
 
-        time_cost = time.time() - self.valid_start_time
-        auc, accuracy = self.calculate_metrics(mode='valid')
-
-        # If score_dim >= 3, accuracy is tuple of (accuracy, ovr_accuracies).
-        if self.score_dim >= 3:
-            accuracy, ovr_accuracies = accuracy
-            for i, ovr_accuracy in enumerate(ovr_accuracies):
-                self.log(f'valid_ovr_accuracy_{i}', ovr_accuracy, on_epoch=True)
-
-        self.log('valid_time', time_cost, on_epoch=True)
-        self.log('valid_accuracy', accuracy, on_epoch=True)
-        self.log('valid_auc', auc, on_epoch=True)
-
-        if self.print_log:
-            print(f"\n - (Valid) Epoch {self.current_epoch}: Accuracy = {accuracy} | AUC = {auc}\n")
+        self._epoch_end_log_metrics(mode='valid')
     
     def on_test_epoch_end(self):
+        
+        self._epoch_end_log_metrics(mode='test')
 
-        auc, accuracy = self.calculate_metrics(mode='test')
+    def _epoch_end_log_metrics(self, mode: str):
+
+        auc, accuracy = self._calculate_metrics(mode=mode)
+
+        self.log(f"{mode}_accuracy", accuracy, on_epoch=True)
+        self.log(f"{mode}_auc", auc, on_epoch=True)
 
         if self.print_log:
-            print(f"\n - (Test) Final metrics: Accuracy = {accuracy} | AUC = {auc}\n")
-
-
+            print(f"\n - ({mode}) Final metrics: Accuracy = {accuracy} | AUC = {auc}\n")
 
 class GraphLightningModel(TorchLightningModule):
     """Torch geometric version for graph."""
@@ -184,14 +167,10 @@ class GraphLightningModel(TorchLightningModule):
 
         y = self.model(data.x, data.edge_index, data.batch)
         y_true = data.y
-        y_score = self.score_function(y, dim=-1)
 
-        self.y_true_buffer[mode] = torch.cat((self.y_true_buffer[mode], y_true.detach().cpu()))
-        self.y_score_buffer[mode] = torch.cat((self.y_score_buffer[mode], y_score.detach().cpu()))
-        
-        if mode != 'test':
-            loss = self.loss_function(y, y_true)
-            return loss
+        loss = self._calculate_score_and_loss(y=y, y_true=y_true, mode=mode)
+
+        return loss
 
     def training_step(self, data: Data, batch_idx: int):
         batch_size = len(data.x)
@@ -206,4 +185,4 @@ class GraphLightningModel(TorchLightningModule):
     
     def test_step(self, data: Data, batch_idx: int):
         batch_size = len(data.x)
-        self.forward(data, mode='test')
+        _ = self.forward(data, mode='test')

@@ -14,6 +14,8 @@ can be found at
 (https://pytorch-geometric.readthedocs.io/en/latest/tutorial/create_gnn.html).
 """
 
+from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch_geometric.nn as geo_nn
@@ -22,7 +24,7 @@ from . import classical
 
 
 class MessagePassing(geo_nn.MessagePassing):
-    def __init__(self, phi: nn.Module, aggr: str):
+    def __init__(self, phi: nn.Module, aggr: Optional[str] = 'add'):
         """Undirected message passing model.
         See "Creating Message Passing Networks"
         https://pytorch-geometric.readthedocs.io/en/latest/tutorial/create_gnn.html
@@ -51,7 +53,7 @@ class MessagePassing(geo_nn.MessagePassing):
 
 
 class GraphMPGNN(nn.Module):
-    def __init__(self, phi: nn.Module, mlp: nn.Module, aggr: str):
+    def __init__(self, phi: nn.Module, mlp: nn.Module, aggr: Optional[str] = 'add'):
         """MPGNN with SUM as the aggregation function.
         
         Instead of combining this part with the class `ClassicalMPGNN` 
@@ -97,8 +99,8 @@ class ClassicalMPGNN(GraphMPGNN):
             gnn_out: int,
             gnn_hidden: int,
             gnn_layers: int,
-            aggregation: str,
             score_dim: int,
+            aggregation: Optional[str] = 'add',
             **kwargs,
     ):
         """Classical model for benchmarking
@@ -121,6 +123,8 @@ class ClassicalMPGNN(GraphMPGNN):
                 Number of hidden layers of `phi` in MPGNN.
             score_dim : int
                 Dimension of the final score output.
+            aggregation : str (default='add')
+                Aggregation method used in MessagePassing.
         """
         
         # See `GraphMPGNN` above.

@@ -24,6 +24,7 @@ setup(
         'gdown',
         'h5py',
         'uproot',
+        'tables',
 
         # Machine Learning
         'pennylane',

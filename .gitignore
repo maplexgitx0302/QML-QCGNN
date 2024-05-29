@@ -11,6 +11,7 @@ __pycache__/
 _*
 a.py
 b.py
+run.sh
 
 # large data
 dataset/
@@ -21,6 +22,7 @@ dataset/
 gmail.yaml
 config.toml
 wandb.yaml
+wandb.ipynb
 
 # training result
 result/
