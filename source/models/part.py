@@ -1,4 +1,4 @@
-"""Particle transformer without interaction."""
+"""Particle transformer."""
 
 from typing import Optional
 
@@ -201,7 +201,7 @@ class AttentionBlock(nn.Module):
             # First residual values.
             residual = x
 
-            # Particle Multi-head attention (P-MHA) without U interaction.
+            # Particle Multi-head attention (P-MHA).
             x = self.pre_atte_layerNorm(x)
             x = self.atte(query=x, key=x, value=x, attn_mask=attn_mask, key_padding_mask=key_padding_mask)
 
@@ -233,7 +233,7 @@ class AttentionBlock(nn.Module):
 
 class ParticleTransformer(nn.Module):
     def __init__(self, score_dim: int, parameters: dict) -> None:
-        """Particle Transformer (without interaction).
+        """Particle Transformer.
         
         Args:
             score_dim : int

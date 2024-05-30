@@ -9,7 +9,8 @@ class ClassicalMLP(nn.Module):
             in_channel: int,
             out_channel: int,
             hidden_channel: int,
-            num_layers: int
+            num_layers: int,
+            dropout: float = 0.0,
         ):
         """Classical MLP (feed forward neural network).
 
@@ -28,14 +29,16 @@ class ClassicalMLP(nn.Module):
                 Number of hidden layers. If `num_layers=0`, then only an
                 input layer and an output layer without activation
                 functions (used for changing dimension of data only).
+            dropout : float (default=0.0)
+                Dropout rate for each hidden layer.
         """
 
         super().__init__()
 
         # Add an activation function for each layer.
-        net = [nn.Linear(in_channel, hidden_channel), nn.ReLU()]
+        net = [nn.Linear(in_channel, hidden_channel), nn.ReLU(), nn.Dropout(dropout)]
         for _ in range(num_layers - 1):
-            net += [nn.Linear(hidden_channel, hidden_channel), nn.ReLU()]
+            net += [nn.Linear(hidden_channel, hidden_channel), nn.ReLU(), nn.Dropout(dropout)]
         net += [nn.Linear(hidden_channel, out_channel)]
         self.net = nn.Sequential(*net)
 

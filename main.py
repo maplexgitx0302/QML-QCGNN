@@ -12,10 +12,10 @@ import wandb
 
 from source.data.datamodule import JetTorchDataModule, JetGraphDataModule
 from source.data.opendata import JetNetEvents, TopQuarkEvents
-from source.models.qcgnn import QuantumRotQCGNN, HybridQCGNN
-from source.models.mpgnn import ClassicalMPGNN
 from source.models.part import ParticleTransformer
+from source.models.pfn import ParticleFlowNetwork
 from source.models.pnet import ParticleNet
+from source.models.qcgnn import QuantumRotQCGNN, HybridQCGNN
 from source.training.litmodel import TorchLightningModule, GraphLightningModel
 from source.training.loggers import csv_logger, wandb_logger
 from source.training.result import plot_metrics
@@ -132,7 +132,7 @@ def create_lightning_model(model: nn.Module, graph: bool) -> L.LightningModule:
     # Create lightning model depends on graph or not.
     print_log = config['Settings']['print_log']
 
-    # Graph is for MPGNN.
+    # Graph is for PFN.
     if graph:
         return GraphLightningModel(model, optimizer=optimizer, score_dim=score_dim, print_log=print_log)
     else:
@@ -201,21 +201,23 @@ def train_quantum(model_class: nn.Module, model_hparams: dict, pi_scale: bool):
     num_nr_qubits = model_hparams['num_nr_qubits']
     num_layers = model_hparams['num_layers']
     num_reupload = model_hparams['num_reupload']
-    model_description = f"nI{num_ir_qubits}_nQ{num_nr_qubits}_l{num_layers}_r{num_reupload}"
+    dropout = model_hparams['dropout']
+    model_description = f"nI{num_ir_qubits}_nQ{num_nr_qubits}_L{num_layers}_R{num_reupload}_D{dropout:.2f}"
 
     accelerator = 'cpu'
     name = train(model, model_description, model_hparams, accelerator, graph=False, pi_scale=pi_scale)
 
     return name
 
-def train_mpgnn(model_hparams: dict):
+def train_pfn(model_hparams: dict):
     
-    model = ClassicalMPGNN(score_dim=score_dim, **model_hparams)
+    model = ParticleFlowNetwork(score_dim=score_dim, **model_hparams)
 
-    gnn_out = model_hparams['gnn_out']
-    gnn_hidden = model_hparams['gnn_hidden']
-    gnn_layers = model_hparams['gnn_layers']
-    model_description = f"go{gnn_out}_gh{gnn_hidden}_gl{gnn_layers}"
+    phi_out = model_hparams['phi_out']
+    phi_hidden = model_hparams['phi_hidden']
+    phi_layers = model_hparams['phi_layers']
+    dropout = model_hparams['dropout']
+    model_description = f"O{phi_out}_H{phi_hidden}_L{phi_layers}_D{dropout:.2f}"
 
     accelerator = 'gpu' if torch.cuda.is_available() else 'cpu'
     name = train(model, model_description, model_hparams, accelerator, graph=True)
@@ -243,34 +245,34 @@ def train_benchmark(model_class: nn.Module, lite: bool = False):
 # # QCGNN
 # for num_nr_qubits in [3, 5, 7]:
 #     print(f"\n* Train QCGNN {num_nr_qubits}.\n")
-#     qcgnn_hparams = {'num_ir_qubits': 4, 'num_nr_qubits': num_nr_qubits, 'num_layers': 1, 'num_reupload': num_nr_qubits}
+#     qcgnn_hparams = {'num_ir_qubits': 4, 'num_nr_qubits': num_nr_qubits, 'num_layers': 1, 'num_reupload': num_nr_qubits, 'dropout': 0.0}
 #     name = train_quantum(model_class=QuantumRotQCGNN, model_hparams=qcgnn_hparams, pi_scale=True)
 
 # %%
 # # Hybrid
 # for num_nr_qubits in [3, 5, 7]:
 #     print(f"\n* Train Hybrid {num_nr_qubits}.\n")
-#     qcgnn_hparams = {'num_ir_qubits': 4, 'num_nr_qubits': num_nr_qubits, 'num_layers': 1, 'num_reupload': num_nr_qubits}
+#     qcgnn_hparams = {'num_ir_qubits': 4, 'num_nr_qubits': num_nr_qubits, 'num_layers': 1, 'num_reupload': num_nr_qubits, 'dropout': 0.0}
 #     name = train_quantum(model_class=HybridQCGNN, model_hparams=qcgnn_hparams, pi_scale=False)dddddsdasdasdasdasd
 
 # %%
-# MPGNN
+# # Particle Flow Network.
 
-for gnn_dim in [3, 5, 7, 64]:
-    print(f"\n* Train MPGNN {gnn_dim}.\n")
-    mpgnn_hparams = {'gnn_in': 6, 'gnn_out': gnn_dim, 'gnn_layers': 2, 'gnn_hidden': gnn_dim}
-    name = train_mpgnn(model_hparams=mpgnn_hparams)
-
-# %%
-# Particle Transformer (without interaction).
-
-print(f"\n* Train Particle Transformer.\n")
-name = train_benchmark(model_class=ParticleTransformer, lite=False)
-name = train_benchmark(model_class=ParticleTransformer, lite=True)
+for phi_dim in [3, 5, 7, 64]:
+    print(f"\n* Train PFN {phi_dim}.\n")
+    pfn_hparams = {'phi_in': 6, 'phi_out': phi_dim, 'phi_layers': 2, 'phi_hidden': phi_dim, 'dropout': 0.0}
+    name = train_pfn(model_hparams=pfn_hparams)
 
 # %%
-# Particle Net.
+# # # Particle Transformer.
 
-print(f"\n* Train Particle Net.\n")
-name = train_benchmark(model_class=ParticleNet, lite=False)
-name = train_benchmark(model_class=ParticleNet, lite=True)
+# print(f"\n* Train Particle Transformer.\n")
+# name = train_benchmark(model_class=ParticleTransformer, lite=False)
+# name = train_benchmark(model_class=ParticleTransformer, lite=True)
+
+# %%
+# # Particle Net.
+
+# print(f"\n* Train Particle Net.\n")
+# name = train_benchmark(model_class=ParticleNet, lite=False)
+# name = train_benchmark(model_class=ParticleNet, lite=True)

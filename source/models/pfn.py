@@ -92,20 +92,21 @@ class GraphMPGNN(nn.Module):
         return x
 
 
-class ClassicalMPGNN(GraphMPGNN):
+class ParticleFlowNetwork(GraphMPGNN):
     def __init__(
             self,
-            gnn_in: int,
-            gnn_out: int,
-            gnn_hidden: int,
-            gnn_layers: int,
+            phi_in: int,
+            phi_out: int,
+            phi_hidden: int,
+            phi_layers: int,
             score_dim: int,
             aggregation: Optional[str] = 'add',
+            dropout: Optional[float] = 0.0,
             **kwargs,
     ):
         """Classical model for benchmarking
 
-        Arguments with prefix "gnn" are related to the message passing
+        Arguments with prefix "phi" are related to the message passing
         function `phi`, which is constructed with a classical MLP.
 
         Arguments with prefix "mlp" are related to the shallow linear
@@ -113,28 +114,36 @@ class ClassicalMPGNN(GraphMPGNN):
         classical MLP.
 
         Args:
-            gnn_in : int
+            phi_in : int
                 The input channel dimension of `phi` in MPGNN.
-            gnn_out : int
+            phi_out : int
                 The output channel dimension of `phi` in MPGNN.
-            gnn_hidden : int
+            phi_hidden : int
                 Number of hidden neurons of `phi` in MPGNN.
-            gnn_layers : int
+            phi_layers : int
                 Number of hidden layers of `phi` in MPGNN.
             score_dim : int
                 Dimension of the final score output.
             aggregation : str (default='add')
                 Aggregation method used in MessagePassing.
+            dropout : float (default=0.0)
+                Dropout rate for hidden layers.
         """
         
         # See `GraphMPGNN` above.
         phi = classical.ClassicalMLP(
-            in_channel=gnn_in,
-            out_channel=gnn_out,
-            hidden_channel=gnn_hidden,
-            num_layers=gnn_layers
+            in_channel=phi_in,
+            out_channel=phi_out,
+            hidden_channel=phi_hidden,
+            num_layers=phi_layers,
+            dropout=dropout,
         )
         
-        mlp = nn.Linear(gnn_out, score_dim)
+        mlp = nn.Sequential(
+            nn.Linear(phi_out, 16),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(16, score_dim),
+        )
 
         super().__init__(phi, mlp, aggr=aggregation)

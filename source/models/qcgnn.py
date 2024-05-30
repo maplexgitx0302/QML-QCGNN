@@ -495,6 +495,7 @@ class QuantumRotQCGNN(nn.Module):
             num_layers: int,
             num_reupload: int,
             score_dim: int,
+            dropout: Optional[float] = 0.0,
             **kwargs
     ):
         """This quantum model is based on the `QCGNN_IX`.
@@ -502,6 +503,8 @@ class QuantumRotQCGNN(nn.Module):
         Args:
             score_dim : int
                 Dimension of the final score output.
+            dropout : float (default=0.0)
+                Dropout rate for MLP hidden layers.
         """
         
         super().__init__()
@@ -515,7 +518,12 @@ class QuantumRotQCGNN(nn.Module):
         )
 
         # Output is in shape (batch, NR).
-        self.mlp = nn.Linear(num_nr_qubits, score_dim)
+        self.mlp = nn.Sequential(
+            nn.Linear(num_nr_qubits, 16),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(16, score_dim),
+        )
     
     def forward(self, x: torch.Tensor):
         """
@@ -541,6 +549,7 @@ class HybridQCGNN(nn.Module):
             num_layers: int,
             num_reupload: int,
             score_dim: int,
+            dropout: Optional[float] = 0.0,
             **kwargs
     ):
         """This quantum model is based on the `QCGNN_RY`.
@@ -548,6 +557,8 @@ class HybridQCGNN(nn.Module):
         Args:
             score_dim : int
                 Dimension of the final score output.
+            dropout : float (default=0.0)
+                Dropout rate for MLP hidden layers.
         """
         
         super().__init__()
@@ -564,7 +575,12 @@ class HybridQCGNN(nn.Module):
         )
 
         # Output is in shape (batch, NR).
-        self.mlp = nn.Linear(num_nr_qubits, score_dim)
+        self.mlp = nn.Sequential(
+            nn.Linear(num_nr_qubits, 16),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(16, score_dim),
+        )
     
     def forward(self, x: torch.Tensor):
         """
