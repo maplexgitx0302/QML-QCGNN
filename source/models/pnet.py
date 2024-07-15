@@ -1,6 +1,7 @@
+"""Particle Net"""
+
 import torch
 from torch import nn
-
 
 class EdgeConv(nn.Module):
 

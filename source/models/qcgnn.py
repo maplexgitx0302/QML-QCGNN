@@ -20,45 +20,43 @@ from typing import Optional
 
 import pennylane as qml
 from pennylane import numpy as np
+from pennylane.operation import Operation
 import torch
 import torch.nn as nn
-
-# The logging function.
-def _log(message: str) -> None:
-    """Printing function for log."""
-    print(f"# ModelLog: {message}")
-
-
-def parse_input(x: torch.Tensor):
-    """Parse the input particle data x"""
-
-    if len(x.shape) > 1:
-        # The shape of `ptc_input` is (batch, 3)
-        theta, phi, omega = x[:,0], x[:,1], x[:,2]
-    else:
-        # The shape of `ptc_input` is (3,)
-        theta, phi, omega = x[0], x[1], x[2]
-
-    return theta, phi, omega
-
+    
 
 def pennylane_encoding(num_ir_qubits: int, num_nr_qubits: int):
     
-    num_qubits = num_ir_qubits + num_nr_qubits
-
     def ansatz(x: torch.Tensor, control_values: list[int]):
-        # Parse input data.
-        theta, phi, omega = parse_input(x)
+        """Encode data on the quantum circuit.
 
-        # Encode data on NR qubits.
-        nr_wires = range(num_qubits - num_nr_qubits, num_qubits)
-        for wires in nr_wires:
-            # Add a Hadamard gate before the rotation gate.
-            ctrl_H = qml.ctrl(qml.Hadamard, control=range(num_ir_qubits), control_values=control_values)
-            ctrl_H(wires=wires)
-            # Appl general rotation gate.
-            ctrl_R = qml.ctrl(qml.Rot, control=range(num_ir_qubits), control_values=control_values)
-            ctrl_R(theta=theta, phi=phi, omega=omega, wires=wires)
+        Args:
+            x : torch.Tensor
+                The input data, expected to be flattened in shape
+                (batch, 3 * nr) or (3 * nr,).
+            control_values : list[int]
+                The control values for multi-controlled gates.
+        """
+
+        # Index register and network register.
+        ni_wires = range(num_ir_qubits)
+        nr_wires = range(num_ir_qubits, num_ir_qubits + num_nr_qubits)
+
+        # Determine the rotation gate.
+        num_rotation = x.shape[-1] // num_nr_qubits
+        assert num_rotation in [1, 3], f"The last dimension of x should be `nr` or `3 * nr` -> x.shape = {x.shape}"
+
+        # Unflatten the input data.
+        x = x.unflatten(dim=-1, sizes=(num_nr_qubits, num_rotation))
+
+        # Encoding data.
+        if num_rotation == 3:
+            for i, rotation in enumerate(['Y', 'X', 'Y']):
+                ctrl = qml.ctrl(qml.AngleEmbedding, control=ni_wires, control_values=control_values)
+                ctrl(features=x[..., i], wires=nr_wires, rotation=rotation)
+        elif num_rotation == 1:
+            ctrl = qml.ctrl(qml.AngleEmbedding, control=ni_wires, control_values=control_values)
+            ctrl(features=x[..., 0], wires=nr_wires, rotation='Y')
 
     return ansatz
 
@@ -109,47 +107,37 @@ def qiskit_encoding(num_ir_qubits: int, num_nr_qubits: int):
             qml.Toffoli(wires=(0, 1, wk_qubit_t))  
 
     def ansatz(x: torch.Tensor, control_values: list[int]):
-        # Parse input data.
-        theta, phi, omega = parse_input(x)
-
         # Target wires to be encoded.
         nr_wires = range(num_qubits - num_nr_qubits, num_qubits)
 
         # See "Quantum Computation and Quantum Information" section 4.3.
-        for wires in nr_wires:
-            control_condition_transform(control_values)
-            toffoli_tranformation()
-            
-            # The last working qubit becomes the control qubit.
-            wk_qubit_c = num_ir_qubits + num_wk_qubits - 1
-            # ctrl_H: decomposed by H = i Rx(pi) Ry(pi/2) up to a global phase.
-            qml.CRY(np.pi / 2, wires=(wk_qubit_c, wires))
-            qml.CRX(np.pi, wires=(wk_qubit_c, wires))
-            # ctrl_R: Rot(phi, theta, omega) = Rz(omega) Ry(theta) Rz(phi).
-            qml.CRZ(phi, wires=(wk_qubit_c, wires))
-            qml.CRY(theta, wires=(wk_qubit_c, wires))
-            qml.CRZ(omega, wires=(wk_qubit_c, wires))
-            
-            toffoli_tranformation(inverse=True)
-            control_condition_transform(control_values)
+        control_condition_transform(control_values)
+        toffoli_tranformation()
+        
+        # The last working qubit becomes the control qubit.
+        wk_qubit_c = num_ir_qubits + num_wk_qubits - 1
+
+        # Determine the rotation gate.
+        num_rotation = x.shape[-1] // num_nr_qubits
+        assert num_rotation in [1, 3], f"The last dimension of x should be `nr` or `3 * nr` -> x.shape = {x.shape}"
+
+        # Unflatten the input data.
+        x = x.unflatten(dim=-1, sizes=(num_nr_qubits, num_rotation))
+
+        # Encoding data.
+        if num_rotation == 3:
+            for i, rotation in enumerate(['Y', 'X', 'Y']):
+                ctrl = qml.ctrl(qml.AngleEmbedding, control=wk_qubit_c, control_values=1)
+                ctrl(features=x[..., i], wires=nr_wires, rotation=rotation)
+        elif num_rotation == 1:
+            ctrl = qml.ctrl(qml.AngleEmbedding, control=wk_qubit_c, control_values=1)
+            ctrl(features=x[..., 0], wires=nr_wires, rotation='Y')
+        
+        toffoli_tranformation(inverse=True)
+        control_condition_transform(control_values)
 
     return ansatz
 
-
-def nn_linear_encoding(num_ir_qubits: int, num_nr_qubits: int):
-    
-    num_qubits = num_ir_qubits + num_nr_qubits
-
-    def ansatz(x: torch.Tensor, control_values: list[int]):
-        # x is now shape (batch, num_nr_qubits)
-        nr_wires = range(num_qubits - num_nr_qubits, num_qubits)
-
-        for i, wires in enumerate(nr_wires):
-            phi = x[:, i] if len(x.shape) > 1 else x[i]
-            ctrl_RY = qml.ctrl(qml.RY, control=range(num_ir_qubits), control_values=control_values)
-            ctrl_RY(phi=phi, wires=wires)
-
-    return ansatz
 
 class QCGNN_IX(nn.Module):
     def __init__(
@@ -158,6 +146,8 @@ class QCGNN_IX(nn.Module):
             num_nr_qubits: int,
             num_layers: int,
             num_reupload: int,
+            num_rotation: int,
+            vqc_ansatz: Operation,
             qdevice: Optional[str] = 'default.qubit',
             qbackend: Optional[str] = '',
             diff_method: Optional[str] = 'best',
@@ -184,11 +174,18 @@ class QCGNN_IX(nn.Module):
             num_nr_qubits : int
                 Number of qubits in the network register (NR).
             num_layers : int
-                Number of layers in a single strongly entangling layer.
+                Number of layers in VQC.
                 Equivalent to the depth of a "single" VQC ansatz.
             num_reupload : int
                 Number of times of the whole VQC ansatz (and data 
                 reupload), at least 1.
+            num_rotation : int
+                Number of rotations in the AngleEmbedding.
+                If num_rotation == 1, the AngleEmbedding will be in Y.
+                If num_rotation == 3, the AngleEmbedding will be in Y-X-Y.
+            vqc_ansatz : Operation
+                The VQC ansatz, either `qml.BasicEntanglerLayers` or
+                `qml.StronglyEntanglingLayers`.
             qdevice : Optional[str] (default 'default.qubit')
                 Quantum device provided by PennyLane qml.
             qbackend : Optional[str] (default '')
@@ -217,6 +214,8 @@ class QCGNN_IX(nn.Module):
         self.aggregation = aggregation
         self.noise_prob = noise_prob
         self.diff_method = diff_method
+        self.num_rotation = num_rotation
+        self.vqc_ansatz = vqc_ansatz
 
         # Determine the encoding method.
         if ('qiskit' in qdevice) or ('qiskit' in qbackend):
@@ -237,9 +236,6 @@ class QCGNN_IX(nn.Module):
         self.num_nr_qubits = num_nr_qubits  # NR quantum register.
         num_qubits = num_ir_qubits + num_wk_qubits + num_nr_qubits
         self.num_qubits = num_qubits
-        _log(f"Quantum device  = {qdevice}")
-        _log(f"Quantum backend = {qbackend}")
-        _log(f"Qubits (IR, WK, NR) = ({num_ir_qubits, num_wk_qubits, num_nr_qubits})")
 
         # `wires` range that will be used later in quantum "gates".
         self.ir_wires = range(num_ir_qubits)
@@ -257,7 +253,10 @@ class QCGNN_IX(nn.Module):
             self.qml_device = qml.device(qdevice, wires=num_qubits)
 
         # Turn PennyLane quantum circuit into PyTorch layers.
-        weight_shapes = {'weights': (num_reupload, num_layers, num_nr_qubits, 3)}
+        if vqc_ansatz == qml.BasicEntanglerLayers:
+            weight_shapes = {'weights': (num_reupload, num_layers, num_nr_qubits)}
+        elif vqc_ansatz == qml.StronglyEntanglingLayers:
+            weight_shapes = {'weights': (num_reupload, num_layers, num_nr_qubits, 3)}
         torch_layer = qml.qnn.TorchLayer(self.build_full_circuit(), weight_shapes=weight_shapes)
         self.qnn = nn.Sequential(torch_layer)
 
@@ -265,14 +264,11 @@ class QCGNN_IX(nn.Module):
         """Build up the quantum circuit."""
 
         @qml.qnode(self.qml_device, diff_method=self.diff_method)
-        def full_circuit(inputs, weights):
-            # The `inputs` will be automatically reshape as (batch_size, D),
-            # where D is the dimension of a single flattened data. We reshape
-            # the `inputs` back to correct shape, by assuming the data
-            # constructed with only 3 features (pt, eta, phi). Note that in
-            # `pennylane==0.31.0` above, if original inputs shape is (N, M, D),
-            # it will automatically reshape to (N*M, D).
-            inputs = self.unflatten(inputs)
+        def full_circuit(inputs: torch.Tensor, weights: torch.Tensor):
+            # In `pennylane>=0.31.0`, the inputs will be reshaped as (-1, inputs.shape[-1])
+            # So the inputs are flattend from (N, P, D) to (N, P * D).
+            D = self.num_nr_qubits * self.num_rotation
+            inputs = inputs.unflatten(dim=-1, sizes=(-1, D))
 
             # Initialize the state of the quantum circuit.
             self.circuit_initialization(inputs)
@@ -286,6 +282,61 @@ class QCGNN_IX(nn.Module):
             return [qml.expval(paruli_word) for paruli_word in pauli_words]
 
         return full_circuit
+
+    def circuit_initialization(self, x: torch.Tensor):
+        """Initialize the quantum circuit.
+
+        Args:
+            x : torch.Tensor
+                In shape (N, P, D)
+        """
+
+        # The padded values are set to 0., so we can use `!= 0.` to filter out.
+        non_mask = (x != 0.).any(dim=-1)
+
+        if non_mask.all() == True:
+            # Usually happens when no padded values.
+            qml.broadcast(qml.Hadamard, pattern='single', wires=self.ir_wires)
+        else:
+            state_vector = non_mask.float()
+            state_vector = state_vector / torch.norm(state_vector, dim=-1, keepdim=True)
+            qml.QubitStateVector(state_vector, wires=self.ir_wires)
+
+        # Noise channel 1.
+        self.random_noise()
+
+    def circuit_evolve(self, x: torch.Tensor, weights: torch.Tensor):
+        """Evolve the quantum circuit.
+
+        Args:
+            x : torch.Tensor
+                In shape (N, P, D)
+            weights : torch.Tensor
+                In shape (num_reupload, num_layers, num_nr_qubits) or
+                (num_reupload, num_layers, num_nr_qubits, 3)
+        """
+
+        # Data-reuploading.
+        for re_idx in range(self.num_reupload):
+
+            # Encoding data with multi-controlled gates.
+            for ir_idx, _x in enumerate(x.unbind(dim=-2)):
+
+                # Control values depending on the index of IR.
+                control_values = np.binary_repr(ir_idx, width=self.num_ir_qubits)
+                control_values = list(map(int, control_values))
+
+                # `control_values` in pennylane needs list[int]
+                self.encoding(_x, control_values=control_values)
+
+                # Noise channel 2.
+                self.random_noise()
+
+            # Using basic or strongly entangling layers for VQC ansatz.
+            self.vqc_ansatz(weights=weights[re_idx], wires=self.nr_wires)
+            
+            # Noise channel 3.
+            self.random_noise()
 
     def pauli_words_of_IX_combinations(self) -> list:
         """Pauli products of {I,X} combinations
@@ -332,7 +383,9 @@ class QCGNN_IX(nn.Module):
 
     def random_noise(self):
         """Randomly apply a noise channel."""
+
         if self.noise_prob > 0:
+
             for wires in range(self.num_qubits):
                 rnd_noise = np.random.randint(2)
                 if rnd_noise == 0:
@@ -340,82 +393,40 @@ class QCGNN_IX(nn.Module):
                 elif rnd_noise == 1:
                     qml.GeneralizedAmplitudeDamping(gamma=self.noise_prob, p=0.5, wires=wires)
 
-    def unflatten(self, inputs: torch.Tensor):
-        return inputs.unflatten(dim=-1, sizes=(-1, 3))
+    def forward(self, x: torch.Tensor, mask: torch.Tensor = None):
+        """Feedforward the quantum circuit.
 
-    def circuit_initialization(self, inputs):
-        # `pt`, `eta`, `phi` will be padded with `0.` to size 2 ** num_ir_qubits.
-        # Notice the inputs is already unflattened.
-        non_mask = (inputs != 0.).any(dim=-1)
-        if non_mask.all() == True:
-            # Usually happens when no padded values.
-            qml.broadcast(qml.Hadamard, pattern='single', wires=self.ir_wires)
-        else:
-            state_vector = non_mask.float()
-            state_vector = state_vector / torch.norm(state_vector, dim=-1, keepdim=True)
-            qml.QubitStateVector(state_vector, wires=self.ir_wires)
+        Args:
+            x : torch.Tensor
+                Shape = (N, P, D).
+            mask : torch.Tensor
+                Shape = (N, P).
+        """
 
-        # Noise channel 1.
-        self.random_noise()
+        with torch.no_grad():
+            if mask is None:
+                non_mask = (x != 0.).any(dim=-1)
+                num_ptcs = torch.sum(non_mask, axis=-1, keepdim=True)
+            else:
+                num_ptcs = torch.sum(~mask, axis=-1, keepdim=True)
+            x = torch.flatten(x, start_dim=-2, end_dim=-1) # (N, P, D) -> (N, P * D)
 
-    def circuit_evolve(self, inputs, weights):
-        # Data-reuploading (need `num_reupload` >= 1).
-        for re_idx in range(self.num_reupload):
-            # Encoding data with multi-controlled gates.
-            for ir_idx in range(2 ** self.num_ir_qubits):
-                # `np.binary_repr` returns string.
-                control_values = np.binary_repr(ir_idx, width=self.num_ir_qubits)
-                # `control_values` in pennylane needs list[int]
-                control_values = list(map(int, control_values))
-                # `pennylane==0.31.0` above handles whole batch simaltaneously.
-                if len(inputs.shape) > 2:
-                    # `inputs` shape == (batch, num_ptcs, 3)
-                    # Note we feed in whole batch of data, but only one
-                    # particle information for each data.
-                    self.encoding(inputs[:, ir_idx], control_values=control_values)
-                else:
-                    # `inputs` shape == (num_ptcs, 3), i.e., single data
-                    # Note we feed in only one particle information.
-                    self.encoding(inputs[ir_idx], control_values=control_values)
-                # Noise channel 2.
-                self.random_noise()
-            # Using strongly entangling layers for VQC ansatz.
-            qml.StronglyEntanglingLayers(weights=weights[re_idx], wires=self.nr_wires)
-            # Noise channel 3.
-            self.random_noise()
+        x = self.qnn(x) # (N, (2 ** n_I) * n_Q) if QCGNN_IX, (N, n_Q) if QCGNN_H
 
-    def forward(self, x: torch.Tensor, mask: torch.Tensor):
-        # Original shape of `x` is (batch, num_ptcs, 3), with 3 representing
-        # features "pt", "eta" and "phi". Since PennyLane confuses with the
-        # dimension of batch and features, we need to reshape `x` as
-        # (batch, num_ptcs * 3), or (num_ptcs * 3) for single data only.
-        x = torch.flatten(x, start_dim=-2, end_dim=-1)
-
-        # Pass `x` through the quantum circuits, the output shape will be
-        # (batch, (2**IR) * NR), where IR/NR = num_(ir/nr)_qubits respectively.
-        x = self.qnn(x)
-
-        # Reshape the measurement outputs to (batch, (2**IR), NR).
-        if self.__class__.__name__ != 'QCGNN_H':
+        if self.__class__.__name__ == 'QCGNN_IX':
             sizes = (2 ** self.num_ir_qubits, self.num_nr_qubits)
-            x = torch.unflatten(x, dim=-1, sizes=sizes)
-            # Transpose to shape (batch, NR, (2**IR)).
-            x = x.mT
-            # Summing up (2**IR) {I,X} combinations in IR.
-            x = torch.sum(x, dim=-1)
+            x = torch.unflatten(x, dim=-1, sizes=sizes) # (N, (2 ** n_I), n_Q)
+            x = x.mT # (N, n_Q, (2 ** n_I))
+            x = torch.sum(x, dim=-1) # (N, n_Q)
 
-        # Count number of particles.
-        num_ptcs = torch.sum(~mask, axis=-1, keepdim=True)
+        # Additional aggregation from graph aggregation.
         if self.aggregation == 'add':
-            x = x * num_ptcs
+            x = x * num_ptcs # (N, n_Q)
         elif self.aggregation == 'mean':
-            # Remember in classical, we have 2 MEAN aggregations, one for node,
-            # and one for graph, which means we have total (1/N)^2 factor. So
-            # we divide with an additional factor 1/N here.
-            x = x / num_ptcs
+            x = x / num_ptcs # (N, n_Q)
 
-        # `x` is now in shape (batch, NR).
         return x
+
 
 class QCGNN_H(QCGNN_IX):
     """QCGNN with Hadamard transform at the last step.
@@ -429,7 +440,7 @@ class QCGNN_H(QCGNN_IX):
         """Build up the quantum circuit."""
 
         @qml.qnode(self.qml_device, diff_method=self.diff_method)
-        def full_circuit(inputs, weights):
+        def full_circuit(inputs: torch.Tensor, weights: torch.Tensor):
             """
             Returns:
                 A tensor constructed by concatenating:
@@ -437,9 +448,9 @@ class QCGNN_H(QCGNN_IX):
                 - NR_expval: Expectation values of NR.
             """
             # Build up quantum gates.
-            inputs = self.unflatten(inputs)
+            D = self.num_nr_qubits * self.num_rotation
+            inputs = inputs.unflatten(dim=-1, sizes=(-1, D))
             self.circuit_initialization(inputs)
-            inputs = torch.nan_to_num(inputs, nan=0.0)
             self.circuit_evolve(inputs, weights)
 
             # Different from QCGNN_IX, we add Hadamard transform to IR.
@@ -457,36 +468,6 @@ class QCGNN_H(QCGNN_IX):
         return full_circuit
 
 
-class QCGNN_RY(QCGNN_IX):
-    def __init__(self, *args, **kwargs):
-        """Hybrid QCGNN model."""
-        super().__init__(*args, **kwargs)
-        self.encoding = nn_linear_encoding(self.num_ir_qubits, self.num_nr_qubits)
-
-    def unflatten(self, inputs):
-        # Reshape from (batch, ptcs * reupload * features) to (batch, ptcs, reupload * features).
-        return inputs.unflatten(dim=-1, sizes=(-1, self.num_reupload * self.num_nr_qubits))
-    
-    def circuit_evolve(self, inputs, weights):
-        # Different from QCGNN_IX here.
-        inputs = inputs.unflatten(dim=-1, sizes=(self.num_reupload, self.num_nr_qubits))
-
-        for re_idx in range(self.num_reupload):
-            for ir_idx in range(2 ** self.num_ir_qubits):
-                control_values = np.binary_repr(ir_idx, width=self.num_ir_qubits)
-                control_values = list(map(int, control_values))
-                # Different from QCGNN_IX here.
-                if len(inputs.shape) > 3:
-                    # Different from QCGNN_IX here.
-                    self.encoding(inputs[:, ir_idx, re_idx], control_values=control_values)
-                else:
-                    # Different from QCGNN_IX here.
-                    self.encoding(inputs[ir_idx, re_idx], control_values=control_values)
-                self.random_noise()
-            qml.StronglyEntanglingLayers(weights=weights[re_idx], wires=self.nr_wires)
-            self.random_noise()
-
-
 class QuantumRotQCGNN(nn.Module):
     def __init__(
             self,
@@ -494,6 +475,7 @@ class QuantumRotQCGNN(nn.Module):
             num_nr_qubits: int,
             num_layers: int,
             num_reupload: int,
+            vqc_ansatz: Operation,
             score_dim: int,
             dropout: Optional[float] = 0.0,
             **kwargs
@@ -509,11 +491,15 @@ class QuantumRotQCGNN(nn.Module):
         
         super().__init__()
 
+        self.num_nr_qubits = num_nr_qubits
+
         self.phi = QCGNN_IX(
             num_ir_qubits=num_ir_qubits,
             num_nr_qubits=num_nr_qubits,
             num_layers=num_layers,
             num_reupload=num_reupload,
+            num_rotation=3,
+            vqc_ansatz=vqc_ansatz,
             **kwargs
         )
 
@@ -534,8 +520,11 @@ class QuantumRotQCGNN(nn.Module):
         with torch.no_grad():
             mask = torch.isnan(x[..., 0]) # (N, P)
             x = x.masked_fill(torch.isnan(x), 0.)
+            x = x.unsqueeze(-2) # (N, P, 1, 3)
+            x = x.expand(-1, -1, self.num_nr_qubits, -1) # (N, P, n_Q, 3)
+            x = x.flatten(start_dim=-2, end_dim=-1) # (N, P, n_Q * 3)
 
-        x = self.phi(x, mask)
+        x = self.phi(x, mask) # (N, n_Q)
         x = self.mlp(x)
 
         return x
@@ -548,6 +537,8 @@ class HybridQCGNN(nn.Module):
             num_nr_qubits: int,
             num_layers: int,
             num_reupload: int,
+            num_rotation: int,
+            vqc_ansatz: Operation,
             score_dim: int,
             dropout: Optional[float] = 0.0,
             **kwargs
@@ -564,13 +555,15 @@ class HybridQCGNN(nn.Module):
         super().__init__()
         
         # Transform (pt, eta, phi) to higher dimension feature space.
-        self.embed = nn.Linear(3, num_reupload * num_nr_qubits)
+        self.embed = nn.Linear(3, num_rotation * num_nr_qubits)
 
-        self.phi = QCGNN_RY(
+        self.phi = QCGNN_IX(
             num_ir_qubits=num_ir_qubits,
             num_nr_qubits=num_nr_qubits,
             num_layers=num_layers,
             num_reupload=num_reupload,
+            num_rotation=num_rotation,
+            vqc_ansatz=vqc_ansatz,
             **kwargs
         )
 
@@ -592,11 +585,11 @@ class HybridQCGNN(nn.Module):
             mask = torch.isnan(x[..., 0]) # (N, P)
             x = x.masked_fill(torch.isnan(x), 0.) # (N, P, 3)
 
-        x = self.embed(x) # (N, P, num_reupload * num_nr_qubits)
+        x = self.embed(x) # (N, P, num_rotation * n_Q)
         x = torch.atan(x)
         x = x.masked_fill(mask.unsqueeze(-1), 0.)
 
-        x = self.phi(x, mask)
+        x = self.phi(x, mask) # (N, n_Q)
         x = self.mlp(x)
 
         return x

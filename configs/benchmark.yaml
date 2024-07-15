@@ -31,12 +31,25 @@ ParticleNet:
 
   edge_conv: [
       # [top_k_neighbor, [[channel_1_in, channel_1_out], [channel_2_in, channel_2_out], ...]]
-      [7, [[32, 32], [32, 32], [32, 32]]],
-      [7, [[32, 64], [64, 64], [64, 64]]],
+      [3, [[64, 64], [64, 64], [64, 64]]], # 16
+      [3, [[64, 128], [128, 128], [128, 128]]], # 16
   ]
 
   fc: [
       # [dropout_rate, [channel_in, channel_out]]
-      [0.1, [64, 128]],
-      [0.1, [128, 128]],
+      [0.1, [128, 256]],
+      [0.1, [256, 256]],
   ]
+
+# Hyperparameters of Particle Flow Network.
+
+ParticleFlowNetwork:
+  Phi:
+    in_channel: 3
+    out_channel: 256
+    hidden_channel: 100
+    num_layers: 2
+  F:
+    in_channel: 256
+    hidden_channel: 100
+    num_layers: 2

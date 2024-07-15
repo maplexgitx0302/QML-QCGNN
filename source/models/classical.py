@@ -36,11 +36,14 @@ class ClassicalMLP(nn.Module):
         super().__init__()
 
         # Add an activation function for each layer.
-        net = [nn.Linear(in_channel, hidden_channel), nn.ReLU(), nn.Dropout(dropout)]
-        for _ in range(num_layers - 1):
-            net += [nn.Linear(hidden_channel, hidden_channel), nn.ReLU(), nn.Dropout(dropout)]
-        net += [nn.Linear(hidden_channel, out_channel)]
-        self.net = nn.Sequential(*net)
+        if num_layers == 0:
+            self.net = nn.Sequential(nn.Linear(in_channel, out_channel))
+        else:
+            net = [nn.Linear(in_channel, hidden_channel), nn.ReLU(), nn.Dropout(dropout)]
+            for _ in range(num_layers - 1):
+                net += [nn.Linear(hidden_channel, hidden_channel), nn.ReLU(), nn.Dropout(dropout)]
+            net += [nn.Linear(hidden_channel, out_channel)]
+            self.net = nn.Sequential(*net)
 
     def forward(self, x):
         return self.net(x)

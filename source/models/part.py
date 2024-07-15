@@ -232,7 +232,7 @@ class AttentionBlock(nn.Module):
         return x
 
 class ParticleTransformer(nn.Module):
-    def __init__(self, score_dim: int, parameters: dict) -> None:
+    def __init__(self, score_dim: int, parameters: dict):
         """Particle Transformer.
         
         Args:
