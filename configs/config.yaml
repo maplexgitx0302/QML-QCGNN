@@ -3,7 +3,7 @@
 Settings:
   mode: '111'         # Stands for ('train', 'valid', 'test').
   use_wandb: true     # Whether using wandb to monitor training procedure.
-  print_log: true     # Whether print logs during training.
+  print_log: false    # Whether print logs during training.
   suffix: ''          # Suffix description of this training.
 
 Train:
