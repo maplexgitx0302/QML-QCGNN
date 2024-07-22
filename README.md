@@ -34,7 +34,9 @@ We demonstrate the feasibility of each model with two different Monte Carlo data
 
 - [JetNet Dataset](https://zenodo.org/records/6975118): Used for multi-class classification task, with ~1 TeV fat-jets coming from gluon, light-quark, top-quark, W-boson and Z-boson. See [2106.11535](https://arxiv.org/abs/2106.11535) for further detail. **The doanloaded `hdf5` files should be placed in `./dataset/jetnet`.**
 
-- [Top Quark Tagging](https://zenodo.org/records/2603256): Used for binary classification task, with fatjet momentum in [550, 650] GeV. **The doanloaded `hdf5` files should be placed in `./dataset/top`.**
+- [Top Quark Tagging](https://zenodo.org/records/2603256): Used for binary classification task, with fatjet momentum in [550, 650] GeV. **The doanloaded `hdf5` files should be placed in `./dataset/top`, and the `val.h5` should be renamed as `valid.h5`.**
+
+
 
 ---
 

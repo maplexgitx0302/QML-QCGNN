@@ -242,7 +242,7 @@ class QCGNN_IX(nn.Module):
         self.nr_wires = range(num_ir_qubits + num_wk_qubits, num_qubits)
 
         # Create quantum device.
-        if ('qiskit' in qdevice) and ('qiskit' in qbackend):
+        if 'qiskit' in qdevice:
             # If real device -> specify backend and shots.
             self.qml_device = qml.device(qdevice, wires=num_qubits, backend=qbackend, shots=shots)
         elif qdevice == 'default.mixed':
