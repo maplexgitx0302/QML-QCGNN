@@ -60,6 +60,7 @@ class ClassicalMPGNN(nn.Module):
             phi_out: int,
             phi_hidden: int,
             phi_layers: int,
+            mlp_hidden: int,
             score_dim: int,
             aggregation: Optional[str] = 'add',
             dropout: Optional[float] = 0.0,
@@ -83,6 +84,8 @@ class ClassicalMPGNN(nn.Module):
                 Number of hidden neurons of `phi` in MPGNN.
             phi_layers : int
                 Number of hidden layers of `phi` in MPGNN.
+            mlp_hidden : int
+                Number of hidden neurons of the final linear.
             score_dim : int
                 Dimension of the final score output.
             aggregation : str (default='add')
@@ -106,10 +109,10 @@ class ClassicalMPGNN(nn.Module):
         self.gnn = MessagePassing(phi, aggr=aggregation)
         
         self.mlp = nn.Sequential(
-            nn.Linear(phi_out, 16),
+            nn.Linear(phi_out, mlp_hidden),
             nn.ReLU(),
             nn.Dropout(dropout),
-            nn.Linear(16, score_dim),
+            nn.Linear(mlp_hidden, score_dim),
         )
 
     def forward(self, x, edge_index, batch):

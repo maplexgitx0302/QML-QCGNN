@@ -41,7 +41,6 @@ class PhiMessagePassing(geo_nn.MessagePassing):
 class ParticleFlowNetwork(nn.Module):
     def __init__(
             self,
-
             score_dim: int,
             parameters: dict
     ):

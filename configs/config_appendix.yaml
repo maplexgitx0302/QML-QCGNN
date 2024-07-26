@@ -3,7 +3,7 @@
 Settings:
   mode: '111'         # Stands for ('train', 'valid', 'test').
   use_wandb: true     # Whether using wandb to monitor training procedure.
-  print_log: false    # Whether print logs during training.
+  print_log: true    # Whether print logs during training.
   suffix: ''          # Suffix description of this training.
 
 Train:
@@ -19,9 +19,9 @@ Data:
   num_valid: 5000      # Number of validation data per channel.
   num_test: 5000       # Number of testing data per channel.
   batch_size: 64       # Batch size.
-  pt_threshold: 0.0   # Percentage of daughter pt to jet pt threshold.
+  pt_threshold: 0.0    # Percentage of daughter pt to jet pt threshold.
   min_num_ptcs: 4      # Minimum number of particles per jet.
-  max_num_ptcs: 32     # Maximum number of particles per jet.
+  max_num_ptcs: null   # Maximum number of particles per jet.
   
 TopQCD:
   dataset: 'TopQCD'    # Dataset name.

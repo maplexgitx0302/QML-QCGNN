@@ -1,7 +1,7 @@
 Device:
   IBMQ:
     qdevice: 'qiskit.ibmq'
-    qbackend: 'ibm_osaka'
+    qbackend: 'ibm_brussels'
     shots: 1024
 
   Simulator:
