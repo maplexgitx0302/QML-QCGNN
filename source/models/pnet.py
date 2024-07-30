@@ -38,6 +38,9 @@ class EdgeConv(nn.Module):
                     Shape = (N, P, 2).
         """
 
+        N, P, C = x.shape
+        K = self.K
+
         # For residual.
         x_residual = self.residual(x.transpose(-1, -2)) # (N, C', P)
         x_residual = x_residual.transpose(-1, -2) # (N, P, C')
@@ -46,13 +49,13 @@ class EdgeConv(nn.Module):
         if direction is None:
             direction = x.masked_fill(mask.unsqueeze(-1), float('inf')) # (N, P, C)
         distance = torch.norm(direction.unsqueeze(-2) - direction.unsqueeze(-3), dim=-1) # (N, P, P)
-        _, knn_index = torch.topk(distance, k=(self.K + 1), largest=False) # _, (N, P, K + 1)
+        _, knn_index = torch.topk(distance, k=(K + 1), largest=False) # _, (N, P, K + 1)
         knn_index = knn_index[..., 1:] # (N, P, K)
 
         # Extend features with neighbor features subtraction.
-        f_center = x.unsqueeze(-2).expand(-1, -1, self.K, -1) # (N, P, K, C)
-        f_neighbor = x.unsqueeze(-2).expand(-1, -1, self.K, -1) # (N, P, K, C)
-        f_neighbor = f_neighbor.gather(-1, knn_index.unsqueeze(-1)) # (N, P, K, C)
+        f_center = x.unsqueeze(-2).expand(-1, -1, K, -1) # (N, P, K, C)
+        f_neighbor = x.unsqueeze(-2).expand(-1, -1, K, -1) # (N, P, K, C)
+        f_neighbor = f_neighbor.gather(-3, knn_index.unsqueeze(-1).expand(-1, -1, -1, C)) # (N, P, K, C)
         x = torch.cat([f_center, f_center - f_neighbor], dim=-1) # (N, P, K, 2 * C)
         x = x.permute(0, 3, 1, 2) # (N, 2 * C, P, K)
 
@@ -65,7 +68,7 @@ class EdgeConv(nn.Module):
         x = x.masked_fill(mask_K.unsqueeze(dim=-3), 0.)
 
         # Aggregation
-        x = torch.sum(x, dim=-1) / (self.K - torch.sum(mask_K, dim=-1).unsqueeze(-2)) # (N, C', P)
+        x = torch.sum(x, dim=-1) / (K - torch.sum(mask_K, dim=-1).unsqueeze(-2)) # (N, C', P)
         x = x.transpose(-1, -2) # (N, P, C')
 
         # Residual 
