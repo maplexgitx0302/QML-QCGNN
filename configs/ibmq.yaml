@@ -8,19 +8,11 @@ Device:
     qdevice: 'default.qubit'
     qbackend: ''
 
-  Noise:
-    qdevice: 'default.mixed'
-    qbackend: ''
-    shots: 1024
-
 Pretrain:
   n_I: 2
-  n_Q: 3
   suffix: 'CQ0715'
-  ckpt_path: ./training_logs/WandbLogger/QCGNN_Rev1/QuantumRotQCGNN-nI4_nQ3_L1_R2_D0.00-TopQCD_P16_N25000-CQ0715-1/checkpoints/last.ckpt
 
 Data:
-  rnd_seed: 1
   num_data: 200
   num_ptcs: 4
   batch_size: 20

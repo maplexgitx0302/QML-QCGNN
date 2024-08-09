@@ -13,6 +13,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         # Common packages,
+        'ipynb-py-convert',
         'matplotlib',
         'numpy',
         'pandas',

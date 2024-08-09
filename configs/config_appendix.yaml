@@ -15,9 +15,9 @@ Train:
   ckpt_top_k: 5             # Save top k models with highest AUC.
 
 Data:
-  num_train: 50000     # Number of training data per channel.
-  num_valid: 5000      # Number of validation data per channel.
-  num_test: 5000       # Number of testing data per channel.
+  num_train: 100000     # Number of training data per channel.
+  num_valid: 10000      # Number of validation data per channel.
+  num_test: 10000       # Number of testing data per channel.
   batch_size: 64       # Batch size.
   pt_threshold: 0.0    # Percentage of daughter pt to jet pt threshold.
   min_num_ptcs: 4      # Minimum number of particles per jet.

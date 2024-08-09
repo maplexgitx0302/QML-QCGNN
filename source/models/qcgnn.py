@@ -154,6 +154,8 @@ class QCGNN_IX(nn.Module):
             shots: Optional[int] = 1024,
             aggregation: Optional[str] = 'add',
             noise_prob: Optional[float] = 0,
+            session_id: Optional[str] = None,
+            tags: Optional[str] = None,
     ):
         """Quantum Complete Graph Neural Network (QCGNN) in {I,X}
 
@@ -244,7 +246,10 @@ class QCGNN_IX(nn.Module):
         # Create quantum device.
         if 'qiskit' in qdevice:
             # If real device -> specify backend and shots.
-            self.qml_device = qml.device(qdevice, wires=num_qubits, backend=qbackend, shots=shots)
+            self.qml_device = qml.device(
+                qdevice, wires=num_qubits, shots=shots,
+                backend=qbackend, session_id=session_id, tags=tags
+            )
         elif qdevice == 'default.mixed':
             # Used for noise.
             self.qml_device = qml.device(qdevice, wires=num_qubits, shots=shots)
