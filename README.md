@@ -1,4 +1,7 @@
-# Jet Discrimination with Quantum Complete Graph Neural Network
+# Jet Discrimination with Quantum Complete Graph Neural Network 
+
+[![DOI](https://zenodo.org/badge/827250222.svg)](https://doi.org/10.5281/zenodo.14504715)
+
 
 This repository contains the source code for the paper [arXiv:2403.04990](https://arxiv.org/abs/2403.04990). The primary script for training the models is located in `main.ipynb`, with supplementary modules available in the `source/` directory. Notebooks related to IBMQ are prefixed with 'ibmq_', and the training results using simulators can be found in `training_result.ipynb`.
 
