@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "This is the citation file for the QCGNN repository."
+authors:
+- family-names: "Chen"
+  given-names: "Yi-An"
+  orcid: "https://orcid.org/0009-0007-9228-0853"
+- family-names: "Chen"
+  given-names: "Kai-Feng"
+  orcid: "https://orcid.org/0000-0003-1304-3782"
+title: "GitHub for QCGNN"
+version: 2.0.1
+doi: 10.5281/zenodo.1234
+date-released: 2024-08-11
+url: "https://github.com/NTUHEP-QML/QCGNN"
