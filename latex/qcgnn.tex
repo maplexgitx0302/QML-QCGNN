@@ -1,0 +1,518 @@
+\documentclass[reprint,amsmath,amssymb,prd,nofootinbib]{revtex4-2}
+
+% general packages
+\usepackage{xcolor}
+\usepackage{graphicx}
+
+% url
+\usepackage{url}
+\usepackage{xurl}
+
+% highlighting
+\usepackage{color,soul}
+
+% citation
+\usepackage[colorlinks = true,
+            linkcolor = blue,
+            urlcolor  = blue,
+            citecolor = blue,
+            anchorcolor = blue]{hyperref}
+
+% packages for physics and math
+\usepackage{bm}
+\usepackage{braket}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\DeclareMathOperator{\Tr}{Tr}
+
+% latex table
+\usepackage{tabularx}
+\usepackage{multirow}
+\newcolumntype{Y}{>{\centering\arraybackslash}X}
+
+% variables
+\def\xbf{\mathbf{x}}
+\def\thetabf{\boldsymbol{\theta}}
+\def\UENC{U_{\text{ENC}}}
+\def\UPARAM{U_{\text{PARAM}}}
+\def\INR{I^\text{NR}}
+\def\XNR{X^\text{NR}}
+\def\YNR{Y^\text{NR}}
+\def\ZNR{Z^\text{NR}}
+\def\IIR{I^\text{IR}}
+\def\XIR{X^\text{IR}}
+\def\YIR{Y^\text{IR}}
+\def\ZIR{Z^\text{IR}}
+\def\I22{\left[\begin{matrix}1 & 1\\ 1 & 1\end{matrix}\right]}
+
+% special vocabulary
+\usepackage{xspace}
+\newcommand{\PennyLane}{\textit{PennyLane}\xspace}
+\newcommand{\Top}{\textsc{Top}\xspace}
+\newcommand{\JetNet}{\textsc{JetNet}\xspace}
+
+% solve the problem of "underfull \hbox" when typesetting url in footnote
+\Urlmuskip=0mu  plus 10mu
+
+% url
+\urldef{\urlamplitude}\url{https://pennylane.ai/qml/glossary/quantum_embedding/#amplitude-embedding}
+\urldef{\urlmpgnn}\url{https://pytorch-geometric.readthedocs.io/en/latest/tutorial/create_gnn.html}
+\urldef{\urlibmqcal}\url{https://drive.google.com/drive/folders/17FiHB1bkYkCIC4Nvx3nyT3HkWwpi7WKE?usp=share_link}
+\urldef{\urllightning}\url{https://pennylane.ai/blog/2022/07/lightning-fast-simulations-with-pennylane-and-the-nvidia-cuquantum-sdk/}
+
+\begin{document}
+
+\date{\today}
+
+\title{Jet Discrimination with Quantum Complete Graph Neural Network}
+
+\author{Yi-An Chen}
+\email{maplexworkx0302@gmail.com}
+\author{Kai-Feng Chen}
+\affiliation{Department of Physics, National Taiwan University, Taipei, Taiwan}
+
+\begin{abstract}
+    Machine learning, particularly deep neural networks, has been widely used in high-energy physics, demonstrating remarkable results in various applications. Furthermore, the extension of machine learning to quantum computers has given rise to the emerging field of quantum machine learning. In this paper, we propose the Quantum Complete Graph Neural Network (QCGNN), which is a variational quantum algorithm based model designed for learning on complete graphs. QCGNN with deep parametrized operators offers a polynomial speedup over its classical and quantum counterparts, leveraging the property of quantum parallelism. We investigate the application of QCGNN with the challenging task of jet discrimination, where the jets are represented as complete graphs. Additionally, we conduct a comparative analysis with classical models to establish a performance benchmark.
+\end{abstract}
+
+\maketitle
+
+\section{Introduction}
+
+The proton-proton collisions at the Large Hadron Collider (LHC) produce jets from hard scattering events. Jets are collimated sprays of particles formed through the hadronization of elementary particles. Jet discrimination, i.e., identifying the type of elementary particle that initiates the jet, is one of the most challenging tasks in particle physics.
+
+Deep neural networks (DNNs), celebrated for their architectural flexibility and expressive power, have been widely adopted in high-energy physics (HEP) \cite{hepmllivingreview,hepml1,hepml2}. Designing a DNN model tailored for jet discrimination poses a significant challenge due to the variable number of constituent particles within jets. Various data representations and DNN models have been proposed for jet discrimination, including images \cite{2pcnn,jet_image1,jet_image2,jet_image3,jet_image4,jet_image5,jet_image6,jet_image7}, sequences \cite{jet_seq1,jet_seq2,jet_seq3,jet_seq4,jet_seq5,jet_seq6,jet_seq7}, trees \cite{jet_tree1,jet_tree2}, graphs \cite{jet_graph1,jet_graph2,jet_graph3,jet_graph4,jet_graph5,jet_graph6,jet_graph7,jet_graph8,jet_graph9,jet_graph10,jet_graph11,jet_graph12,jet_graph13}, and sets \cite{pfn,ptcnet,part,jet_set1,jet_set2,jet_set3,jet_set4,jet_set5,jet_set6,jet_set7,jet_set8}. Jet images are typically two-dimensional representations (e.g., pseudorapidity $\eta$ versus azimuthal angle $\phi$) where particle information is encoded in a discretized two-dimensional grid. Sequences or trees order particles according to specific criteria (e.g., by transverse momentum or distance parameter). Despite the simplicity of these representations, they often lose information about individual particles, lack translational or rotational invariance, or disregard permutation invariance. To preserve the information of each constituent particle and the relevant symmetries, graphs or sets are widely used for jet representation, with each particle represented as a node in a graph or an element of a set.
+
+In the upcoming high-luminosity LHC (HL-LHC), the data volume is expected to increase by several orders of magnitude compared to the LHC. The increased luminosity and event complexity due to pile-up will make data analysis even more challenging. Consequently, efficient methodologies and novel technologies in data analysis, such as parallel computing and machine learning, are in high demand. Furthermore, quantum computing has made significant strides in recent decades, leading to the development of quantum machine learning (QML) \cite{qml1,qml2,qml3,qml4,qml5}. QML leverages the unique properties of quantum systems, such as superposition and entanglement, to potentially achieve learning capabilities unattainable with classical computers. QML has been explored in several HEP analyses \cite{qml_hep1}, including reconstruction \cite{qml_reco1,qml_reco2,qml_reco3}, classification \cite{qml_cf1,qml_cf2,qml_cf3,qml_cf4,qml_cf5,qml_cf6,qml_cf7,qml_cf8,qml_cf9,qml_cf10,qml_cf11,qml_cf12,qml_cf13,qml_cf14}, anomaly detection \cite{qml_ad1,qml_ad2,qml_ad3,qml_ad4,qml_ad5}, and data generation \cite{qml_gen1,qml_gen2,qml_gen3,qml_gen4,qml_gen5}.
+
+In this paper, we introduce the Quantum Complete Graph Neural Network (QCGNN), a variational quantum algorithm \cite{vqc1,vqc2,vqc3} based model specifically designed for learning complete graphs \cite{completegraph}. For QCGNN with deep parametrized operators, it has a polynomial speedup over its classical counterparts by utilizing the property of quantum parallelism. The application of QCGNN is studied through jet discrimination using two public datasets: the \Top dataset \cite{zenodo_top,dataset_top} for binary classification and the \JetNet dataset \cite{zenodo_jetnet,dataset_jetnet} for multi-class classification. The source code is publicly available at \cite{qcgnn_zenodo}.
+
+The structure of this paper is as follows: In Sec.~\ref{sec_method}, we describe the architectures of QCGNN and the classical graph neural networks used for benchmarking, as well as discuss the computational complexity of learning with classical and quantum models. Sec.~\ref{sec_setup} details the experimental setup for jet discrimination, with the results presented in Sec.~\ref{sec_result}. Finally, we summarize our findings in Sec.~\ref{sec_summary}.
+
+\section{Methodology} \label{sec_method}
+
+\subsection{Graph Neural Network} \label{sec_gnn}
+Graphs are ubiquitous data structures that represent relationships and connections between entities. Analyzing and extracting valuable information from graph-structured data is a fundamental challenge in modern data science and machine learning. To address this challenge, Graph Neural Networks (GNNs) have emerged as a powerful and versatile framework for learning from graph-structured data \cite{gnnex1,gnnex2,gnnex3}.
+
+A graph $G$ is described by its set of nodes and edges. Let $N$ denote the number of nodes, and $E_{ij}$ the edge from the $i$-th node to the $j$-th node. Throughout this paper, the graphs are assumed to be \textit{undirected} ($E_{ij}=E_{ji}$) and \textit{unweighted} (all edges have equal weights). Furthermore, a graph is considered \textit{complete} \cite{completegraph} if all pairs of nodes are connected. A complete graph that is undirected and unweighted can also be viewed as a set. Each node is associated with a feature vector $\xbf\in \mathbb{R}^{d}$, where $d$ is the dimension of the features.
+
+Graphs are permutation invariant, meaning that reordering the indices of the nodes does not alter the information contained in the graph. The general structure of permutation-invariant models has been studied in \cite{deepset,pfn}. In this work, we focus on a specific type of GNN, the Message Passing Graph Neural Network (MPGNN) \cite{mpn1}, which provides a simple and intuitive approach to designing GNNs. The MPGNN is constructed by iterating the following formula\footnote{The formula is adapted from the PyTorch Geometric documentation \urlmpgnn. The $e_{j,i}$ term is omitted here as we only consider undirected and unweighted graphs.}
+\begin{equation} \label{eqmp}
+    \xbf^{(k)}_i=\gamma^{(k)}\left(\xbf^{(k-1)}_i,\bigoplus_{\substack{j\in \mathcal{N}(i)}}\Phi^{(k)}(\xbf^{(k-1)}_i,\xbf^{(k-1)}_j)\right),
+\end{equation}
+where $\Phi^{(k)}$ extracts information from the neighboring nodes $\mathcal{N}(i)$ of the $i$-th node, and $\gamma^{(k)}$ updates the node features in the $k$-th iteration. As pointed out in \cite{deepset}, summation over a set is the sufficient and necessary condition for satisfying permutation invariance. This concept can be generalized by the aggregation function $\bigoplus$, which is typically chosen as \textbf{SUM}, \textbf{MEAN}, \textbf{MAX}, or \textbf{MIN}\footnote{Note that \textbf{MAX} and \textbf{MIN} can be expressed as summation over the $p$-norm, which can be absorbed into $\Phi$.}, among others. A brief discussion on the relation between state-of-the-art models and the MPGNN is provided in Appendix \ref{app_mpgnn}.
+
+\subsection{Quantum Complete Graph Neural Network} \label{sec_qcgnn}
+
+\begin{figure*}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{fig_qc_full.png}
+    \caption{Example of a QCGNN ansatz for learning a 3-node complete graph, with $n_I=2$ and $n_Q=4$. The quantum state is initially prepared in a uniform quantum state as described in Eq.~\ref{psi_0} via a uniform state oracle (blue block). The dashed box contains the encoding (red blocks) and parametrized operators (green blocks), which may be re-uploaded $R$ times \cite{reupload}. The encoding operators consist of multi-controlled operators that correspond to Eq.~\ref{mc_gates}, transforming the quantum state to Eq.~\ref{psi_1}, or, in this example, Eq.~\ref{psi_1_ex3}. The empty ($\circ$) and filled ($\bullet$) circles in the IR represent the controlled conditions for the controlled qubits: the encoding operators are applied if the corresponding qubit in IR is in state $\ket{0}$ and $\ket{1}$, respectively. Since the encoding  operators are operated with different controlled conditions, the red controlled encoding blocks are mutually commutable, i.e., the quantum state stays the same if one first encode $\xbf_1$ then $\xbf_0$ with their corresponding controlled condition. The quantum state then evolves to Eq.~\ref{psi_2} through the parametrized operators. If the dashed box is re-uploaded $R$ times, the quantum state evolves to Eq.~\ref{psi_final}. Finally, the qubits in the IR are measured in the $X$ basis as described in Eq.~\ref{Jdecompose}, while the NR qubits are measured using Pauli-$Z$ observables to calculate the result in Eq.~\ref{eq_JP}. The details of the encoding and parametrized operators used are provided in Sec.~\ref{sec_cq_model_setup}.}
+    \label{fig:exqcgnn}
+\end{figure*}
+
+In the noisy intermediate-scale quantum (NISQ) era \cite{nisq}, variational quantum algorithms \cite{vqc1,vqc2,vqc3} present an intuitive approach to implementing quantum neural networks. These networks utilize a variational quantum circuit (VQC) with tunable parameters updated via classical optimization routines. Typically, an $n$-qubit VQC can be expressed as:
+\begin{equation*}
+    f(\xbf,\thetabf) = \bra{0}^{\otimes n}U^\dagger(\xbf,\thetabf)PU(\xbf,\thetabf)\ket{0}^{\otimes n}
+\end{equation*}
+for some Pauli string observable $P$ and unitary operator $U$. The unitary operator encodes the data $\xbf$ into the quantum state and includes several tunable parameters $\thetabf$. These parameters are optimized via gradient descent \cite{psr1,psr2,psr3,psr4} using an appropriate loss function. Typically, $U$ can be divided into encoding and parametrized operators, denoted as $\UENC$ and $\UPARAM$, respectively.
+
+The QCGNN architecture comprises two qubit registers: an index register (IR) and a neural network register (NR), with $n_I$ and $n_Q$ qubits, respectively. Fig.~\ref{fig:exqcgnn} illustrates an example of a QCGNN circuit with $n_I=2$ and $n_Q=4$. To encode the information of an undirected and unweighted complete graph with $N$ nodes, we set $n_I=\lceil \log_2(N)\rceil$. For graphs with different number of nodes, $n_I$ could be different, e.g., a 4-particle jet needs $n_I=2$ qubits, while a 5-particle jet requires $n_I=3$. We will show that the output of QCGNN justifies that QCGNN can handle variable size of graphs. The quantum state in the IR is initialized to uniform basis states through a uniform state oracle (USO) and evolves as
+\begin{equation} \label{psi_0}
+    \ket{\psi_0}=\frac{1}{\sqrt{N}}\sum^{N-1}_{i=0}\ket{i}\ket{0}^{\otimes n_Q}, 
+\end{equation}
+where $\ket{0}^{\otimes n_Q}$ is the initial quantum state in the NR with all qubits in $\ket{0}$ state. The decimal representation, e.g., $\ket{0}$, $\ket{1}$, $\ket{2}$, $\ket{3}$, is used here, equivalent to the binary representation $\ket{00}$, $\ket{01}$, $\ket{10}$, $\ket{11}$. The context should clarify whether the decimal or binary representation is being used. If $N$ is a power of 2, i.e., $n_I=\log_2 N$, the USO can be constructed using Hadamard gates. Otherwise, other methods described in \cite{uso1,uso2} can be employed.
+
+The node features $\xbf_i$ of the $i$-th node are encoded through a series of unitary operators $\UENC(\xbf_i)$, controlled by the corresponding basis state in IR, where the control condition is the binary representation of $i$ with $n_I$ digits, denoted as $C^{n_I}_{\text{bin}(i)} \Bigl( \UENC(\xbf_i) \Bigr)$. This controlled operator acts on the quantum state as follows:
+\begin{equation} \label{mc_gates}
+    \begin{split}
+        C^{n_I}_{\text{bin}(i)} & \Bigl( \UENC(\xbf_i) \Bigr) \Bigl[ \ket{j}\ket{0}^{\otimes n_Q} \Bigr] = \\
+        &\delta_{ij}\ket{j}\UENC(\xbf_i)\ket{0}^{\otimes n_Q} + (1-\delta_{ij})\ket{j}\ket{0}^{\otimes n_Q},
+    \end{split}
+\end{equation}
+where $\delta_{ij}$ is the Kronecker delta. The controlled operator $C^{n_I}_{\text{bin}(i)} \Bigl( \UENC(\xbf_i) \Bigr)$ on the left-hand side acts on both the IR and NR, while $\UENC(\xbf_i)$ on the right-hand side acts only on the NR. After encoding the information of all $N$ nodes, the quantum state evolves as
+\begin{equation} \label{psi_1}
+    \begin{split}
+        \ket{\psi_0} &\rightarrow
+        \ket{\psi_1} = \Biggl[\bigotimes^{N-1}_{i=0}C^{n_I}_{\text{bin}(i)} \Bigl( \UENC(\xbf_i) \Bigr)\Biggr]\ket{\psi_0} \\
+        &= \frac{1}{\sqrt{N}}\sum^{N-1}_{j=0}\Biggl[\bigotimes^{N-1}_{i=0}C^{n_I}_{\text{bin}(i)} \Bigl( \UENC(\xbf_i) \Bigr)\Biggr] \Bigl( \ket{j}\ket{0}^{\otimes n_Q} \Bigr) \\
+        &= \frac{1}{\sqrt{N}}\sum^{N-1}_{i=0}\ket{i}\UENC(\xbf_i)\ket{0}^{\otimes n_Q}, \\
+    \end{split}
+\end{equation}
+where it is used that $\ket{j}$ must be acted upon by one of the $C^{n_I}_{\text{bin}(i)} \Bigl( \UENC(\xbf_i) \Bigr)$ as $i$ ranges from $0$ to $N-1$. For example, in Fig.~\ref{fig:exqcgnn}, where $N=3$, $n_Q=4$, and $n_I=\lceil \log_2 N \rceil=2$, the quantum state $\ket{\psi_1}$ can be expressed as
+\begin{equation} \label{psi_1_ex3}
+    \begin{split}
+        \ket{\psi^{N=3}_1} = \frac{1}{\sqrt{3}} \biggr[ &\ket{0}\UENC(\xbf_0)\ket{0000} \\
+        + &\ket{1}\UENC(\xbf_1)\ket{0000}\\
+        + &\ket{2}\UENC(\xbf_2)\ket{0000} \biggr] ,
+    \end{split}
+\end{equation}
+where $\ket{0000}$ is equivalent to $\ket{0}^{\otimes 4}$. At first glance, Eq.~\ref{psi_1} and Eq.~\ref{psi_1_ex3} appear to depend on the node ordering. However, as we will demonstrate, by selecting the appropriate observables, the final output of QCGNN is permutation invariant.
+
+Next, a series of parametrized unitary operators $\UPARAM(\thetabf)$ with tunable parameters $\thetabf$ are applied to the NR, evolving the quantum state to
+\begin{equation} \label{psi_2}
+    \begin{split}
+        \ket{\psi_1} \rightarrow
+        \ket{\psi_2} &= \UPARAM(\thetabf)\ket{\psi_1} \\
+        &= \frac{1}{\sqrt{N}}\sum^{N-1}_{i=0}\ket{i}\UPARAM(\thetabf)\UENC(\xbf_i)\ket{0}^{\otimes n_Q}.
+    \end{split}
+\end{equation}
+
+To increase the expressive power of VQCs, the \textit{data re-uploading technique} \cite{reupload} can be employed. The idea of data re-uploading is to encode the data multiple times, allowing the quantum state to interact with the data in a more complex manner. The data re-uploading technique can be implemented by alternately applying the encoding and parametrized operators several times, but with different parameters. As the encoding operators in $\ket{\psi_2}$ correspond to the node indices $\ket{i}$ in the IR, the data re-uploading technique can be implemented straightforwardly without making each particle information entangled. After re-uploading $R$ times, the final quantum state $\ket{\psi}$ evolves as
+\begin{equation} \label{psi_final}
+    \ket{\psi} = \frac{1}{\sqrt{N}}\sum^{N-1}_{i=0}\ket{i}\Biggl[\bigotimes^{R}_{r=1}\UPARAM(\thetabf^{(r)})\UENC(\xbf_i)\Biggr]\ket{0}^{\otimes n_Q}\\,
+\end{equation}
+where the parameters $\thetabf$ may differ across each $\UPARAM$ operator, denoted by the superscript $r$. We denote the quantum state of the NR as
+\begin{equation*}
+    \ket{\xbf_i,\thetabf}=\Biggl[\bigotimes^{R}_{r=1}\UPARAM(\thetabf^{(r)})\UENC(\xbf_i)\Biggr]\ket{0}^{\otimes n_Q}.
+\end{equation*}
+
+Given a Pauli string observable $P$ applied to the NR, the expectation value of the measurement is given by
+\begin{equation} \label{eq_self}
+    \begin{split}
+        \braket{\psi|P|\psi}&=\frac{1}{N}\sum^{N-1}_{i=0}\sum^{N-1}_{j=0}\braket{i|j}\bra{\xbf_i, \thetabf}P\ket{\xbf_j, \thetabf}\\
+        &=\frac{1}{N}\sum^{N-1}_{i=0}\sum^{N-1}_{j=0}\delta_{ij}\bra{\xbf_i, \thetabf}P\ket{\xbf_j, \thetabf}\\
+        &=\frac{1}{N}\sum^{N-1}_{i=0}\bra{\xbf_i, \thetabf}P\ket{\xbf_i, \thetabf},
+    \end{split}
+\end{equation}
+which results in a sum over each node. Now, consider an additional $2^{n_I}\times2^{n_I}$ Hermitian matrix $J$ filled with ones, used as an observable of the IR. Observing that
+\begin{equation}\label{eq_JP}
+    \begin{split}
+        \braket{\psi|J\otimes P|\psi} &= \frac{1}{N}\sum^{N-1}_{i=0}\sum^{N-1}_{j=0}\bra{i}J\ket{j}\bra{\xbf_i, \thetabf}P\ket{\xbf_j, \thetabf} \\
+        &= \frac{1}{N}\sum^{N-1}_{i=0}\sum^{N-1}_{j=0}\bra{\xbf_i, \thetabf}P\ket{\xbf_j, \thetabf} \\
+        &= \frac{1}{N}\sum^{N-1}_{i=0}\sum^{N-1}_{j=0} h(\xbf_i, \xbf_j; P),
+    \end{split}
+\end{equation}
+where $\bra{i}J\ket{j}=J_{ij}=1$, and we define
+\begin{equation*}
+    h(\xbf_i, \xbf_j; P) = \frac{1}{2} \Bigl[ \bra{\xbf_i, \thetabf}P\ket{\xbf_j, \thetabf} + \bra{\xbf_j, \thetabf}P\ket{\xbf_i, \thetabf} \Bigr],   
+\end{equation*}
+which is symmetric, i.e., $h(\xbf_i, \xbf_j; P)=h(\xbf_j, \xbf_i; P)$. Notice that Eq.~\ref{eq_JP} computes the average value over all possible pairs, leading to the \textbf{permutation invariance} of the final output. In practice, the observable $J$ can be decomposed as
+\begin{equation}\label{Jdecompose}
+    J=\bigotimes^{n_I}_{q=1}\I22=\bigotimes^{n_I}_{q=1}(\IIR_q+\XIR_q),
+\end{equation}
+where $\XIR_q$ refers to the Pauli-X observable of the $q$-th qubit in IR, and $\IIR_q$ is the $2 \times 2$ identity matrix. The expansion of Eq.~\ref{Jdecompose} on the right-hand side yields $2^{n_I}\approx N$ different combinations of Pauli string observables. The value of Eq.~\ref{eq_JP} can be obtained by summing the expectation values of all combinations of Pauli strings in Eq.~\ref{Jdecompose}, corresponding to the \textbf{SUM} operation in the classical MPGNN's aggregation function. In certain cases, one might wish to exclude contributions from nodes themselves, these values can be simply removed by considering
+\begin{equation*}
+    J\longrightarrow J-\bigotimes^{n_I}_{q=1}\IIR_q, 
+\end{equation*} 
+which is equivalent to subtracting the value of Eq.~\ref{eq_self} from Eq.~\ref{eq_JP}.
+
+% Define the function $k(\xbf_i, \xbf_j)$ as
+% \begin{equation} \label{corr_func}
+%     k(\xbf_i, \xbf_j)=\bra{\xbf_i, \thetabf}P\ket{\xbf_j, \thetabf} + \bra{\xbf_j, \thetabf}P\ket{\xbf_i, \thetabf}
+% \end{equation}
+% The function $k(\xbf_i, \xbf_j)$ is symmetric, i.e., $k(\xbf_i, \xbf_j)=k(\xbf_j, \xbf_i)$. It is tempting to relate the function $k(\xbf_i, \xbf_j)$ to the kernel method, with a positive definite kernel matrix $K$ where $K_{ij}=k(\xbf_i, \xbf_j)$. However, this is not the case as it can be seen by considering an extreme case that $\ket{\xbf_i, \thetabf}=\ket{1}$ and $P=Z$, then $k(\xbf_i, \xbf_i)=2\bra{1}Z\ket{1}=-2<0$, which violates Sylvester's criterion, i.e., $K$ is not necessarily positive definite. The function $k$ should be interpreted as some transformation in the latent space.
+
+\subsection{Computational Complexity} \label{sec_complexity}
+
+In this subsection, we examine the computational complexity of both MPGNN and QCGNN in the context of complete graphs. We focus on the simplest case where both models map a set of $d$-dimensional features to a scalar, i.e., $\mathbb{R}^d\rightarrow\mathbb{R}$. For instance, the MPGNN might employ a feed-forward neural network terminating in a single neuron, while the QCGNN could utilize one qubit in NR, measured in the $Z$ basis ($n_Q=1$ and $P=Z$). Additionally, we assume that the computational cost of obtaining a scalar output in classical models is roughly equivalent to the cost of measuring a Pauli string observable in quantum models.
+
+To compute all pairwise information, MPGNN requires $O(N^2)$ computations, with each pair passing through the neural network once. In contrast, due to the quantum parallelism inherent in QCGNN, $\UPARAM$ can process all pairs of nodes simultaneously. To aggregate the final result, QCGNN requires only measuring on $O(2^{n_I}) \approx O(N)$ Pauli string observables, as indicated by Eq.~\ref{Jdecompose}. This suggests that QCGNN could offer a polynomial speedup over MPGNN. However, in the case of QCGNN, additional costs associated with multi-controlled operators and the USO should be taken into account. Although various methods exist for decomposing multi-controlled operators, such as those discussed in \cite{q_decomp1,q_decomp2,q_decomp3}, for simplicity, we adhere to a basic approach outlined in \cite{NC}, which requires an additional $O(n_I)\approx O(\log_2 N)$ ancilla qubits and Toffoli gates. Based on the results in \cite{uso1,uso2}, preparing a uniform quantum state necessitates $O(\log_2 N)$ gates. If the parametrized operators sufficiently deep, these additional costs may become negligible, enabling QCGNN to achieve an $O(N)$ speedup over MPGNN.
+
+Certain traditional VQC ansatz, such as quantum kernel methods \cite{q_kernel1,q_kernel2}, also share similarities with QCGNN. Quantum kernel methods compute the kernel function $k(\xbf_i, \xbf_j)=|\braket{\xbf_i, \thetabf|\xbf_j, \thetabf}|^2$ and are typically constructed using $\UENC$ and $\UPARAM$. These methods have a computational complexity of $O(N^2)$, as they still require computing each pair individually. Again, if $\UPARAM$ is sufficiently deep, the additional costs from data encoding may be negligible, allowing QCGNN to achieve an $O(N)$ speedup over quantum kernel methods. This advantage arises because QCGNN computes $O(N^2)$ pairwise information simultaneously, with only $O(2^{n_I}) \approx O(N)$ additional measurement costs, as given by Eq.~\ref{Jdecompose}.
+
+\subsection{Extending QCGNN to General Graphs}
+
+QCGNN can also be extended to weighted graphs, but the additional cost might render it impractical. Consider a simple case, where an undirected, weighted graph has an adjacency matrix $A$ that can be expressed as the outer product of a vector $\ket{w}=\sum_i w_i\ket{i}$, with edge weight $A_{ij}=w_iw_j$. Instead of initializing the IR uniformly, we initialize the quantum state as
+\begin{equation*}
+    \sum^{N-1}_{i=0}\frac{1}{\sqrt{N}}\ket{i}\ket{0}^{\otimes n_Q}
+    \longrightarrow
+    \sum^{N-1}_{i=0}\frac{w_i}{\sqrt{\braket{w|w}}}\ket{i}\ket{0}^{\otimes n_Q},
+\end{equation*}
+so that the terms in Eq.~\ref{eq_JP} are modified as
+\begin{equation*}
+    \frac{1}{N} h(\xbf_i, \xbf_j; P)
+    \rightarrow
+    \frac{w_iw_j}{\braket{w|w}}h(\xbf_i, \xbf_j; P)
+    =
+    \frac{A_{ij}}{\Tr(A)}h(\xbf_i, \xbf_j; P).
+\end{equation*}
+Instead of initializing with a uniform state, the quantum state $\ket{w}$ can be initialized using \textbf{AMPLITUDE EMBEDDING}, where the information of the weights $w_i$ is embedded in the amplitude of $\ket{i}$.
+
+To generalize to directed and weighted graphs, note that any matrix can be decomposed into symmetric and skew-symmetric matrices. Since both types are normal matrices, they are diagonalizable according to the spectral theorem. One can apply the method described above for each eigenbasis individually and multiply by a factor proportional to the corresponding eigenvalue. However, the additional computational cost associated with diagonalizing matrices and \textbf{AMPLITUDE EMBEDDING} might be substantial, potentially negating the advantages of QCGNN.
+
+For practical applications, we primarily consider the use of QCGNN for undirected, unweighted, and complete graphs. The added complexity of handling weighted, directed, and incomplete graphs may diminish the computational benefits of QCGNN, making it less feasible for real-world applications without further optimizations.
+
+\section{Experimental Setup} \label{sec_setup}
+
+\subsection{Dataset for Jet Discrimination} \label{sec_data_setup}
+We demonstrate the feasibility of QCGNN using two publicly available Monte Carlo simulated datasets\footnote{In the first published version, we used the dataset generated by ourselves using \cite{mg5,delphes1,delphes2,pythia1,hvt}. For the revised version, we switched to other existing public datasets since the number of data is much more sufficient.} for jet discrimination: the \Top dataset \cite{zenodo_top} and the \JetNet dataset \cite{zenodo_jetnet}. The jets in both datasets are clustered using the anti-$k_T$ algorithm \cite{antikt,fastjet} with a distance parameter $R=0.8$.
+
+The \Top dataset \cite{zenodo_top} is used for binary classification, distinguishing signal jets from top quarks (Top) and background jets from mixed quark-gluon interactions (QCD). The transverse momentum of the jets is in the range $[550, 650]$ GeV. The dataset is divided into 1.2 million training samples, 400 thousand validation samples, and 400 thousand testing samples. Further details of the \Top dataset can be found in \cite{dataset_top}.
+
+The \JetNet dataset \cite{zenodo_jetnet} is used for multi-class classification, with jets originating from gluons (g), top quarks (t), light quarks (q), $W$ bosons (w), and $Z$ bosons (z). Each class of jet has a transverse momentum of approximately 1 TeV, with around 170 thousand samples. For each jet event, only the top 30 particles with the highest transverse momentum are retained if the number of particles exceeds 30. Further details of the \JetNet dataset can be found in \cite{dataset_jetnet}.
+
+In our approach, each jet is represented as a complete graph. Each node corresponds to a particle in the jet, with node features related to particle flow information. For the $i$-th particle, the input features $\xbf^{(0)}_i$ include the transverse momentum fraction $z_i={p_T}_i/{p_T}_{jet}$, the relative pseudorapidity $\Delta\eta_i=\eta_i-\eta_{jet}$, and the relative azimuthal angle $\Delta\phi_i=\phi_i-\phi_{jet}$. For QCGNN, these input features are further preprocessed as follows:
+\begin{equation} \label{QCGNN_feature}
+    \begin{split}
+        z_i &\longrightarrow \tan^{-1}(z_i), \\
+        \Delta\eta_i &\longrightarrow \frac{\pi}{2}\frac{\Delta\eta_i}{R}, \\
+        \Delta\phi_i &\longrightarrow \frac{\pi}{2}\frac{\Delta\phi_i}{R},
+    \end{split}
+\end{equation}
+since rotation gates are used for data encoding (see Sec.~\ref{sec_cq_model_setup}). Note that the indices of the particles are arbitrary due to the use of permutation-invariant models for graphs.
+
+\subsection{Classical and Quantum Models} \label{sec_cq_model_setup}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.475\textwidth]{fig_qc_enc.png}
+    \caption{The ansatz of encoding operator used in QCGNN with $n_Q=4$. The rotation gates $R_x$ and $R_y$ are defined in Eq.~\ref{sin_rotgate}. The rotation angle $\xbf^{(0)}_{i,j}$ corresponds to the $j$-th feature of the $i$-th particle, with the three features being the transformed particle flow information described in Eq.~\ref{QCGNN_feature}. Since the data encoding method used in each NR qubit is identical, this ansatz can be generalized to any number of qubits.}
+    \label{fig:exenc}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.475\textwidth]{fig_qc_vqc.png}
+    \caption{The ansatz of strongly entangling layers \cite{strong_ent} used in QCGNN is illustrated with $n_Q=4$ as an example. The three-angle rotation gate $R$ is defined in Eq.~\ref{tri_rotgate}. The parameters $\thetabf$ are tunable, with distinct parameters for each repetition $l$. Specifically, $\thetabf_{l,1}$, $\thetabf_{l,2}$, $\thetabf_{l,3}$, and $\thetabf_{l,4}$ are all three-dimensional parameters corresponding to the arguments of $R(\alpha, \beta, \gamma)$ in Eq.~\ref{tri_rotgate}. Note that this ansatz can be naturally generalized for $n_Q \ge 3$. For $n_Q < 3$, alternative ansatz should be considered.}
+    \label{fig:exvqc}
+\end{figure}
+
+\begin{figure*}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{fig_model_structure.png}
+    \caption{The detailed structure of the quantum model based on QCGNN and the classical model based on MPGNN used for benchmarking are described. The particle flow features are defined in Sec.~\ref{sec_data_setup}, and the hyperparameters of the models are discussed in Sec.~\ref{sec_train}. The classical model on the left is based on MPGNN, with the aggregation function chosen to be \textbf{SUM}. The number of hidden neurons in MPGNN is denoted as $n_M$, set equivalently to $n_Q$ (3 or 6) for comparison with QCGNN. The quantum model on the right is based on QCGNN, with feature preprocessed as described in Eq.~\ref{QCGNN_feature}. The ansatz for the parametrized operators follows the pattern depicted in Fig.~\ref{fig:exvqc}. Note that the data re-upload technique introduced in \cite{reupload} is used, which involves encoding the data twice and applying the parametrized operators with different parameters each time. The dimension of the final output is denoted as $n_C$, with $n_C=1$ for the \Top dataset and $n_C=5$ for the \JetNet dataset. The final output is passed through a Sigmoid function for binary classification ($n_C=1$) or a Softmax function for multi-class classification ($n_C=5$).}
+    \label{fig:models}
+\end{figure*}
+
+The classical model for benchmarking is based on MPGNN from Eq.~\ref{eqmp}, with the aggregation function chosen to be \textbf{SUM}. The function $\Phi$ is implemented as a feed-forward neural network consisting of linear layers and the ReLU activation functions \cite{relu}, while $\gamma$ is simply the summation of $\Phi$ only, i.e., $\xbf^{(1)}_i=\sum_{j \neq i}\Phi(\xbf^{(0)}_i,\xbf^{(0)}_{j})$, where $j$ ranges from 0 to $N-1$ except $i$. The input to $\Phi$ is simply the concatenation of $\xbf^{(0)}_i$ and $\xbf^{(0)}_j$, requiring only 6 neurons in the input layer of $\Phi$. Consequently, the graph feature, denoted as $\xbf^C$, is computed through
+\begin{equation} \label{XC}
+    \begin{split}
+        \xbf^C &= \sum^{N-1}_{i=0}\xbf^{(1)}_i \\
+        &= \sum^{N-1}_{i=0}\sum_{j \neq i}\Phi(\xbf^{(0)}_i,\xbf^{(0)}_j) \\
+        &= \sum^{N-1}_{i=0}\sum^{N-1}_{j=0}\Phi(\xbf^{(0)}_i,\xbf^{(0)}_j) - \sum^{N-1}_{i=0}\Phi(\xbf^{(0)}_i,\xbf^{(0)}_i).
+    \end{split}
+\end{equation}
+The structure of MPGNN is similar to the Particle Flow Network (PFN) in \cite{pfn}, with the distinction that PFN calculates $\Phi(\xbf^{(0)}_i)$ for each particle, whereas MPGNN calculates the pairwise information $\Phi(\xbf^{(0)}_i, \xbf^{(0)}_j)$ between particles.
+
+The quantum model is based on QCGNN, which consists of encoding operators and parametrized operators. The \textit{data re-uploading} technique \cite{reupload} is employed 2 times before the final measurements (indicated by the dashed box in Fig.~\ref{fig:exqcgnn} with $R=2$). For simplicity, we use single-angle rotation gates, defined as
+\begin{equation} \label{sin_rotgate}
+    \begin{split}
+        R_x(\theta) &= 
+        \begin{bmatrix}
+            \cos(\theta/2) & -i\sin(\theta/2)\\
+            -i\sin(\theta/2) & \cos(\theta/2)
+        \end{bmatrix},\\
+        R_y(\theta) &= 
+        \begin{bmatrix}
+            \cos(\theta/2) & -\sin(\theta/2)\\
+            \sin(\theta/2) & \cos(\theta/2)
+        \end{bmatrix},\\
+        R_z(\theta) &= 
+        \begin{bmatrix}
+            e^{-i\theta/2} & 0\\
+            0 & e^{i\theta/2}
+        \end{bmatrix},\\
+    \end{split}
+\end{equation}
+and triple-angle rotation gates, defined as
+\begin{equation} \label{tri_rotgate}
+    \begin{split}
+        R(\alpha, \beta, \gamma) &= R_z(\gamma)R_y(\beta)R_z(\alpha) \\
+        &=
+        \begin{bmatrix}
+            e^{-i\frac{\alpha+\gamma}{2}}\cos(\frac{\beta}{2}) & -e^{-i\frac{\alpha-\gamma}{2}}\sin(\frac{\beta}{2})\\
+            e^{-i\frac{\alpha-\gamma}{2}}\sin(\frac{\beta}{2}) & e^{-i\frac{\alpha+\gamma}{2}}\cos(\frac{\beta}{2})
+        \end{bmatrix},
+    \end{split}
+\end{equation}
+to encode the particle flow information. The parametrized operators are constructed with strongly entangling layers \cite{strong_ent} using rotation gates and CNOT gates. The ansatz for encoding $i$-th particle features and the strongly entangling layers are shown in Fig.~\ref{fig:exenc} and Fig.~\ref{fig:exvqc} respectively. The $q$-th component of the graph feature $\xbf^Q\in\mathbb{R}^{n_Q}$ is computed by
+\begin{equation} \label{XQ}
+    \begin{split}
+        \xbf^Q_q &= N \Bigl[ \braket{\psi|J\otimes \ZNR_q|\psi} - \braket{\psi|\ZNR_q|\psi} \Bigr] \\
+        &= \sum^{N-1}_{i=0}\sum^{N-1}_{j=0} h(\xbf^{(0)}_i, \xbf^{(0)}_j; \ZNR_q) - \sum^{N-1}_{i=0} h(\xbf^{(0)}_i, \xbf^{(0)}_i; \ZNR_q),
+    \end{split}
+\end{equation}
+where the observable $\ZNR_q$ refers to the Pauli-Z measurement of the $q$-th qubit in NR only, and the summations are computed through Eq.~\ref{eq_self} and Eq.~\ref{eq_JP}. To be clarified, the subscript $i$ of $\xbf^{(0)}_i$ corresponds to the $i$-th node, while the subscript $q$ of $\xbf^Q_q$ refers to the $q$-th component of QCGNN output. Note that all qubits in NR can be measured simultaneously, but the measurement output from other qubits is ignored when calculating the expectation value over $\ZNR_q$. This setup can be thought of as a classical feed-forward neural network with $n_Q$ neurons in the output layer. Notice how Eq.~\ref{XQ} resembles Eq.~\ref{XC}, indicating the permutation invariance of the final output.
+
+Eventually, both $\xbf^C$ and $\xbf^Q$ are followed by another feed-forward neural network consisting of linear layers and ReLU activation functions. The full setup of the classical and quantum models is depicted in Fig.~\ref{fig:models}. For binary classification using the \Top dataset, the output layer has a single neuron followed by a Sigmoid function and is trained with binary cross-entropy loss. For multi-class classification using the \JetNet dataset, the output layer has five neurons followed by a Softmax function and is trained with multi-class cross-entropy loss.
+
+\subsection{Training Setup and Model Hyperparameters} \label{sec_train}
+
+\begin{figure*}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{fig_ptc_hist.png}
+    \caption{Histograms of the number of particles per jet for the \Top and the \JetNet datasets. A detailed description of both datasets is provided in Sec.~\ref{sec_data_setup}. The original \JetNet dataset exhibits a sharp distribution at 30 particles, as the original data retain only the first 30 particles with the highest transverse momentum. The histograms for particles with a relative transverse momentum $z_i \ge 0.025$ are also given. This threshold is selected to ensure that the majority of the distribution of the number of particles per jet falls between 4 and 16.}
+    \label{fig:hist}
+\end{figure*}
+
+The complete training process was conducted with 5 different random seeds, each for 30 epochs. The \Top and the \JetNet datasets comprise 2 and 5 classes, respectively. For each class, we selected 25,000 training samples, 2,500 validation samples, and 2,500 testing samples. This limited data selection is due to the extensive training time required for the QCGNN, as discussed in Sec.~\ref{sec_train_QCGNN}. For each random seed, the data were randomly sampled from the original dataset. To balance between demonstrating the training performance and computational demands, particles with transverse momentum less than 2.5\% of ${p_T}_{jet}$, i.e., $z_i < 0.025$, were discarded, so that the majority of the distribution of the number of particles per jet is between 4 and 16. The histograms of the number of particles per jet for the original and preprocessed \Top and \JetNet datasets are shown in Fig.~\ref{fig:hist}. To mitigate the extensive training time associated with simulating QML, events with fewer than 4 or more than 16 particles were discarded. These choices strike a balance between performance and the amount of training data, as discussed in Appendix \ref{app_num_data}.
+
+Due to limited computational resources, the number of qubits $n_Q$ in NR was tested with $n_Q=3$ and $n_Q=6$, with the number of strongly entangling layers in each parametrized operator ($\UPARAM$) set to $n_Q/3$. Given that the maximum number of particles in a jet is 16, we used $n_I=\lceil \log_2 16 \rceil=4$ qubits for IR. The number of hidden neurons $n_M$ in the MPGNN was set to 3 or 6 for comparison with the QCGNN, ensuring that both models have a comparable number of parameters, as discussed in Appendix \ref{app_num_param}.
+
+We also evaluated the performance of classical state-of-the-art models, including the Particle Flow Network (PFN) \cite{pfn}, Particle Net (PNet) \cite{ptcnet}, and Particle Transformer (ParT) \cite{part}. The structure and hyperparameters of PFN, PNet, and ParT were configured according to their respective original publications. Notably, we excluded mass information from the interaction matrix of ParT, as only particle flow information $(p_T,\Delta\eta,\Delta\phi)$ was used. The $k$-nearest neighbor method used in the original PNet was configured with $k=3$, given that the minimum number of particles per jet was 4.
+
+The classical models were implemented using \textit{PyTorch} \cite{pytorch} and \textit{PyTorch Geometric} \cite{pygeo}, while the quantum circuit of QCGNN was simulated using \PennyLane \cite{pennylane}. The cross-entropy loss was optimized using the \textsc{Adam} optimizer \cite{adam} with a learning rate of $10^{-3}$ for all models. The batch size was set to 64, the maximum allowable due to memory constraints, as simulating quantum circuits requires substantial memory resources.
+
+\subsection{Implementing QCGNN with Simulators} \label{sec_train_QCGNN}
+
+Unlike classical models, parameter gradients for real quantum computers cannot be computed using traditional methods such as finite difference methods. Instead, the parameter-shift rule (PSR) \cite{psr1,psr2,psr3,psr4} can be employed to calculate gradients. However, applying PSR on quantum computers necessitates extensive requests and long queue times with actual quantum devices. Furthermore, the noise in current quantum computers is insufficiently low to enable stable training of quantum neural networks, often resulting in training failures.
+
+To circumvent these issues during the NISQ era \cite{nisq}, we trained the QCGNNs on classical computers using \PennyLane \cite{pennylane} quantum circuit simulators with zero noise. Nonetheless, simulating quantum circuits is highly time-consuming, even for a few qubits. Although \PennyLane supports QML on GPUs, speed improvements over CPUs are significant only with many qubits, typically more than 20 qubits\footnote{The benchmark of quantum simulation on GPU can be found in PennyLane's blog: ``Lightning-fast simulations with PennyLane and the NVIDIA cuQuantum SDK''.}. For this study, we used CPUs to train the QCGNNs. Training a 10-qubit ($n_I=4$ and $n_Q=6$) QCGNN with 10,000 samples and a batch size of 64 takes approximately 1,000 seconds per epoch. Consequently, the training over 5 random seeds for 30 epochs required nearly a month.
+
+\section{Results} \label{sec_result}
+
+\subsection{Performance of Classical and Quantum Models} \label{sec_performance}
+
+\begin{table*}[htbp]
+    \centering
+    \begin{tabularx}{\textwidth}{ l Y Y Y Y Y Y }
+      \hline
+      \hline
+      \multirow{2}{*}{Model} & \multicolumn{3}{c}{\centering \Top Dataset (2 classes)} & \multicolumn{3}{c}{\centering \JetNet Dataset (5 classes)} \\
+      & \# params  & AUC & Accuracy & \# params & AUC & Accuracy \\
+      \hline
+
+      Particle Transformer & 2.2M & 0.946$\pm$0.005 & 0.868$\pm$0.009 & 2.2M & 0.889$\pm$0.002 & 0.656$\pm$0.006 \\
+      Particle Net & 177K & 0.953$\pm$0.003 & 0.885$\pm$0.006 & 178K & 0.896$\pm$0.003 & 0.669$\pm$0.004 \\
+      Particle Flow Network & 72.3K & 0.954$\pm$0.004 & 0.885$\pm$0.005 & 72.7K & 0.900$\pm$0.003 & 0.675$\pm$0.005 \\
+      MPGNN - $n_M=64$ & 13K & 0.961$\pm$0.003 & 0.896$\pm$0.003 & 13.3K & 0.903$\pm$0.002 & 0.683$\pm$0.007 \\
+      \hline
+      MPGNN - $n_M=6$ & 255 & 0.924$\pm$0.006 & 0.866$\pm$0.006 & 323 & 0.865$\pm$0.004 & 0.615$\pm$0.010 \\
+      MPGNN - $n_M=3$ & 126 & 0.922$\pm$0.005 & 0.864$\pm$0.006 & 194 & 0.757$\pm$0.110 & 0.475$\pm$0.141 \\
+      QCGNN - $n_Q=6$ & 201 & 0.932$\pm$0.004 & 0.868$\pm$0.005 & 269 & 0.822$\pm$0.003 & 0.543$\pm$0.006 \\
+      QCGNN - $n_Q=3$ & 99 & 0.919$\pm$0.006 & 0.864$\pm$0.005 & 167 & 0.796$\pm$0.009 & 0.505$\pm$0.014 \\
+      
+      \hline
+      \hline
+    
+    \end{tabularx}
+    \caption{The performance of different models on the \Top and the \JetNet datasets. As detailed in Sec.~\ref{sec_cq_model_setup}, $n_M$ denotes the number of hidden neurons in the MPGNN, and $n_Q$ represents the number of qubits in the NR of the QCGNN. The number of parameters for each model is provided, along with the area under the ROC curve (AUC) and accuracy. The AUC score is computed as the average of all possible pairwise combinations of classes, while the accuracy is calculated across all classes simultaneously. The results are averaged over 5 random seeds, with one standard deviation shown.}
+    \label{table:result}
+\end{table*}
+
+ The performance of the classical and quantum models on the \Top and the \JetNet datasets is summarized in Table.~\ref{table:result}. The inference scores of the MPGNN and QCGNN are comparable when the number of parameters is in roughly the same order of amount. We anticipate that QCGNN has the potential to achieve performance on par with MPGNN as the number of qubits increases. When training with a smaller number of parameters on the multi-class classification \JetNet dataset, we observe that QCGNN is more stable than MPGNN, with the latter exhibiting a larger standard deviation.
+ 
+ Among the state-of-the-art models, MPGNN with $n_M = 64$ has higher inference scores compared to others. This is likely due to the information of jets being lost during the data preprocessing, where only 4 to 16 particles per jet are utilized. When training with the full information from the original jet dataset, i.e., without discarding information from soft particles, other state-of-the-art models can compete with MPGNN, even better. Details of the state-of-the-art models trained on the original jet dataset are provided in Appendix \ref{app_num_data}.
+
+\subsection{Executing Pre-trained QCGNN on IBMQ} \label{sec_ibmq}
+
+\begin{figure*}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{fig_noise_extrapolation.png}
+    \caption{This figure illustrates the extrapolation of noise probabilities (depolarizing error and amplitude damping) using quantum circuit simulators with pre-trained QCGNNs. An ideal quantum computer corresponds to a noise probability of zero on the $x$-axis, while ``IBMQ'' refers to results obtained from \textit{ibm\_brussels}. The $y$-axis shows the area under the ROC curve (AUC) and accuracy for 400 jet data samples, each containing only 4 particles, which requires $n_I = 2$ qubits for IR. The error bars represent one standard deviation across 5 full executions with different random seeds.}
+    \label{fig:noise_extrapolation}
+\end{figure*}
+
+Although implementing full training on quantum computers is impractical in the NISQ era, we can still evaluate the performance of the pre-trained QCGNN on IBMQ real devices \cite{ibmq}. To minimize the noise effects caused by real quantum gates, we select events with only four particles from the \Top dataset, i.e., using $n_I=2$ qubits in IR, thereby reducing the number of gates required for initial state preparation and data encoding. In this setup, the USO can be efficiently implemented using Hadamard gates for each qubit in IR. On IBMQ real devices, only 1-qubit and 2-qubit gates are available, and the multi-controlled gates used in data encoding are decomposed using methods described in \cite{NC}.
+
+We selected \textit{ibm\_brussels} with 1024 shots to test the performance of QCGNN on an IBMQ real device. However, the quantum computers in the NISQ era are currently too noisy to yield usable results. For binary classification, the inference of QCGNN on \textit{ibm\_brussels} results in approximately $0.5$ AUC and $0.5$ accuracy, which equates to random guessing. To assess how noise affects the performance of QCGNN, we perform an extrapolation over noise using \PennyLane simulators, with the results shown in Fig.~\ref{fig:noise_extrapolation}. We simulate quantum noise, including \textit{depolarizing error} and \textit{amplitude damping}, occurring after each quantum operation with a certain probability. As indicated in Fig.~\ref{fig:noise_extrapolation}, the noise probability must be reduced to below $10^{-3}$ to achieve reliable results\footnote{The noise probability here corresponds to the simulated noise in the quantum circuit simulation.}.
+
+\subsection{QCGNN Runtime on IBMQ} \label{sec_runtime}
+
+\begin{table}[htbp]
+    \centering
+    \begin{tabularx}{0.475\textwidth}{ X >{\hsize=.5\hsize}Y >{\hsize=.75\hsize}Y >{\hsize=.75\hsize}Y}
+      % \cline{1-4}
+      \hline
+      \hline
+      IBMQ Backend & N & $T_{\text{ENC}}$  & $T_{\text{PARAM}}$ \\
+    %   \cline{1-4}
+      \hline
+      \multirow{3}{*}{ibm\_nazca} & 2 & 2.567 & 0.209 \\ % \cline{2-4}
+      & 4 & 5.352 & 0.197 \\ % \cline{2-4}
+      & 8 & 10.551 & 0.219 \\
+      \hline
+      % \cline{1-4}
+      \multirow{3}{*}{ibm\_strasbourg} & 2 & 2.595 & 0.217 \\ % \cline{2-4}
+      & 4 & 5.416 & 0.197 \\ % \cline{2-4}
+      & 8 & 11.085 & 0.211 \\
+      \hline
+      \hline
+      % \cline{1-4}
+    \end{tabularx}
+    \caption{The runtime of quantum circuit gate operations for encoding layers and parametrized layers on different IBMQ backends is analyzed. The number of particles per jet is denoted as $N$. The runtimes $T_{\text{ENC}}$ and $T_{\text{PARAM}}$ are defined in Sec.~\ref{sec_runtime} and are presented in seconds.}
+    \label{table:runtime}
+\end{table}
+
+To validate the time complexity analysis discussed in Sec.~\ref{sec_complexity}, we initialized untrained QCGNNs and executed them on various IBMQ backends, including \textit{ibm\_nazca} and \textit{ibm\_strasbourg}, with $n_Q=100$ and 1024 shots. We set the number of nodes to 2, 4, and 8, such that only Hadamard gates are required for the initial state preparation. To determine the quantum gate runtime for encoding and parametrized operators, we first ran QCGNN without any operators to measure the runtime $T_{0}$ for quantum state initialization and measurement. We then applied encoding operators with 10 times of re-uploading to obtain the runtime $T_{1}$. Finally, we applied parametrized operators, constructed with 10 strongly entangling layers and 10 times of re-uploading (resulting in 100 strongly entangling layers in total), to measure the runtime $T_{2}$. Each runtime measurement was averaged over 10 executions. The runtime of encoding operators was computed as follows:
+\begin{equation*}
+    T_{\text{ENC}} = \frac{T_{1}-T_{0}}{10},
+\end{equation*}
+and the runtime of each strongly entangling layer in parametrized operators is calculated by
+\begin{equation*}
+    T_{\text{PARAM}} = \frac{T_{2}-T_{1}}{100}.
+\end{equation*}
+The results presented in Table.~\ref{table:runtime} indicate that the runtime of encoding operators scales approximately linearly with the number of particles per jet, while the runtime of parametrized operators remains approximately constant, as expected. As discussed in Sec.~\ref{sec_complexity}, when the parametrized operators are sufficiently deep, the runtime will be dominated by these operators, making the additional computational cost associated with data encoding negligible.
+
+\section{Summary} \label{sec_summary}
+
+The representation of jets as graphs, leveraging the property of permutation invariance, has been widely utilized in particle physics. However, constructing graphs from particle jets in a physically meaningful manner remains an unresolved challenge. In the absence of specific physical assumptions, we adopt a straightforward approach by representing jets as complete graphs with undirected, unweighted edges. Motivated by the structure of complete graphs, we propose the Quantum Complete Graph Neural Network (QCGNN) for learning through aggregation using \textbf{SUM} or \textbf{MEAN} operations. When training on $N$ particles, QCGNN exhibits $O(N)$ computational complexity if the parametrized operators are sufficiently deep, offering a polynomial speedup over classical models that require $O(N^2)$.
+
+To demonstrate the practicality of QCGNN, we conduct experiments on jet discrimination. Sec.~\ref{sec_performance} shows that QCGNN performs comparably to classical models with a similar number of parameters. Moreover, QCGNN displays a more stable training process across different random seeds. Although the pre-trained QCGNN has been tested on IBMQ real devices, the noise in quantum circuits remains too significant to yield reliable results. To assess the impact of noise in the NISQ era, we perform noise extrapolation using simulators, as detailed in Sec.~\ref{sec_ibmq}. We also conducted a series of executions on IBMQ quantum devices to estimate the runtime of QCGNN, as discussed in Sec.~\ref{sec_runtime}. The time costs of encoding and parametrized operators are approximately linear and constant to the number of particles per jet, respectively.
+
+In conclusion, QCGNN provides a more efficient method for learning unstructured jets using QML. The additional computational costs associated with quantum state initialization and data encoding are negligible when the parametrized operators are sufficiently deep, as discussed in Sec.~\ref{sec_complexity}. However, it remains an open question whether QML provides a definitive quantum advantage in HEP. Moreover, developing more expressive and suitable methods for HEP data encoding continues to be an intriguing and ongoing area of research.
+
+\section*{Acknowledgement}
+
+The authors thank Chiao-Hsuan Wang for helpful discussions and suggestions about quantum computation. The accessibility of IBMQ resources is supported by the IBM Quantum Hub at National Taiwan University.
+
+\appendix
+
+\section{Relation Between State-of-the-Art Models and MPGNN} \label{app_mpgnn}
+
+In Sec.~\ref{sec_gnn}, we introduce the MPGNN. Here, we show that some state-of-the-art models can be considered as a special case of MPGNN, i.e., in the form of
+\begin{equation}
+    \xbf^{(k)}_i=\gamma^{(k)}\left(\xbf^{(k-1)}_i,\bigoplus_{j \in \mathcal{N}(i)}\Phi^{(k)}(\xbf^{(k-1)}_i,\xbf^{(k-1)}_j)\right).
+    \tag{\ref{eqmp}}
+\end{equation}
+
+\subsection{Particle Flow Networks (PFN) as MPGNN}
+The PFN introduced in \cite{pfn} first transforms the particle features into a latent space via a feed-forward neural network $\Phi$, followed by a summation. Then another feed-forward neural network $\gamma$ will be applied to get the final score $F$ of jet discrimination. In the form of MPGNN, the PFN can be written as
+\begin{equation*}
+    F=\gamma\left(\sum_{\xbf_i \in G}\Phi(\xbf_i)\right).
+\end{equation*}
+
+\subsection{Particle Net (PNet) as MPGNN}
+The PNet introduced in \cite{ptcnet} turns jets into graphs by dynamically determining the edges through the distance in feature space or latent space. The EdgeConv of PNet can be written as
+\begin{equation*}
+    \xbf^{(k)}_i=\gamma^{(k)}\left(\bigoplus_{j \in \mathcal{N}(i)}\Phi^{(k)}(\xbf^{(k-1)}_i,\xbf^{(k-1)}_i-\xbf^{(k-1)}_j)\right),
+\end{equation*}
+where the neighbors are dynamically determined through the $k$-nearest neighbor method. The EdgeConv also calculates the difference between features, then passes through either a convolutional neural network or a feed-forward neural network, captured by $\gamma$ and $\Phi$.
+
+\subsection{Particle Transformer (ParT) as MPGNN}
+The ParT introduced in \cite{part} uses the transformer architecture to learn the jet features. The structure of the transformer is rather complicated, but each attention block can still be written in the form of MPGNN. As ParT considers all pairs of particle information without positional embedding, the ParT can be seen as dealing with complete graphs. The queries (Q) and the keys (K) in the attention mechanism are captured by $\Phi$, with the aggregation function chosen to be \textbf{SOFTMAX} (can be seen as a summation over a particular transformation that can be absorbed into $\Phi$), and the values (V) in the attention mechanism are captured by $\gamma$. Note the functions in the transformer such as GeLU or LayerNorm can also be absorbed into $\Phi$ and $\gamma$.
+
+\section{Performance of Classical Models on Different Number of Training Samples} \label{app_num_data}
+
+\begin{figure*}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{fig_app_num_train.png}
+    \caption{This figure illustrates the performance of state-of-the-art models with varying numbers of training samples. The blue, orange, green, and red lines represent the Particle Flow Network (PFN), Particle Net (PNet), Particle Transformer (ParT), and MPGNN with $n_M=64$, respectively. The upper row displays performance metrics on the \Top dataset, while the lower row shows performance metrics on the \JetNet dataset. The left column presents the area under the curve (AUC), and the right column shows accuracy. The training samples are preprocessed as described in Sec.~\ref{sec_data_setup}, except that 'Full-100K' uses all particle data without applying the transverse momentum cutoff.}
+    \label{fig:app_num_train}
+\end{figure*}
+
+As described in Sec.~\ref{sec_data_setup}, we selected 25,000 training samples with a maximum of 16 particles per jet for each class. In this appendix, we justify that this setup is sufficient to evaluate the performance of each model. We trained state-of-the-art classical models, including the Particle Flow Network (PFN) \cite{pfn}, Particle Net (PNet) \cite{ptcnet}, Particle Transformer (ParT) \cite{part}, and MPGNN with 64 hidden neurons ($n_M=64$).
+
+The performance of each model on both the \Top and the \JetNet datasets is obtained by training with varying numbers of samples per class, across 5 different random seeds. The results are presented in Fig.~\ref{fig:app_num_train}. The training samples were preprocessed as outlined in Sec.~\ref{sec_data_setup}, using only events with at least 4 and at most 16 particles. The performance of each state-of-the-art model is getting saturated between 25,000 and 50,000 training samples, indicating that the choice of 25,000 samples in Sec.~\ref{sec_data_setup} is almost adequate for demonstrating the model performance. We also conducted experiments with the full-particle jets from the original dataset, without applying the transverse momentum cutoff, using 100,000 samples per class. We found that, when training with a few particles, the simplest MPGNN model performs better than the other models. However, when using the full original dataset, the ParT outperforms the other models.
+
+\section{Number of Parameters in MPGNN and QCGNN} \label{app_num_param}
+
+In this appendix, we compute the number of parameters for the MPGNN and QCGNN models based on the structures outlined in Sec.~\ref{sec_cq_model_setup}. It is important to distinguish these calculations from the total number of parameters reported in Table.~\ref{table:result}, which includes the parameters of the final feed-forward network in both MPGNN and QCGNN.
+
+For MPGNN with $n_M$ hidden neurons in both the hidden and output layers, and an input dimension of 6 (since features of two particles are concatenated), if there are $L_C$ hidden layers, the total number of parameters is given by
+\begin{equation}
+    \begin{split}
+        \#_C &= 6(n_M+1) + n_M L_C (n_M+1)\\
+        &= L_C n^2_M + (6+L_C)n_M + 6,
+    \end{split}
+\end{equation}
+where the $+1$ in each parenthesis accounts for the bias term in the linear layers. 
+
+For QCGNN, suppose there are $n_Q$ qubits in the NR with the strongly entangling layers ansatz as depicted in Fig.~\ref{fig:exvqc}. Each strongly entangling layer consists of $n_Q$ rotation gates, with each gate having 3 parameters. If there are $L_Q$ strongly entangling layers and $L_R$ times of re-uploading, the total number of parameters is
+\begin{equation}
+    \#_Q = 3 L_R L_Q n_Q.
+\end{equation}
+To ensure that both models have the same output dimension, we set $n_M = n_Q = D$. Assuming $n_Q$ is a multiple of 3, and setting $L_Q = n_Q / 3 = D / 3$, the number of parameters for MPGNN and QCGNN are
+\begin{equation}
+    \begin{split}
+        \#_C &= L_C D^2 + (6+L_C)D + 6,\\
+        \#_Q &= L_R D^2.
+    \end{split}
+\end{equation}
+It is evident that by choosing $L_C = L_R = L$, the leading term for both models scales as $O(LD^2)$. In this study, we set $L = 2$. To approximate the linear term $O(LD)$ in MPGNN, one could set $L_R = (n_Q + 1) / 3$, resulting in $\#_Q = LD^2 + LD$. However, this approach was not considered in this study due to the increased simulation time required for longer circuits.
+
+% \newpage
+\bibliography{qcgnn}
+
+\end{document}

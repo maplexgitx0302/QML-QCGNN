@@ -12,3 +12,20 @@ version: 2.0.1
 doi: 10.5281/zenodo.14504715
 date-released: 2024-08-11
 url: "https://github.com/NTUHEP-QML/QCGNN"
+
+references:
+  - type: article
+    title: "Jet discrimination with a quantum complete graph neural network"
+    authors:
+      - family-names: "Chen"
+        given-names: "Yi-An"
+      - family-names: "Chen"
+        given-names: "Kai-Feng"
+    journal: "Phys. Rev. D"
+    volume: "111"
+    issue: "1"
+    pages: "016020"
+    year: "2025"
+    month: "01"
+    doi: "10.1103/PhysRevD.111.016020"
+    url: "https://link.aps.org/doi/10.1103/PhysRevD.111.016020"

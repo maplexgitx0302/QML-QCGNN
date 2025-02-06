@@ -69,6 +69,34 @@ The results of experiments conducted on IBMQ quantum computers, including metric
 - **`ibmq_result/pretrained`:** Output of `ibmq_pretrained.ipynb`, which evaluates the performance of the pretrained QCGNN (trained using simulators) on actual IBMQ quantum devices.
 - **`ibmq_result/noise`:** Output of `ibmq_noise.ipynb`, detailing metrics when executing QCGNN simulators with varying noise levels.
 
+### Citation
+
+If you use this repository in your research, please cite the following paper:
+
+Chen, Yi-An and Chen, Kai-Feng,  
+"Jet discrimination with a quantum complete graph neural network,"  
+*Phys. Rev. D*, **111**, 016020 (2025).  
+[DOI:10.1103/PhysRevD.111.016020](https://link.aps.org/doi/10.1103/PhysRevD.111.016020)
+
+You can use the following BibTeX entry:
+
+```bibtex
+@article{PhysRevD.111.016020,
+  title = {Jet discrimination with a quantum complete graph neural network},
+  author = {Chen, Yi-An and Chen, Kai-Feng},
+  journal = {Phys. Rev. D},
+  volume = {111},
+  issue = {1},
+  pages = {016020},
+  numpages = {15},
+  year = {2025},
+  month = {Jan},
+  publisher = {American Physical Society},
+  doi = {10.1103/PhysRevD.111.016020},
+  url = {https://link.aps.org/doi/10.1103/PhysRevD.111.016020}
+}
+```
+
 ---
 
 ### Acknowledgements

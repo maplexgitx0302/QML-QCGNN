@@ -1,0 +1,1717 @@
+%%% GitHub Zenodo
+
+@software{qcgnn_zenodo,
+  author       = {Chen, Yi-An and
+                  Chen, Kai-Feng},
+  title        = {Implementing benchmark for QCGNN via PennyLane and PyTorch},
+  month        = dec,
+  year         = 2024,
+  publisher    = {Zenodo},
+  version      = {v2.0.1},
+  doi          = {10.5281/zenodo.14504716},
+  url          = {https://doi.org/10.5281/zenodo.14504716},
+  swhid        = {swh:1:dir:fa285009ae7fbc0837667629a017fc533b1d7e37
+                   ;origin=https://doi.org/10.5281/zenodo.14504715;vi
+                   sit=swh:1:snp:a0b51613100c43b8e8a63495f10ebca8741f
+                   44cd;anchor=swh:1:rel:de02f35af363cbbd16c0b4459ee6
+                   5040cde8a5ea;path=NTUHEP-QML-QCGNN-8d760ee
+                  },
+}
+
+%%% introduction
+
+@article{nisq,
+  doi       = {10.22331/q-2018-08-06-79},
+  url       = {https://doi.org/10.22331/q-2018-08-06-79},
+  title     = {Quantum {C}omputing in the {NISQ} era and beyond},
+  author    = {Preskill, John},
+  journal   = {{Quantum}},
+  issn      = {2521-327X},
+  publisher = {{Verein zur F{\"{o}}rderung des Open Access Publizierens in den Quantenwissenschaften}},
+  volume    = {2},
+  pages     = {79},
+  month     = aug,
+  year      = {2018}
+}
+
+@misc{hepmllivingreview,
+  author = {{HEP ML Community}},
+  title  = {{A Living Review of Machine Learning for Particle Physics}},
+  url    = {https://iml-wg.github.io/HEPML-LivingReview/}
+}
+
+@misc{hepml1,
+  title         = {A Living Review of Machine Learning for Particle Physics},
+  author        = {Matthew Feickert and Benjamin Nachman},
+  year          = {2021},
+  eprint        = {2102.02770},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph}
+}
+
+@article{hepml2,
+  abstract      = {Our knowledge of the fundamental particles of nature and their interactions is summarized by the standard model of particle physics. Advancing our understanding in this field has required experiments that operate at ever higher energies and intensities, which produce extremely large and information-rich data samples. The use of machine-learning techniques is revolutionizing how we interpret these data samples, greatly increasing the discovery potential of present and future experiments. Here we summarize the challenges and opportunities that come with the use of machine learning at the frontiers of particle physics.},
+  author        = {Radovic, Alexander and Williams, Mike and Rousseau, David and Kagan, Michael and Bonacorsi, Daniele and Himmel, Alexander and Aurisano, Adam and Terao, Kazuhiro and Wongjirad, Taritree},
+  date          = {2018/08/01},
+  date-added    = {2023-11-03 14:58:46 +0800},
+  date-modified = {2023-11-03 14:58:46 +0800},
+  doi           = {10.1038/s41586-018-0361-2},
+  id            = {Radovic2018},
+  isbn          = {1476-4687},
+  journal       = {Nature},
+  number        = {7716},
+  pages         = {41--48},
+  title         = {Machine learning at the energy and intensity frontiers of particle physics},
+  url           = {https://doi.org/10.1038/s41586-018-0361-2},
+  volume        = {560},
+  year          = {2018},
+  bdsk-url-1    = {https://doi.org/10.1038/s41586-018-0361-2}
+}
+
+%%% introduction models
+
+%%%%% jet image
+
+@article{2pcnn,
+  title     = {Deep learning jet substructure from two-particle correlations},
+  author    = {Chen, Kai-Feng and Chien, Yang-Ting},
+  journal   = {Phys. Rev. D},
+  volume    = {101},
+  issue     = {11},
+  pages     = {114025},
+  numpages  = {6},
+  year      = {2020},
+  month     = {Jun},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.101.114025},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.101.114025}
+}
+
+@misc{jet_image1,
+  title         = {Image Classification in High-Energy Physics: A Comprehensive Survey of Applications to Jet Analysis},
+  author        = {Hamza Kheddar and Yassine Himeur and Abbes Amira and Rachik Soualah},
+  year          = {2024},
+  eprint        = {2403.11934},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph},
+  url           = {https://arxiv.org/abs/2403.11934}
+}
+
+
+@article{jet_image2,
+  abstract      = {Currently, newly developed artificial intelligence techniques, in particular convolutional neural networks, are being investigated for use in data-processing and classification of particle physics collider data. One such challenging task is to distinguish quark-initiated jets from gluon-initiated jets. Following previous work, we treat the jet as an image by pixelizing track information and calorimeter deposits as reconstructed by the detector. We test the deep learning paradigm by training several recently developed, state-of-the-art convolutional neural networks on the quark-gluon discrimination task. We compare the results obtained using various network architectures trained for quark-gluon discrimination and also a boosted decision tree (BDT) trained on summary variables.},
+  author        = {Lee, Jason Sang Hun and Park, Inkyu and Watson, Ian James and Yang, Seungjin},
+  date          = {2019/02/01},
+  date-added    = {2024-07-06 14:59:07 +0800},
+  date-modified = {2024-07-06 14:59:07 +0800},
+  doi           = {10.3938/jkps.74.219},
+  id            = {Lee2019},
+  isbn          = {1976-8524},
+  journal       = {Journal of the Korean Physical Society},
+  number        = {3},
+  pages         = {219--223},
+  title         = {Quark-Gluon Jet Discrimination Using Convolutional Neural Networks},
+  url           = {https://doi.org/10.3938/jkps.74.219},
+  volume        = {74},
+  year          = {2019},
+  bdsk-url-1    = {https://doi.org/10.3938/jkps.74.219}
+}
+
+
+@misc{jet_image3,
+  title         = {An Attention Based Neural Network for Jet Tagging},
+  author        = {Jing Li and Hao Sun},
+  year          = {2020},
+  eprint        = {2009.00170},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph},
+  url           = {https://arxiv.org/abs/2009.00170}
+}
+
+@article{jet_image4,
+  title     = {Automatic detection of boosted Higgs boson and top quark jets in an event image},
+  author    = {Choi, Sang Kwan and Li, Jinmian and Zhang, Cong and Zhang, Rao},
+  journal   = {Phys. Rev. D},
+  volume    = {108},
+  issue     = {11},
+  pages     = {116002},
+  numpages  = {18},
+  year      = {2023},
+  month     = {Dec},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.108.116002},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.108.116002}
+}
+
+
+
+@article{jet_image5,
+  abstract      = {Machine learning based on convolutional neural networks can be used to study jet images from the LHC. Top tagging in fat jets offers a well-defined framework to establish our DeepTop approach and compare its performance to QCD-based top taggers. We first optimize a network architecture to identify top quarks in Monte Carlo simulations of the Standard Model production channel. Using standard fat jets we then compare its performance to a multivariate QCD-based top tagger. We find that both approaches lead to comparable performance, establishing convolutional networks as a promising new approach for multivariate hypothesis-based top tagging.},
+  author        = {Kasieczka, Gregor and Plehn, Tilman and Russell, Michael and Schell, Torben},
+  date          = {2017/05/02},
+  date-added    = {2024-07-06 15:00:47 +0800},
+  date-modified = {2024-07-06 15:00:47 +0800},
+  doi           = {10.1007/JHEP05(2017)006},
+  id            = {Kasieczka2017},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {5},
+  pages         = {6},
+  title         = {Deep-learning top taggers or the end of QCD?},
+  url           = {https://doi.org/10.1007/JHEP05(2017)006},
+  volume        = {2017},
+  year          = {2017},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP05(2017)006}
+}
+
+
+@article{jet_image6,
+  abstract      = {Artificial intelligence offers the potential to automate challenging data-processing tasks in collider physics. To establish its prospects, we explore to what extent deep learning with convolutional neural networks can discriminate quark and gluon jets better than observables designed by physicists. Our approach builds upon the paradigm that a jet can be treated as an image, with intensity given by the local calorimeter deposits. We supplement this construction by adding color to the images, with red, green and blue intensities given by the transverse momentum in charged particles, transverse momentum in neutral particles, and pixel-level charged particle counts. Overall, the deep networks match or outperform traditional jet variables. We also find that, while various simulations produce different quark and gluon jets, the neural networks are surprisingly insensitive to these differences, similar to traditional observables. This suggests that the networks can extract robust physical information from imperfect simulations.},
+  author        = {Komiske, Patrick T. and Metodiev, Eric M. and Schwartz, Matthew D.},
+  date          = {2017/01/25},
+  date-added    = {2024-07-06 15:01:17 +0800},
+  date-modified = {2024-07-06 15:01:17 +0800},
+  doi           = {10.1007/JHEP01(2017)110},
+  id            = {Komiske2017},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {1},
+  pages         = {110},
+  title         = {Deep learning in color: towards automated quark/gluon jet discrimination},
+  url           = {https://doi.org/10.1007/JHEP01(2017)110},
+  volume        = {2017},
+  year          = {2017},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP01(2017)110}
+}
+
+
+@article{jet_image7,
+  title     = {Jet substructure classification in high-energy physics with deep neural networks},
+  author    = {Baldi, Pierre and Bauer, Kevin and Eng, Clara and Sadowski, Peter and Whiteson, Daniel},
+  journal   = {Phys. Rev. D},
+  volume    = {93},
+  issue     = {9},
+  pages     = {094034},
+  numpages  = {8},
+  year      = {2016},
+  month     = {May},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.93.094034},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.93.094034}
+}
+
+
+%%%%% jet sequence
+
+@techreport{jet_seq1,
+  collaboration = {ATLAS},
+  title         = {{Identification of Jets Containing $b$-Hadrons with
+                   Recurrent Neural Networks at the ATLAS Experiment}},
+  institution   = {CERN},
+  reportnumber  = {ATL-PHYS-PUB-2017-003},
+  address       = {Geneva},
+  year          = {2017},
+  url           = {https://cds.cern.ch/record/2255226},
+  note          = {All figures including auxiliary figures are available at
+                   \url{https://atlas.web.cern.ch/Atlas/GROUPS/PHYSICS/PUBNOTES/ATL-PHYS-PUB-2017-003}}
+}
+
+@misc{jet_seq2,
+  title         = {Sequence-based Machine Learning Models in Jet Physics},
+  author        = {Rafael Teixeira de Lima},
+  year          = {2021},
+  eprint        = {2102.06128},
+  archiveprefix = {arXiv},
+  primaryclass  = {physics.data-an},
+  url           = {https://arxiv.org/abs/2102.06128}
+}
+
+@article{jet_seq3,
+  doi       = {10.1088/1748-0221/15/12/P12012},
+  url       = {https://dx.doi.org/10.1088/1748-0221/15/12/P12012},
+  year      = {2020},
+  month     = {dec},
+  publisher = {},
+  volume    = {15},
+  number    = {12},
+  pages     = {P12012},
+  author    = {E. Bols and J. Kieseler and M. Verzetti and M. Stoye and A. Stakia},
+  title     = {Jet flavour classification using DeepJet},
+  journal   = {Journal of Instrumentation},
+  abstract  = {Jet flavour classification is of paramount importance for a   broad range of applications in modern-day high-energy-physics   experiments, particularly at the LHC. In this paper we propose a   novel architecture for this task that exploits modern deep learning   techniques. This new model, called DeepJet, overcomes the   limitations in input size that affected previous approaches. As a   result, the heavy flavour classification performance improves, and   the model is extended to also perform quark-gluon tagging.}
+}
+
+@article{jet_seq4,
+  title     = {Jet flavor classification in high-energy physics with deep neural networks},
+  author    = {Guest, Daniel and Collado, Julian and Baldi, Pierre and Hsu, Shih-Chieh and Urban, Gregor and Whiteson, Daniel},
+  journal   = {Phys. Rev. D},
+  volume    = {94},
+  issue     = {11},
+  pages     = {112002},
+  numpages  = {12},
+  year      = {2016},
+  month     = {Dec},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.94.112002},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.94.112002}
+}
+
+@article{jet_seq5,
+  abstract      = {Deep learning techniques are currently being investigated for high energy physics experiments, to tackle a wide range of problems, with quark and gluon discrimination becoming a benchmark for new algorithms. One weakness is the traditional reliance on Monte Carlo simulations, which may not be well modelled at the detail required by deep learning algorithms. The weakly supervised learning paradigm gives an alternate route to classification, by using samples with different quark-gluon proportions instead of fully labeled samples. This paradigm has, therefore, huge potential for particle physics classification problems as these weakly supervised learning methods can be applied directly to collision data. In this study, we show that realistically simulated samples of dijet and Z+jet events can be used to discriminate between quark and gluon jets by using weakly supervised learning. We implement and compare the performance of weakly supervised learning for quark-gluon jet classification using three different machine learning methods: the jet image-based convolutional neural network, the particle-based recurrent neural network and and the feature-based boosted decision tree.},
+  author        = {Lee, Jason Sang Hun and Lee, Sang Man and Lee, Yunjae and Park, Inkyu and Watson, Ian James and Yang, Seungjin},
+  date          = {2019/11/01},
+  date-added    = {2023-11-03 13:08:41 +0800},
+  date-modified = {2023-11-03 13:08:41 +0800},
+  doi           = {10.3938/jkps.75.652},
+  id            = {Lee2019},
+  isbn          = {1976-8524},
+  journal       = {Journal of the Korean Physical Society},
+  number        = {9},
+  pages         = {652--659},
+  title         = {Quark Gluon Jet Discrimination with Weakly Supervised Learning},
+  url           = {https://doi.org/10.3938/jkps.75.652},
+  volume        = {75},
+  year          = {2019},
+  bdsk-url-1    = {https://doi.org/10.3938/jkps.75.652}
+}
+
+@misc{jet_seq6,
+  title         = {Long Short-Term Memory (LSTM) networks with jet constituents for boosted top tagging at the LHC},
+  author        = {Shannon Egan and Wojciech Fedorko and Alison Lister and Jannicke Pearkes and Colin Gay},
+  year          = {2017},
+  eprint        = {1711.09059},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ex}
+}
+
+@misc{jet_seq7,
+  title         = {Jet Constituents for Deep Neural Network Based Top Quark Tagging},
+  author        = {Jannicke Pearkes and Wojciech Fedorko and Alison Lister and Colin Gay},
+  year          = {2017},
+  eprint        = {1704.02124},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ex}
+}
+
+
+%%%%% jet tree
+
+@article{jet_tree1,
+  abstract      = {Since the machine learning techniques are improving rapidly, it has been shown that the image recognition techniques in deep neural networks can be used to detect jet substructure. And it turns out that deep neural networks can match or outperform traditional approach of expert features. However, there are disadvantages such as sparseness of jet images. Based on the natural tree-like structure of jet sequential clustering, the recursive neural networks (RecNNs), which embed jet clustering history recursively as in natural language processing, have a better behavior when confronted with these problems. We thus try to explore the performance of RecNNs in quark/gluon discrimination. The results show that RecNNs work better than the baseline boosted decision tree (BDT) by a few percent in gluon rejection rate. However, extra implementation of particle flow identification only increases the performance slightly. We also experimented on some relevant aspects which might influence the performance of the networks. It shows that even taking only particle flow identification as input feature without any extra information on momentum or angular position is already giving a fairly good result, which indicates that the most of the information for quark/gluon discrimination is already included in the tree-structure itself. As a bonus, a rough up/down quark jets discrimination is also explored.},
+  author        = {Cheng, Taoli},
+  date          = {2018/06/28},
+  date-added    = {2024-07-06 15:15:09 +0800},
+  date-modified = {2024-07-06 15:15:09 +0800},
+  doi           = {10.1007/s41781-018-0007-y},
+  id            = {Cheng2018},
+  isbn          = {2510-2044},
+  journal       = {Computing and Software for Big Science},
+  number        = {1},
+  pages         = {3},
+  title         = {Recursive Neural Networks in Quark/Gluon Tagging},
+  url           = {https://doi.org/10.1007/s41781-018-0007-y},
+  volume        = {2},
+  year          = {2018},
+  bdsk-url-1    = {https://doi.org/10.1007/s41781-018-0007-y}
+}
+
+
+
+@article{jet_tree2,
+  abstract      = {Recent progress in applying machine learning for jet physics has been built upon an analogy between calorimeters and images. In this work, we present a novel class of recursive neural networks built instead upon an analogy between QCD and natural languages. In the analogy, four-momenta are like words and the clustering history of sequential recombination jet algorithms is like the parsing of a sentence. Our approach works directly with the four-momenta of a variable-length set of particles, and the jet-based tree structure varies on an event-by-event basis. Our experiments highlight the flexibility of our method for building task-specific jet embeddings and show that recursive architectures are significantly more accurate and data efficient than previous image-based networks. We extend the analogy from individual jets (sentences) to full events (paragraphs), and show for the first time an event-level classifier operating on all the stable particles produced in an LHC event.},
+  author        = {Louppe, Gilles and Cho, Kyunghyun and Becot, Cyril and Cranmer, Kyle},
+  date          = {2019/01/07},
+  date-added    = {2024-07-06 15:16:00 +0800},
+  date-modified = {2024-07-06 15:16:00 +0800},
+  doi           = {10.1007/JHEP01(2019)057},
+  id            = {Louppe2019},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {1},
+  pages         = {57},
+  title         = {QCD-aware recursive neural networks for jet physics},
+  url           = {https://doi.org/10.1007/JHEP01(2019)057},
+  volume        = {2019},
+  year          = {2019},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP01(2019)057}
+}
+
+
+%%%%% jet graph
+
+@inproceedings{jet_graph1,
+  title  = {Neural Message Passing for Jet Physics},
+  author = {Isaac Henrion and Johann Brehmer and Joan Bruna and Kyunghyun Cho and Kyle Cranmer and Gilles Louppe and Gaspar Rochette},
+  year   = {2017},
+  url    = {https://api.semanticscholar.org/CorpusID:39724044}
+}
+
+
+@article{jet_graph2,
+  abstract      = {We investigate the performance of a jet identification algorithm based on interaction networks (JEDI-net) to identify all-hadronic decays of high-momentum heavy particles produced at the LHC and distinguish them from ordinary jets originating from the hadronization of quarks and gluons. The jet dynamics are described as a set of one-to-one interactions between the jet constituents. Based on a representation learned from these interactions, the jet is associated to one of the considered categories. Unlike other architectures, the JEDI-net models achieve their performance without special handling of the sparse input jet representation, extensive pre-processing, particle ordering, or specific assumptions regarding the underlying detector geometry. The presented models give better results with less model parameters, offering interesting prospects for LHC applications.},
+  author        = {Moreno, Eric A. and Cerri, Olmo and Duarte, Javier M. and Newman, Harvey B. and Nguyen, Thong Q. and Periwal, Avikar and Pierini, Maurizio and Serikova, Aidana and Spiropulu, Maria and Vlimant, Jean-Roch},
+  date          = {2020/01/25},
+  date-added    = {2024-07-06 15:34:58 +0800},
+  date-modified = {2024-07-06 15:34:58 +0800},
+  doi           = {10.1140/epjc/s10052-020-7608-4},
+  id            = {Moreno2020},
+  isbn          = {1434-6052},
+  journal       = {The European Physical Journal C},
+  number        = {1},
+  pages         = {58},
+  title         = {JEDI-net: a jet identification algorithm based on interaction networks},
+  url           = {https://doi.org/10.1140/epjc/s10052-020-7608-4},
+  volume        = {80},
+  year          = {2020},
+  bdsk-url-1    = {https://doi.org/10.1140/epjc/s10052-020-7608-4}
+}
+
+
+@article{jet_graph3,
+  abstract      = {Classification of jets with deep learning has gained significant attention in recent times. However, the performance of deep neural networks is often achieved at the cost of interpretability. Here we propose an interpretable network trained on the jet spectrum S2(R) which is a two-point correlation function of the jet constituents. The spectrum can be derived from a functional Taylor series of an arbitrary jet classifier function of energy flows. An interpretable network can be obtained by truncating the series. The intermediate feature of the network is an infrared and collinear safe C-correlator which allows us to estimate the importance of an S2(R) deposit at an angular scale R in the classification. The performance of the architecture is comparable to that of a convolutional neural network (CNN) trained on jet images, although the number of inputs and complexity of the architecture is significantly simpler than the CNN classifier. We consider two examples: one is the classification of two-prong jets which differ in color charge of the mother particle, and the other is a comparison between Pythia 8 and Herwig 7 generated jets.},
+  author        = {Chakraborty, Amit and Lim, Sung Hak and Nojiri, Mihoko M.},
+  date          = {2019/07/23},
+  date-added    = {2024-07-06 15:35:28 +0800},
+  date-modified = {2024-07-06 15:35:28 +0800},
+  doi           = {10.1007/JHEP07(2019)135},
+  id            = {Chakraborty2019},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {7},
+  pages         = {135},
+  title         = {Interpretable deep learning for two-prong jet classification with jet spectra},
+  url           = {https://doi.org/10.1007/JHEP07(2019)135},
+  volume        = {2019},
+  year          = {2019},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP07(2019)135}
+}
+
+
+
+@article{jet_graph4,
+  abstract      = {Deep neural networks trained on jet images have been successful in classifying different kinds of jets. In this paper, we identify the crucial physics features that could reproduce the classification performance of the convolutional neural network in the top jet vs. QCD jet classification. We design a neural network that considers two types of sub-structural features: two-point energy correlations, and the IRC unsafe counting variables of a morphological analysis of jet images. The new set of IRC unsafe variables can be described by Minkowski functionals from integral geometry. To integrate these features into a single framework, we reintroduce two-point energy correlations in terms of a graph neural network and provide the other features to the network afterward. The network shows a comparable classification performance to the convolutional neural network. Since both networks are using IRC unsafe features at some level, the results based on simulations are often dependent on the event generator choice. We compare the classification results of Pythia 8 and Herwig 7, and a simple reweighting on the distribution of IRC unsafe features reduces the difference between the results from the two simulations.},
+  author        = {Chakraborty, Amit and Lim, Sung Hak and Nojiri, Mihoko M. and Takeuchi, Michihisa},
+  date          = {2020/07/17},
+  date-added    = {2024-07-06 15:36:20 +0800},
+  date-modified = {2024-07-06 15:36:20 +0800},
+  doi           = {10.1007/JHEP07(2020)111},
+  id            = {Chakraborty2020},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {7},
+  pages         = {111},
+  title         = {Neural network-based top tagger with two-point energy correlations and geometry of soft emissions},
+  url           = {https://doi.org/10.1007/JHEP07(2020)111},
+  volume        = {2020},
+  year          = {2020},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP07(2020)111}
+}
+
+
+@article{jet_graph5,
+  doi       = {10.1088/2632-2153/abbf9a},
+  url       = {https://dx.doi.org/10.1088/2632-2153/abbf9a},
+  year      = {2020},
+  month     = {dec},
+  publisher = {IOP Publishing},
+  volume    = {2},
+  number    = {2},
+  pages     = {021001},
+  author    = {Jonathan Shlomi and Peter Battaglia and Jean-Roch Vlimant},
+  title     = {Graph neural networks in particle physics},
+  journal   = {Machine Learning: Science and Technology},
+  abstract  = {Particle physics is a branch of science aiming at discovering the fundamental laws of matter and forces. Graph neural networks are trainable functions which operate on graphs—sets of elements and their pairwise relations—and are a central method within the broader field of geometric deep learning. They are very expressive and have demonstrated superior performance to other classical deep learning approaches in a variety of domains. The data in particle physics are often represented by sets and graphs and as such, graph neural networks offer key advantages. Here we review various applications of graph neural networks in particle physics, including different graph constructions, model architectures and learning objectives, as well as key open problems in particle physics for which graph neural networks are promising.}
+}
+
+
+@article{jet_graph6,
+  title     = {Supervised jet clustering with graph neural networks for Lorentz boosted bosons},
+  author    = {Ju, Xiangyang and Nachman, Benjamin},
+  journal   = {Phys. Rev. D},
+  volume    = {102},
+  issue     = {7},
+  pages     = {075014},
+  numpages  = {11},
+  year      = {2020},
+  month     = {Oct},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.102.075014},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.102.075014}
+}
+
+@misc{jet_graph7,
+  title         = {Jet tagging in the Lund plane with graph networks},
+  author        = {Frédéric A. Dreyer and Huilin Qu},
+  year          = {2021},
+  eprint        = {2012.08526},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph},
+  url           = {https://arxiv.org/abs/2012.08526}
+}
+
+
+@article{jet_graph8,
+  abstract      = {Deep learning methods have been increasingly adopted to study jets in particle physics. Since symmetry-preserving behavior has been shown to be an important factor for improving the performance of deep learning in many applications, Lorentz group equivariance ---a fundamental spacetime symmetry for elementary particles ---has recently been incorporated into a deep learning model for jet tagging. However, the design is computationally costly due to the analytic construction of high-order tensors. In this article, we introduce LorentzNet, a new symmetry-preserving deep learning model for jet tagging. The message passing of LorentzNet relies on an efficient Minkowski dot product attention. Experiments on two representative jet tagging benchmarks show that LorentzNet achieves the best tagging performance and improves significantly over existing state-of-the-art algorithms. The preservation of Lorentz symmetry also greatly improves the efficiency and generalization power of the model, allowing LorentzNet to reach highly competitive performance when trained on only a few thousand jets.},
+  author        = {Gong, Shiqi and Meng, Qi and Zhang, Jue and Qu, Huilin and Li, Congqiao and Qian, Sitian and Du, Weitao and Ma, Zhi-Ming and Liu, Tie-Yan},
+  date          = {2022/07/05},
+  date-added    = {2024-07-06 15:45:27 +0800},
+  date-modified = {2024-07-06 15:45:27 +0800},
+  doi           = {10.1007/JHEP07(2022)030},
+  id            = {Gong2022},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {7},
+  pages         = {30},
+  title         = {An efficient Lorentz equivariant graph neural network for jet tagging},
+  url           = {https://doi.org/10.1007/JHEP07(2022)030},
+  volume        = {2022},
+  year          = {2022},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP07(2022)030}
+}
+
+
+@article{jet_graph9,
+  title     = {Jet tagging algorithm of graph network with Haar pooling message passing},
+  author    = {Ma, Fei and Liu, Feiyi and Li, Wei},
+  journal   = {Phys. Rev. D},
+  volume    = {108},
+  issue     = {7},
+  pages     = {072007},
+  numpages  = {12},
+  year      = {2023},
+  month     = {Oct},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.108.072007},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.108.072007}
+}
+
+@misc{jet_graph10,
+  title         = {Do graph neural networks learn traditional jet substructure?},
+  author        = {Farouk Mokhtar and Raghav Kansal and Javier Duarte},
+  year          = {2022},
+  eprint        = {2211.09912},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ex},
+  url           = {https://arxiv.org/abs/2211.09912}
+}
+
+@misc{jet_graph11,
+  title         = {Graph Structure from Point Clouds: Geometric Attention is All You Need},
+  author        = {Daniel Murnane},
+  year          = {2023},
+  eprint        = {2307.16662},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2307.16662}
+}
+
+@misc{jet_graph12,
+  title         = {Graph Neural Networks in Particle Physics: Implementations, Innovations, and Challenges},
+  author        = {Savannah Thais and Paolo Calafiura and Grigorios Chachamis and Gage DeZoort and Javier Duarte and Sanmay Ganguly and Michael Kagan and Daniel Murnane and Mark S. Neubauer and Kazuhiro Terao},
+  year          = {2022},
+  eprint        = {2203.12852},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ex}
+}
+
+@article{jet_graph13,
+  title     = {Boosted Higgs boson jet reconstruction via a graph neural network},
+  author    = {Guo, Jun and Li, Jinmian and Li, Tianjun and Zhang, Rao},
+  journal   = {Phys. Rev. D},
+  volume    = {103},
+  issue     = {11},
+  pages     = {116025},
+  numpages  = {12},
+  year      = {2021},
+  month     = {Jun},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.103.116025},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.103.116025}
+}
+
+%%%%% jet sets
+
+@article{jet_set1,
+  title     = {Equivariant energy flow networks for jet tagging},
+  author    = {Dolan, Matthew J. and Ore, Ayodele},
+  journal   = {Phys. Rev. D},
+  volume    = {103},
+  issue     = {7},
+  pages     = {074022},
+  numpages  = {14},
+  year      = {2021},
+  month     = {Apr},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.103.074022},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.103.074022}
+}
+
+@techreport{jet_set2,
+  collaboration = {ATLAS},
+  title         = {{Deep Sets based Neural Networks for Impact Parameter
+                   Flavour Tagging in ATLAS}},
+  institution   = {CERN},
+  reportnumber  = {ATL-PHYS-PUB-2020-014},
+  address       = {Geneva},
+  year          = {2020},
+  url           = {https://cds.cern.ch/record/2718948},
+  note          = {All figures including auxiliary figures are available at
+                   \url{https://atlas.web.cern.ch/Atlas/GROUPS/PHYSICS/PUBNOTES/ATL-PHYS-PUB-2020-014}}
+}
+
+@misc{jet_set3,
+  title         = {Point Cloud Generation using Transformer Encoders and Normalising Flows},
+  author        = {Benno Käch and Dirk Krücker and Isabell Melzer-Pellmann},
+  year          = {2022},
+  eprint        = {2211.13623},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ex},
+  url           = {https://arxiv.org/abs/2211.13623}
+}
+
+
+@misc{jet_set4,
+  title         = {Is infrared-collinear safe information all you need for jet classification?},
+  author        = {Dimitrios Athanasakos and Andrew J. Larkoski and James Mulligan and Mateusz Ploskon and Felix Ringer},
+  year          = {2023},
+  eprint        = {2305.08979},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph},
+  url           = {https://arxiv.org/abs/2305.08979}
+}
+
+@misc{jet_set5,
+  title         = {Attention to Mean-Fields for Particle Cloud Generation},
+  author        = {Benno Käch and Isabell Melzer-Pellmann},
+  year          = {2023},
+  eprint        = {2305.15254},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ex},
+  url           = {https://arxiv.org/abs/2305.15254}
+}
+
+
+@misc{jet_set6,
+  title         = {PAIReD jet: A multi-pronged resonance tagging strategy across all Lorentz boosts},
+  author        = {Spandan Mondal and Gaetano Barone and Alexander Schmidt},
+  year          = {2023},
+  eprint        = {2311.11011},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ex},
+  url           = {https://arxiv.org/abs/2311.11011}
+}
+
+
+@misc{jet_set7,
+  title         = {Sets are all you need: Ultrafast jet classification on FPGAs for HL-LHC},
+  author        = {Patrick Odagiu and Zhiqiang Que and Javier Duarte and Johannes Haller and Gregor Kasieczka and Artur Lobanov and Vladimir Loncar and Wayne Luk and Jennifer Ngadiuba and Maurizio Pierini and Philipp Rincke and Arpita Seksaria and Sioni Summers and Andre Sznajder and Alexander Tapper and Thea K. Aarrestad},
+  year          = {2024},
+  eprint        = {2402.01876},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ex},
+  url           = {https://arxiv.org/abs/2402.01876}
+}
+
+@misc{jet_set8,
+  title         = {Moments of Clarity: Streamlining Latent Spaces in Machine Learning using Moment Pooling},
+  author        = {Rikab Gambhir and Athis Osathapan and Jesse Thaler},
+  year          = {2024},
+  eprint        = {2403.08854},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph},
+  url           = {https://arxiv.org/abs/2403.08854}
+}
+
+
+%%% QML in introduction
+
+@article{qml1,
+  abstract      = {Fuelled by increasing computer power and algorithmic advances, machine learning techniques have become powerful tools for finding patterns in data. Quantum systems produce atypical patterns that classical systems are thought not to produce efficiently, so it is reasonable to postulate that quantum computers may outperform classical computers on machine learning tasks. The field of quantum machine learning explores how to devise and implement quantum software that could enable machine learning that is faster than that of classical computers. Recent work has produced quantum algorithms that could act as the building blocks of machine learning programs, but the hardware and software challenges are still considerable.},
+  author        = {Biamonte, Jacob and Wittek, Peter and Pancotti, Nicola and Rebentrost, Patrick and Wiebe, Nathan and Lloyd, Seth},
+  date          = {2017/09/01},
+  date-added    = {2023-11-03 14:09:31 +0800},
+  date-modified = {2023-11-03 14:09:31 +0800},
+  doi           = {10.1038/nature23474},
+  id            = {Biamonte2017},
+  isbn          = {1476-4687},
+  journal       = {Nature},
+  number        = {7671},
+  pages         = {195--202},
+  title         = {Quantum machine learning},
+  url           = {https://doi.org/10.1038/nature23474},
+  volume        = {549},
+  year          = {2017},
+  bdsk-url-1    = {https://doi.org/10.1038/nature23474}
+}
+
+
+@article{qml2,
+  abstract       = {Despite its undeniable success, classical machine learning remains a resource-intensive process. Practical computational efforts for training state-of-the-art models can now only be handled by high speed computer hardware. As this trend is expected to continue, it should come as no surprise that an increasing number of machine learning researchers are investigating the possible advantages of quantum computing. The scientific literature on Quantum Machine Learning is now enormous, and a review of its current state that can be comprehended without a physics background is necessary. The objective of this study is to present a review of Quantum Machine Learning from the perspective of conventional techniques. Departing from giving a research path from fundamental quantum theory through Quantum Machine Learning algorithms from a computer scientist&rsquo;s perspective, we discuss a set of basic algorithms for Quantum Machine Learning, which are the fundamental components for Quantum Machine Learning algorithms. We implement the Quanvolutional Neural Networks (QNNs) on a quantum computer to recognize handwritten digits, and compare its performance to that of its classical counterpart, the Convolutional Neural Networks (CNNs). Additionally, we implement the QSVM on the breast cancer dataset and compare it to the classical SVM. Finally, we implement the Variational Quantum Classifier (VQC) and many classical classifiers on the Iris dataset to compare their accuracies.},
+  article-number = {287},
+  author         = {Zeguendry, Amine and Jarir, Zahi and Quafafou, Mohamed},
+  doi            = {10.3390/e25020287},
+  issn           = {1099-4300},
+  journal        = {Entropy},
+  number         = {2},
+  pubmedid       = {36832654},
+  title          = {Quantum Machine Learning: A Review and Case Studies},
+  url            = {https://www.mdpi.com/1099-4300/25/2/287},
+  volume         = {25},
+  year           = {2023},
+  bdsk-url-1     = {https://www.mdpi.com/1099-4300/25/2/287},
+  bdsk-url-2     = {https://doi.org/10.3390/e25020287}
+}
+
+@misc{qml3,
+  title         = {Systematic Literature Review: Quantum Machine Learning and its applications},
+  author        = {David Peral García and Juan Cruz-Benito and Francisco José García-Peñalvo},
+  year          = {2022},
+  eprint        = {2201.04093},
+  archiveprefix = {arXiv},
+  primaryclass  = {quant-ph}
+}
+
+
+@article{qml4,
+  abstract       = {Quantum computing has been proven to excel in factorization issues and unordered search problems due to its capability of quantum parallelism. This unique feature allows exponential speed-up in solving certain problems. However, this advantage does not apply universally, and challenges arise when combining classical and quantum computing to achieve acceleration in computation speed. This paper aims to address these challenges by exploring the current state of quantum machine learning and benchmarking the performance of quantum and classical algorithms in terms of accuracy. Specifically, we conducted experiments with three datasets for binary classification, implementing Support Vector Machine (SVM) and Quantum SVM (QSVM) algorithms. Our findings suggest that the QSVM algorithm outperforms classical SVM on complex datasets, and the performance gap between quantum and classical models increases with dataset complexity, as simple models tend to overfit with complex datasets. While there is still a long way to go in terms of developing quantum hardware with sufficient resources, quantum machine learning holds great potential in areas such as unsupervised learning and generative models. Moving forward, more efforts are needed to explore new quantum learning models that can leverage the power of quantum mechanics to overcome the limitations of classical machine learning.},
+  article-number = {2379},
+  author         = {Tychola, Kyriaki A. and Kalampokas, Theofanis and Papakostas, George A.},
+  doi            = {10.3390/electronics12112379},
+  issn           = {2079-9292},
+  journal        = {Electronics},
+  number         = {11},
+  title          = {Quantum Machine Learning mdash;An Overview},
+  url            = {https://www.mdpi.com/2079-9292/12/11/2379},
+  volume         = {12},
+  year           = {2023},
+  bdsk-url-1     = {https://www.mdpi.com/2079-9292/12/11/2379},
+  bdsk-url-2     = {https://doi.org/10.3390/electronics12112379}
+}
+
+
+@book{qml5,
+  author = {Schuld, Maria and Petruccione, Francesco},
+  year   = {2021},
+  month  = {01},
+  pages  = {},
+  title  = {Machine Learning with Quantum Computers},
+  isbn   = {978-3-030-83097-7},
+  doi    = {10.1007/978-3-030-83098-4}
+}
+
+
+%%% QML examples in HEP
+
+@article{qml_hep1,
+  abstract   = {Machine learning has been used in high energy physics (HEP) for a long time, primarily at the analysis level with supervised classification. Quantum computing was postulated in the early 1980s as way to perform computations that would not be tractable with a classical computer. With the advent of noisy intermediate-scale quantum computing devices, more quantum algorithms are being developed with the aim at exploiting the capacity of the hardware for machine learning applications. An interesting question is whether there are ways to apply quantum machine learning to HEP. This paper reviews the first generation of ideas that use quantum machine learning on problems in HEP and provide an outlook on future applications.},
+  author     = {Wen Guan and Gabriel Perdue and Arthur Pesah and Maria Schuld and Koji Terashi and Sofia Vallecorsa and Jean-Roch Vlimant},
+  doi        = {10.1088/2632-2153/abc17d},
+  journal    = {Machine Learning: Science and Technology},
+  month      = {3},
+  number     = {1},
+  pages      = {011003},
+  publisher  = {IOP Publishing},
+  title      = {Quantum machine learning in high energy physics},
+  url        = {https://dx.doi.org/10.1088/2632-2153/abc17d},
+  volume     = {2},
+  year       = {2021},
+  bdsk-url-1 = {https://dx.doi.org/10.1088/2632-2153/abc17d}
+}
+
+%%%%% QML reconstruction
+
+
+@article{qml_reco1,
+  abstract      = {Tensor Networks are non-trivial representations of high-dimensional tensors, originally designed to describe quantum many-body systems. We show that Tensor Networks are ideal vehicles to connect quantum mechanical concepts to machine learning techniques, thereby facilitating an improved interpretability of neural networks. This study presents the discrimination of top quark signal over QCD background processes using a Matrix Product State classifier. We show that entanglement entropy can be used to interpret what a network learns, which can be used to reduce the complexity of the network and feature space without loss of generality or performance. For the optimisation of the network, we compare the Density Matrix Renormalization Group (DMRG) algorithm to stochastic gradient descent (SGD) and propose a joined training algorithm to harness the explainability of DMRG with the efficiency of SGD.},
+  author        = {Araz, Jack Y. and Spannowsky, Michael},
+  date          = {2021/08/23},
+  date-added    = {2024-07-08 17:19:15 +0800},
+  date-modified = {2024-07-08 17:19:15 +0800},
+  doi           = {10.1007/JHEP08(2021)112},
+  id            = {Araz2021},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {8},
+  pages         = {112},
+  title         = {Quantum-inspired event reconstruction with Tensor Networks: Matrix Product States},
+  url           = {https://doi.org/10.1007/JHEP08(2021)112},
+  volume        = {2021},
+  year          = {2021},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP08(2021)112}
+}
+
+
+@article{qml_reco2,
+  title     = {Reconstructing charged particle track segments with a quantum-enhanced support vector machine},
+  author    = {Duckett, Philippa and Facini, Gabriel and Jastrzebski, Marcin and Malik, Sarah and Scanlon, Tim and Rettie, S\'ebastien},
+  journal   = {Phys. Rev. D},
+  volume    = {109},
+  issue     = {5},
+  pages     = {052002},
+  numpages  = {11},
+  year      = {2024},
+  month     = {Mar},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.109.052002},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.109.052002}
+}
+
+
+@article{qml_reco3,
+  author     = {{T\"uys\"uz, Cenk} and {Carminati, Federico} and {Demirk\"oz, Bilge} and {Dobos, Daniel} and {Fracas, Fabio} and {Novotny, Kristiane} and {Potamianos, Karolos} and {Vallecorsa, Sofia} and {Vlimant, Jean-Roch}},
+  doi        = {10.1051/epjconf/202024509013},
+  journal    = {EPJ Web Conf.},
+  pages      = {09013},
+  title      = {Particle Track Reconstruction with Quantum Algorithms},
+  url        = {https://doi.org/10.1051/epjconf/202024509013},
+  volume     = 245,
+  year       = 2020,
+  bdsk-url-1 = {https://doi.org/10.1051/epjconf/202024509013}
+}
+
+
+
+%%%%% QML classification
+
+
+@article{qml_cf1,
+  abstract      = {Quantum machine learning aims to release the prowess of quantum computing to improve machine learning methods. By combining quantum computing methods with classical neural network techniques we aim to foster an increase of performance in solving classification problems. Our algorithm is designed for existing and near-term quantum devices. We propose a novel hybrid variational quantum classifier that combines the quantum gradient descent method with steepest gradient descent to optimise the parameters of the network. By applying this algorithm to a resonance search in di-top final states, we find that this method has a better learning outcome than a classical neural network or a quantum machine learning method trained with a non-quantum optimisation method. The classifiers ability to be trained on small amounts of data indicates its benefits in data-driven classification problems.},
+  author        = {Blance, Andrew and Spannowsky, Michael},
+  date          = {2021/02/24},
+  date-added    = {2024-07-08 17:11:03 +0800},
+  date-modified = {2024-07-08 17:11:03 +0800},
+  doi           = {10.1007/JHEP02(2021)212},
+  id            = {Blance2021},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {2},
+  pages         = {212},
+  title         = {Quantum machine learning for particle physics using a variational quantum classifier},
+  url           = {https://doi.org/10.1007/JHEP02(2021)212},
+  volume        = {2021},
+  year          = {2021},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP02(2021)212}
+}
+
+@article{qml_cf2,
+  abstract      = {We present studies of quantum algorithms exploiting machine learning to classify events of interest from background events, one of the most representative machine learning applications in high-energy physics. We focus on variational quantum approach to learn the properties of input data and evaluate the performance of the event classification using both simulators and quantum computing devices. Comparison of the performance with standard multi-variate classification techniques based on a boosted-decision tree and a deep neural network using classical computers shows that the quantum algorithm has comparable performance with the standard techniques at the considered ranges of the number of input variables and the size of training samples. The variational quantum algorithm is tested with quantum computers, demonstrating that the discrimination of interesting events from background is feasible. Characteristic behaviors observed during a learning process using quantum circuits with extended gate structures are discussed, as well as the implications of the current performance to the application in high-energy physics experiments.},
+  author        = {Terashi, Koji and Kaneda, Michiru and Kishimoto, Tomoe and Saito, Masahiko and Sawada, Ryu and Tanaka, Junichi},
+  date          = {2021/01/03},
+  date-added    = {2023-11-03 17:01:18 +0800},
+  date-modified = {2023-11-03 17:01:18 +0800},
+  doi           = {10.1007/s41781-020-00047-7},
+  id            = {Terashi2021},
+  isbn          = {2510-2044},
+  journal       = {Computing and Software for Big Science},
+  number        = {1},
+  pages         = {2},
+  title         = {Event Classification with Quantum Machine Learning in High-Energy Physics},
+  url           = {https://doi.org/10.1007/s41781-020-00047-7},
+  volume        = {5},
+  year          = {2021},
+  bdsk-url-1    = {https://doi.org/10.1007/s41781-020-00047-7}
+}
+
+@misc{qml_cf3,
+  title         = {Quantum Convolutional Neural Networks for High Energy Physics Data Analysis},
+  author        = {Samuel Yen-Chi Chen and Tzu-Chieh Wei and Chao Zhang and Haiwang Yu and Shinjae Yoo},
+  year          = {2020},
+  eprint        = {2012.12177},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2012.12177}
+}
+
+
+@article{qml_cf4,
+  abstract   = {One of the major objectives of the experimental programs at the Large Hadron Collider (LHC) is the discovery of new physics. This requires the identification of rare signals in immense backgrounds. Using machine learning algorithms greatly enhances our ability to achieve this objective. With the progress of quantum technologies, quantum machine learning could become a powerful tool for data analysis in high energy physics. In this study, using IBM gate-model quantum computing systems, we employ the quantum variational classifier method in two recent LHC flagship physics analyses:  (Higgs boson production in association with a top quark pair, probing the Higgs boson couplings to the top quark) and H → μ + μ − (Higgs boson decays to two muons, probing the Higgs boson couplings to second-generation fermions). We have obtained early results with 10 qubits on the IBM quantum simulator and the IBM quantum hardware. With small training samples of 100 events on the quantum simulator, the quantum variational classifier method performs similarly to classical algorithms such as SVM (support vector machine) and BDT (boosted decision tree), which are often employed in LHC physics analyses. On the quantum hardware, the quantum variational classifier method has shown promising discrimination power, comparable to that on the quantum simulator. This study demonstrates that quantum machine learning has the ability to differentiate between signal and background in realistic physics datasets. We foresee the usage of quantum machine learning in future high-luminosity LHC physics analyses, including measurements of the Higgs boson self-couplings and searches for dark matter.},
+  author     = {Sau Lan Wu and Jay Chan and Wen Guan and Shaojun Sun and Alex Wang and Chen Zhou and Miron Livny and Federico Carminati and Alberto Di Meglio and Andy C Y Li and Joseph Lykken and Panagiotis Spentzouris and Samuel Yen-Chi Chen and Shinjae Yoo and Tzu-Chieh Wei},
+  doi        = {10.1088/1361-6471/ac1391},
+  journal    = {Journal of Physics G: Nuclear and Particle Physics},
+  month      = {oct},
+  number     = {12},
+  pages      = {125003},
+  publisher  = {IOP Publishing},
+  title      = {Application of quantum machine learning using the quantum variational classifier method to high energy physics analysis at the LHC on IBM quantum computer simulator and hardware with 10 qubits},
+  url        = {https://dx.doi.org/10.1088/1361-6471/ac1391},
+  volume     = {48},
+  year       = {2021},
+  bdsk-url-1 = {https://dx.doi.org/10.1088/1361-6471/ac1391}
+}
+
+
+@misc{qml_cf5,
+  title         = {Hybrid Quantum-Classical Graph Convolutional Network},
+  author        = {Samuel Yen-Chi Chen and Tzu-Chieh Wei and Chao Zhang and Haiwang Yu and Shinjae Yoo},
+  year          = {2021},
+  eprint        = {2101.06189},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2101.06189}
+}
+
+
+
+@article{qml_cf6,
+  abstract      = {Photonic Quantum Computers provide several benefits over the discrete qubit-based paradigm of quantum computing. By using the power of continuous-variable computing we build an anomaly detection model to use on searches for New Physics. Our model uses Gaussian Boson Sampling, a {\#}P-hard problem and thus not efficiently accessible to classical devices. This is used to create feature vectors from graph data, a natural format for representing data of high-energy collision events. A simple K-means clustering algorithm is used to provide a baseline method of classification. We then present a novel method of anomaly detection, combining the use of Gaussian Boson Sampling and a quantum extension to K-means known as Q-means. This is found to give equivalent results compared to the classical clustering version while also reducing the {\$}{\$} {$\backslash$}mathcal{\{}O{\}} {\$}{\$}complexity, with respect to the sample's feature-vector length, from {\$}{\$} {$\backslash$}mathcal{\{}O{\}}(N) {\$}{\$}to {\$}{\$} {$\backslash$}mathcal{\{}O{\}}{$\backslash$}left({$\backslash$}log (N){$\backslash$}right) {\$}{\$}.},
+  author        = {Blance, Andrew and Spannowsky, Michael},
+  date          = {2021/08/31},
+  date-added    = {2024-07-08 17:16:05 +0800},
+  date-modified = {2024-07-08 17:16:05 +0800},
+  doi           = {10.1007/JHEP08(2021)170},
+  id            = {Blance2021},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {8},
+  pages         = {170},
+  title         = {Unsupervised event classification with graphs on classical and photonic quantum computers},
+  url           = {https://doi.org/10.1007/JHEP08(2021)170},
+  volume        = {2021},
+  year          = {2021},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP08(2021)170}
+}
+
+
+@misc{qml_cf7,
+  title         = {Quantum Support Vector Machines for Continuum Suppression in B Meson Decays},
+  author        = {Jamie Heredge and Charles Hill and Lloyd Hollenberg and Martin Sevior},
+  year          = {2021},
+  eprint        = {2103.12257},
+  archiveprefix = {arXiv},
+  primaryclass  = {quant-ph},
+  url           = {https://arxiv.org/abs/2103.12257}
+}
+
+
+@article{qml_cf8,
+  title     = {Application of quantum machine learning using the quantum kernel algorithm on high energy physics analysis at the LHC},
+  author    = {Wu, Sau Lan and Sun, Shaojun and Guan, Wen and Zhou, Chen and Chan, Jay and Cheng, Chi Lung and Pham, Tuan and Qian, Yan and Wang, Alex Zeng and Zhang, Rui and Livny, Miron and Glick, Jennifer and Barkoutsos, Panagiotis Kl. and Woerner, Stefan and Tavernelli, Ivano and Carminati, Federico and Di Meglio, Alberto and Li, Andy C. Y. and Lykken, Joseph and Spentzouris, Panagiotis and Chen, Samuel Yen-Chi and Yoo, Shinjae and Wei, Tzu-Chieh},
+  journal   = {Phys. Rev. Res.},
+  volume    = {3},
+  issue     = {3},
+  pages     = {033221},
+  numpages  = {9},
+  year      = {2021},
+  month     = {Sep},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevResearch.3.033221},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevResearch.3.033221}
+}
+
+@article{qml_cf9,
+  title     = {Higgs analysis with quantum classifiers},
+  volume    = {251},
+  issn      = {2100-014X},
+  url       = {http://dx.doi.org/10.1051/epjconf/202125103070},
+  doi       = {10.1051/epjconf/202125103070},
+  journal   = {EPJ Web of Conferences},
+  publisher = {EDP Sciences},
+  author    = {Belis, Vasilis and González-Castillo, Samuel and Reissel, Christina and Vallecorsa, Sofia and Combarro, Elías F. and Dissertori, Günther and Reiter, Florentin},
+  editor    = {Biscarat, C. and Campana, S. and Hegner, B. and Roiser, S. and Rovelli, C.I. and Stewart, G.A.},
+  year      = {2021},
+  pages     = {03070}
+}
+
+@article{qml_cf10,
+  abstract      = {Machine Learning algorithms have played an important role in hadronic jet classification problems. The large variety of models applied to Large Hadron Collider data has demonstrated that there is still room for improvement. In this context Quantum Machine Learning is a new and almost unexplored methodology, where the intrinsic properties of quantum computation could be used to exploit particles correlations for improving the jet classification performance. In this paper, we present a brand new approach to identify if a jet contains a hadron formed by a b or {\$}{\$} {$\backslash$}overline{\{}b{\}} {\$}{\$}quark at the moment of production, based on a Variational Quantum Classifier applied to simulated data of the LHCb experiment. Quantum models are trained and evaluated using LHCb simulation. The jet identification performance is compared with a Deep Neural Network model to assess which method gives the better performance.},
+  author        = {Gianelle, Alessio and Koppenburg, Patrick and Lucchesi, Donatella and Nicotra, Davide and Rodrigues, Eduardo and Sestini, Lorenzo and de Vries, Jacco and Zuliani, Davide},
+  date          = {2022/08/01},
+  date-added    = {2023-11-03 16:59:42 +0800},
+  date-modified = {2023-11-03 16:59:42 +0800},
+  doi           = {10.1007/JHEP08(2022)014},
+  id            = {Gianelle2022},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {8},
+  pages         = {14},
+  title         = {Quantum Machine Learning for b-jet charge identification},
+  url           = {https://doi.org/10.1007/JHEP08(2022)014},
+  volume        = {2022},
+  year          = {2022},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP08(2022)014}
+}
+
+@article{qml_cf11,
+  title     = {Completely quantum neural networks},
+  author    = {Abel, Steve and Criado, Juan C. and Spannowsky, Michael},
+  journal   = {Phys. Rev. A},
+  volume    = {106},
+  issue     = {2},
+  pages     = {022601},
+  numpages  = {10},
+  year      = {2022},
+  month     = {Aug},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevA.106.022601},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevA.106.022601}
+}
+
+
+@article{qml_cf12,
+  title     = {Classical versus quantum: Comparing tensor-network-based quantum circuits on Large Hadron Collider data},
+  volume    = {106},
+  issn      = {2469-9934},
+  url       = {http://dx.doi.org/10.1103/PhysRevA.106.062423},
+  doi       = {10.1103/physreva.106.062423},
+  number    = {6},
+  journal   = {Physical Review A},
+  publisher = {American Physical Society (APS)},
+  author    = {Araz, Jack Y. and Spannowsky, Michael},
+  year      = {2022},
+  month     = dec
+}
+
+@article{qml_cf13,
+  author   = {Peixoto, Miguel Caçador  and Castro, Nuno Filipe  and Crispim Romão, Miguel  and Oliveira, Maria Gabriela Jordão  and Ochoa, Inês },
+  title    = {Fitting a collider in a quantum computer: tackling the challenges of quantum machine learning for big datasets},
+  journal  = {Frontiers in Artificial Intelligence},
+  volume   = {6},
+  year     = {2023},
+  url      = {https://www.frontiersin.org/journals/artificial-intelligence/articles/10.3389/frai.2023.1268852},
+  doi      = {10.3389/frai.2023.1268852},
+  issn     = {2624-8212},
+  abstract = {<p>Current quantum systems have significant limitations affecting the processing of large datasets with high dimensionality, typical of high energy physics. In the present paper, feature and data prototype selection techniques were studied to tackle this challenge. A grid search was performed and quantum machine learning models were trained and benchmarked against classical shallow machine learning methods, trained both in the reduced and the complete datasets. The performance of the quantum algorithms was found to be comparable to the classical ones, even when using large datasets. Sequential Backward Selection and Principal Component Analysis techniques were used for feature's selection and while the former can produce the better quantum machine learning models in specific cases, it is more unstable. Additionally, we show that such variability in the results is caused by the use of discrete variables, highlighting the suitability of Principal Component analysis transformed data for quantum machine learning applications in the high energy physics context.</p>}
+}
+
+@misc{qml_cf14,
+  title         = {Quantum Metric Learning for New Physics Searches at the LHC},
+  author        = {A. Hammad and Kyoungchul Kong and Myeonghun Park and Soyoung Shim},
+  year          = {2023},
+  eprint        = {2311.16866},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph},
+  url           = {https://arxiv.org/abs/2311.16866}
+}
+
+
+%%%%% QML anomaly detection
+
+@article{qml_ad1,
+  title     = {Anomaly detection in high-energy physics using a quantum autoencoder},
+  author    = {Ngairangbam, Vishal S. and Spannowsky, Michael and Takeuchi, Michihisa},
+  journal   = {Phys. Rev. D},
+  volume    = {105},
+  issue     = {9},
+  pages     = {095004},
+  numpages  = {15},
+  year      = {2022},
+  month     = {May},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.105.095004},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.105.095004}
+}
+
+
+@article{qml_ad2,
+  abstract      = {We explore the use of Quantum Machine Learning (QML) for anomaly detection at the Large Hadron Collider (LHC). In particular, we explore a semi-supervised approach in the four-lepton final state where simulations are reliable enough for a direct background prediction. This is a representative task where classification needs to be performed using small training datasets ---a regime that has been suggested for a quantum advantage. We find that Classical Machine Learning (CML) benchmarks outperform standard QML algorithms and are able to automatically identify the presence of anomalous events injected into otherwise background-only datasets.},
+  author        = {Alvi, Sulaiman and Bauer, Christian W. and Nachman, Benjamin},
+  date          = {2023/02/22},
+  date-added    = {2024-07-08 17:27:34 +0800},
+  date-modified = {2024-07-08 17:27:34 +0800},
+  doi           = {10.1007/JHEP02(2023)220},
+  id            = {Alvi2023},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {2},
+  pages         = {220},
+  title         = {Quantum anomaly detection for collider physics},
+  url           = {https://doi.org/10.1007/JHEP02(2023)220},
+  volume        = {2023},
+  year          = {2023},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP02(2023)220}
+}
+
+
+@article{qml_ad3,
+  title     = {Quantum-probabilistic Hamiltonian learning for generative modeling and anomaly detection},
+  author    = {Araz, Jack Y. and Spannowsky, Michael},
+  journal   = {Phys. Rev. A},
+  volume    = {108},
+  issue     = {6},
+  pages     = {062422},
+  numpages  = {13},
+  year      = {2023},
+  month     = {Dec},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevA.108.062422},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevA.108.062422}
+}
+
+
+@misc{qml_ad4,
+  title         = {Quantum anomaly detection in the latent space of proton collision events at the LHC},
+  author        = {Kinga Anna Woźniak and Vasilis Belis and Ema Puljak and Panagiotis Barkoutsos and Günther Dissertori and Michele Grossi and Maurizio Pierini and Florentin Reiter and Ivano Tavernelli and Sofia Vallecorsa},
+  year          = {2023},
+  eprint        = {2301.10780},
+  archiveprefix = {arXiv},
+  primaryclass  = {quant-ph},
+  url           = {https://arxiv.org/abs/2301.10780}
+}
+
+
+@article{qml_ad5,
+  doi       = {10.1088/2632-2153/ad07f7},
+  url       = {https://dx.doi.org/10.1088/2632-2153/ad07f7},
+  year      = {2023},
+  month     = {nov},
+  publisher = {IOP Publishing},
+  volume    = {4},
+  number    = {4},
+  pages     = {045031},
+  author    = {Julian Schuhmacher and Laura Boggia and Vasilis Belis and Ema Puljak and Michele Grossi and Maurizio Pierini and Sofia Vallecorsa and Francesco Tacchino and Panagiotis Barkoutsos and Ivano Tavernelli},
+  title     = {Unravelling physics beyond the standard model with classical and quantum anomaly detection},
+  journal   = {Machine Learning: Science and Technology},
+  abstract  = {Much hope for finding new physics phenomena at microscopic scale relies on the observations obtained from High Energy Physics experiments, like the ones performed at the Large Hadron Collider (LHC). However, current experiments do not indicate clear signs of new physics that could guide the development of additional Beyond Standard Model (BSM) theories. Identifying signatures of new physics out of the enormous amount of data produced at the LHC falls into the class of anomaly detection and constitutes one of the greatest computational challenges. In this article, we propose a novel strategy to perform anomaly detection in a supervised learning setting, based on the artificial creation of anomalies through a random process. For the resulting supervised learning problem, we successfully apply classical and quantum support vector classifiers (CSVC and QSVC respectively) to identify the artificial anomalies among the SM events. Even more promising, we find that employing an SVC trained to identify the artificial anomalies, it is possible to identify realistic BSM events with high accuracy. In parallel, we also explore the potential of quantum algorithms for improving the classification accuracy and provide plausible conditions for the best exploitation of this novel computational paradigm.}
+}
+
+
+
+
+%%%%% QML data generation
+
+@article{qml_gen1,
+  doi       = {10.22331/q-2022-08-17-777},
+  url       = {https://doi.org/10.22331/q-2022-08-17-777},
+  title     = {Style-based quantum generative adversarial networks for {M}onte {C}arlo events},
+  author    = {Bravo-Prieto, Carlos and Baglio, Julien and C{\`{e}}, Marco and Francis, Anthony and Grabowska, Dorota M. and Carrazza, Stefano},
+  journal   = {{Quantum}},
+  issn      = {2521-327X},
+  publisher = {{Verein zur F{\"{o}}rderung des Open Access Publizierens in den Quantenwissenschaften}},
+  volume    = {6},
+  pages     = {777},
+  month     = aug,
+  year      = {2022}
+}
+
+@article{qml_gen2,
+  title     = {Unsupervised quantum circuit learning in high energy physics},
+  volume    = {106},
+  issn      = {2470-0029},
+  url       = {http://dx.doi.org/10.1103/PhysRevD.106.096006},
+  doi       = {10.1103/physrevd.106.096006},
+  number    = {9},
+  journal   = {Physical Review D},
+  publisher = {American Physical Society (APS)},
+  author    = {Delgado, Andrea and Hamilton, Kathleen E.},
+  year      = {2022},
+  month     = nov
+}
+
+@article{qml_gen3,
+  title     = {{Generative invertible quantum neural networks}},
+  author    = {Armand Rousselot and Michael Spannowsky},
+  journal   = {SciPost Phys.},
+  volume    = {16},
+  pages     = {146},
+  year      = {2024},
+  publisher = {SciPost},
+  doi       = {10.21468/SciPostPhys.16.6.146},
+  url       = {https://scipost.org/10.21468/SciPostPhys.16.6.146}
+}
+
+@article{qml_gen4,
+  doi       = {10.1088/2058-9565/ad0389},
+  url       = {https://dx.doi.org/10.1088/2058-9565/ad0389},
+  year      = {2023},
+  month     = {oct},
+  publisher = {IOP Publishing},
+  volume    = {9},
+  number    = {1},
+  pages     = {015009},
+  author    = {Florian Rehm and Sofia Vallecorsa and Kerstin Borras and Dirk Krücker and Michele Grossi and Valle Varo},
+  title     = {Precise image generation on current noisy quantum computing devices},
+  journal   = {Quantum Science and Technology},
+  abstract  = {The quantum angle generator (QAG) is a new full quantum machine learning model designed to generate accurate images on current noise intermediate scale quantum devices. Variational quantum circuits form the core of the QAG model, and various circuit architectures are evaluated. In combination with the so-called MERA-upsampling architecture, the QAG model achieves excellent results, which are analyzed and evaluated in detail. To our knowledge, this is the first time that a quantum model has achieved such accurate results. To explore the robustness of the model to noise, an extensive quantum noise study is performed. In this paper, it is demonstrated that the model trained on a physical quantum device learns the noise characteristics of the hardware and generates outstanding results. It is verified that even a quantum hardware machine calibration change during training of up to 8% can be well tolerated. For demonstration, the model is employed in indispensable simulations in high energy physics required to measure particle energies and, ultimately, to discover unknown particles at the large Hadron Collider at CERN.}
+}
+
+
+@misc{qml_gen5,
+  title         = {CaloQVAE : Simulating high-energy particle-calorimeter interactions using hybrid quantum-classical generative models},
+  author        = {Sehmimul Hoque and Hao Jia and Abhishek Abhishek and Mojde Fadaie and J. Quetzalcoatl Toledo-Marín and Tiago Vale and Roger G. Melko and Maximilian Swiatlowski and Wojciech T. Fedorko},
+  year          = {2024},
+  eprint        = {2312.03179},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ex},
+  url           = {https://arxiv.org/abs/2312.03179}
+}
+
+
+%%% VQC
+
+@article{vqc1,
+  abstract      = {Applications such as simulating complicated quantum systems or solving large-scale linear algebra problems are very challenging for classical computers, owing to the extremely high computational cost. Quantum computers promise a solution, although fault-tolerant quantum computers will probably not be available in the near future. Current quantum devices have serious constraints, including limited numbers of qubits and noise processes that limit circuit depth. Variational quantum algorithms (VQAs), which use a classical optimizer to train a parameterized quantum circuit, have emerged as a leading strategy to address these constraints. VQAs have now been proposed for essentially all applications that researchers have envisaged for quantum computers, and they appear to be the best hope for obtaining quantum advantage. Nevertheless, challenges remain, including the trainability, accuracy and efficiency of VQAs. Here we overview the field of VQAs, discuss strategies to overcome their challenges and highlight the exciting prospects for using them to obtain quantum advantage.},
+  author        = {Cerezo, M. and Arrasmith, Andrew and Babbush, Ryan and Benjamin, Simon C. and Endo, Suguru and Fujii, Keisuke and McClean, Jarrod R. and Mitarai, Kosuke and Yuan, Xiao and Cincio, Lukasz and Coles, Patrick J.},
+  date          = {2021/09/01},
+  date-added    = {2023-11-03 10:50:57 +0800},
+  date-modified = {2023-11-03 10:50:57 +0800},
+  doi           = {10.1038/s42254-021-00348-9},
+  id            = {Cerezo2021},
+  isbn          = {2522-5820},
+  journal       = {Nature Reviews Physics},
+  number        = {9},
+  pages         = {625--644},
+  title         = {Variational quantum algorithms},
+  url           = {https://doi.org/10.1038/s42254-021-00348-9},
+  volume        = {3},
+  year          = {2021},
+  bdsk-url-1    = {https://doi.org/10.1038/s42254-021-00348-9}
+}
+
+
+@article{vqc2,
+  abstract      = {Quantum computers promise to efficiently solve important problems that are intractable on a conventional computer. For quantum systems, where the physical dimension grows exponentially, finding the eigenvalues of certain operators is one such intractable problem and remains a fundamental challenge. The quantum phase estimation algorithm efficiently finds the eigenvalue of a given eigenvector but requires fully coherent evolution. Here we present an alternative approach that greatly reduces the requirements for coherent evolution and combine this method with a new approach to state preparation based on ans{\"a}tze and classical optimization. We implement the algorithm by combining a highly reconfigurable photonic quantum processor with a conventional computer. We experimentally demonstrate the feasibility of this approach with an example from quantum chemistry---calculating the ground-state molecular energy for He--H+. The proposed approach drastically reduces the coherence time requirements, enhancing the potential of quantum resources available today and in the near future.},
+  author        = {Peruzzo, Alberto and McClean, Jarrod and Shadbolt, Peter and Yung, Man-Hong and Zhou, Xiao-Qi and Love, Peter J. and Aspuru-Guzik, Al{\'a}n and O'Brien, Jeremy L.},
+  date          = {2014/07/23},
+  date-added    = {2023-11-03 11:07:15 +0800},
+  date-modified = {2023-11-03 11:07:15 +0800},
+  doi           = {10.1038/ncomms5213},
+  id            = {Peruzzo2014},
+  isbn          = {2041-1723},
+  journal       = {Nature Communications},
+  number        = {1},
+  pages         = {4213},
+  title         = {A variational eigenvalue solver on a photonic quantum processor},
+  url           = {https://doi.org/10.1038/ncomms5213},
+  volume        = {5},
+  year          = {2014},
+  bdsk-url-1    = {https://doi.org/10.1038/ncomms5213}
+}
+
+
+@article{vqc3,
+  abstract   = {Many quantum algorithms have daunting resource requirements when compared to what is available today. To address this discrepancy, a quantum-classical hybrid optimization scheme known as `the quantum variational eigensolver' was developed (Peruzzo et al 2014 Nat. Commun. 5 4213) with the philosophy that even minimal quantum resources could be made useful when used in conjunction with classical routines. In this work we extend the general theory of this algorithm and suggest algorithmic improvements for practical implementations. Specifically, we develop a variational adiabatic ansatz and explore unitary coupled cluster where we establish a connection from second order unitary coupled cluster to universal gate sets through a relaxation of exponential operator splitting. We introduce the concept of quantum variational error suppression that allows some errors to be suppressed naturally in this algorithm on a pre-threshold quantum device. Additionally, we analyze truncation and correlated sampling in Hamiltonian averaging as ways to reduce the cost of this procedure. Finally, we show how the use of modern derivative free optimization techniques can offer dramatic computational savings of up to three orders of magnitude over previously used optimization techniques.},
+  author     = {Jarrod R McClean and Jonathan Romero and Ryan Babbush and Al{\'a}n Aspuru-Guzik},
+  doi        = {10.1088/1367-2630/18/2/023023},
+  journal    = {New Journal of Physics},
+  month      = {feb},
+  number     = {2},
+  pages      = {023023},
+  publisher  = {IOP Publishing},
+  title      = {The theory of variational hybrid quantum-classical algorithms},
+  url        = {https://dx.doi.org/10.1088/1367-2630/18/2/023023},
+  volume     = {18},
+  year       = {2016},
+  bdsk-url-1 = {https://dx.doi.org/10.1088/1367-2630/18/2/023023}
+}
+
+@article{psr1,
+  title     = {Quantum circuit learning},
+  author    = {Mitarai, K. and Negoro, M. and Kitagawa, M. and Fujii, K.},
+  journal   = {Phys. Rev. A},
+  volume    = {98},
+  issue     = {3},
+  pages     = {032309},
+  numpages  = {6},
+  year      = {2018},
+  month     = {Sep},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevA.98.032309},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevA.98.032309}
+}
+
+@article{psr2,
+  title     = {Evaluating analytic gradients on quantum hardware},
+  author    = {Schuld, Maria and Bergholm, Ville and Gogolin, Christian and Izaac, Josh and Killoran, Nathan},
+  journal   = {Phys. Rev. A},
+  volume    = {99},
+  issue     = {3},
+  pages     = {032331},
+  numpages  = {7},
+  year      = {2019},
+  month     = {Mar},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevA.99.032331},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevA.99.032331}
+}
+
+@article{psr3,
+  doi       = {10.22331/q-2022-03-30-677},
+  url       = {https://doi.org/10.22331/q-2022-03-30-677},
+  title     = {General parameter-shift rules for quantum gradients},
+  author    = {Wierichs, David and Izaac, Josh and Wang, Cody and Lin, Cedric Yen-Yu},
+  journal   = {{Quantum}},
+  issn      = {2521-327X},
+  publisher = {{Verein zur F{\"{o}}rderung des Open Access Publizierens in den Quantenwissenschaften}},
+  volume    = {6},
+  pages     = {677},
+  month     = mar,
+  year      = {2022}
+}
+
+@misc{psr4,
+  title         = {Gradients of parameterized quantum gates using the parameter-shift rule and gate decomposition},
+  author        = {Gavin E. Crooks},
+  year          = {2019},
+  eprint        = {1905.13311},
+  archiveprefix = {arXiv},
+  primaryclass  = {quant-ph}
+}
+
+
+
+%%% gnn theory
+
+@misc{gnnex1,
+  title         = {Graph Neural Networks for Social Recommendation},
+  author        = {Wenqi Fan and Yao Ma and Qing Li and Yuan He and Eric Zhao and Jiliang Tang and Dawei Yin},
+  year          = {2019},
+  eprint        = {1902.07243},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.IR}
+}
+
+
+@article{gnnex2,
+  abstract   = {Graph neural networks (GNNs), as a branch of deep learning in non-Euclidean space, perform particularly well in various tasks that process graph structure data. With the rapid accumulation of biological network data, GNNs have also become an important tool in bioinformatics. In this research, a systematic survey of GNNs and their advances in bioinformatics is presented from multiple perspectives. We first introduce some commonly used GNN models and their basic principles. Then, three representative tasks are proposed based on the three levels of structural information that can be learned by GNNs: node classification, link prediction, and graph generation. Meanwhile, according to the specific applications for various omics data, we categorize and discuss the related studies in three aspects: disease prediction, drug discovery, and biomedical imaging. Based on the analysis, we provide an outlook on the shortcomings of current studies and point out their developing prospect. Although GNNs have achieved excellent results in many biological tasks at present, they still face challenges in terms of low-quality data processing, methodology, and interpretability and have a long road ahead. We believe that GNNs are potentially an excellent method that solves various biological problems in bioinformatics research.},
+  author     = {Zhang, Xiao-Meng and Liang, Li and Liu, Lin and Tang, Ming-Jing},
+  doi        = {10.3389/fgene.2021.690049},
+  issn       = {1664-8021},
+  journal    = {Frontiers in Genetics},
+  title      = {Graph Neural Networks and Their Current Applications in Bioinformatics},
+  url        = {https://www.frontiersin.org/articles/10.3389/fgene.2021.690049},
+  volume     = {12},
+  year       = {2021},
+  bdsk-url-1 = {https://www.frontiersin.org/articles/10.3389/fgene.2021.690049},
+  bdsk-url-2 = {https://doi.org/10.3389/fgene.2021.690049}
+}
+
+
+@article{gnnex3,
+  abstract      = {Machine learning plays an increasingly important role in many areas of chemistry and materials science, being used to predict materials properties, accelerate simulations, design new structures, and predict synthesis routes of new materials. Graph neural networks (GNNs) are one of the fastest growing classes of machine learning models. They are of particular relevance for chemistry and materials science, as they directly work on a graph or structural representation of molecules and materials and therefore have full access to all relevant information required to characterize materials. In this Review, we provide an overview of the basic principles of GNNs, widely used datasets, and state-of-the-art architectures, followed by a discussion of a wide range of recent applications of GNNs in chemistry and materials science, and concluding with a road-map for the further development and application of GNNs.},
+  author        = {Reiser, Patrick and Neubert, Marlen and Eberhard, Andr{\'e} and Torresi, Luca and Zhou, Chen and Shao, Chen and Metni, Houssam and van Hoesel, Clint and Schopmans, Henrik and Sommer, Timo and Friederich, Pascal},
+  date          = {2022/11/26},
+  date-added    = {2023-11-03 09:22:54 +0800},
+  date-modified = {2023-11-03 09:22:54 +0800},
+  doi           = {10.1038/s43246-022-00315-6},
+  id            = {Reiser2022},
+  isbn          = {2662-4443},
+  journal       = {Communications Materials},
+  number        = {1},
+  pages         = {93},
+  title         = {Graph neural networks for materials science and chemistry},
+  url           = {https://doi.org/10.1038/s43246-022-00315-6},
+  volume        = {3},
+  year          = {2022},
+  bdsk-url-1    = {https://doi.org/10.1038/s43246-022-00315-6}
+}
+
+@misc{mpn1,
+  title         = {Neural Message Passing for Quantum Chemistry},
+  author        = {Justin Gilmer and Samuel S. Schoenholz and Patrick F. Riley and Oriol Vinyals and George E. Dahl},
+  year          = {2017},
+  eprint        = {1704.01212},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG}
+}
+@misc{completegraph,
+  author = {Weisstein, Eric W.},
+  title  = {"Complete Graph." From MathWorld--A Wolfram Web Resource},
+  url    = {https://mathworld.wolfram.com/CompleteGraph.html},
+  note   = {Last visited on 2/11/2023}
+}
+
+@misc{deepset,
+  title         = {Deep Sets},
+  author        = {Manzil Zaheer and Satwik Kottur and Siamak Ravanbakhsh and Barnabas Poczos and Ruslan Salakhutdinov and Alexander Smola},
+  year          = {2018},
+  eprint        = {1703.06114},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/1703.06114}
+}
+
+%%% benchmark models
+
+@article{ptcnet,
+  title     = {Jet tagging via particle clouds},
+  author    = {Qu, Huilin and Gouskos, Loukas},
+  journal   = {Phys. Rev. D},
+  volume    = {101},
+  issue     = {5},
+  pages     = {056019},
+  numpages  = {11},
+  year      = {2020},
+  month     = {Mar},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevD.101.056019},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevD.101.056019}
+}
+
+@misc{part,
+  title         = {Particle Transformer for Jet Tagging},
+  author        = {Huilin Qu and Congqiao Li and Sitian Qian},
+  year          = {2024},
+  eprint        = {2202.03772},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph},
+  url           = {https://arxiv.org/abs/2202.03772}
+}
+
+
+@article{pfn,
+  abstract      = {A key question for machine learning approaches in particle physics is how to best represent and learn from collider events. As an event is intrinsically a variable-length unordered set of particles, we build upon recent machine learning efforts to learn directly from sets of features or ``point clouds''. Adapting and specializing the ``Deep Sets''framework to particle physics, we introduce Energy Flow Networks, which respect infrared and collinear safety by construction. We also develop Particle Flow Networks, which allow for general energy dependence and the inclusion of additional particle-level information such as charge and flavor. These networks feature a per-particle internal (latent) representation, and summing over all particles yields an overall event-level latent representation. We show how this latent space decomposition unifies existing event representations based on detector images and radiation moments. To demonstrate the power and simplicity of this set-based approach, we apply these networks to the collider task of discriminating quark jets from gluon jets, finding similar or improved performance compared to existing methods. We also show how the learned event representation can be directly visualized, providing insight into the inner workings of the model. These architectures lend themselves to efficiently processing and analyzing events for a wide variety of tasks at the Large Hadron Collider. Implementations and examples of our architectures are available online in our EnergyFlowpackage.},
+  author        = {Komiske, Patrick T. and Metodiev, Eric M. and Thaler, Jesse},
+  date          = {2019/01/15},
+  date-added    = {2024-06-30 15:37:08 +0800},
+  date-modified = {2024-06-30 15:37:08 +0800},
+  doi           = {10.1007/JHEP01(2019)121},
+  id            = {Komiske2019},
+  isbn          = {1029-8479},
+  journal       = {Journal of High Energy Physics},
+  number        = {1},
+  pages         = {121},
+  title         = {Energy flow networks: deep sets for particle jets},
+  url           = {https://doi.org/10.1007/JHEP01(2019)121},
+  volume        = {2019},
+  year          = {2019},
+  bdsk-url-1    = {https://doi.org/10.1007/JHEP01(2019)121}
+}
+
+
+%%% dataset
+
+@dataset{zenodo_jetnet,
+  author    = {Kansal, Raghav and
+               Duarte, Javier and
+               Su, Hao and
+               Orzari, Breno and
+               Tomei, Thiago and
+               Pierini, Maurizio and
+               Touranakou, Mary and
+               Vlimant, Jean-Roch and
+               Gunopulos, Dimitrios},
+  title     = {JetNet},
+  month     = aug,
+  year      = 2022,
+  publisher = {Zenodo},
+  version   = 2,
+  doi       = {10.5281/zenodo.6975118},
+  url       = {https://doi.org/10.5281/zenodo.6975118}
+}
+
+
+@dataset{zenodo_top,
+  author    = {Kasieczka, Gregor and
+               Plehn, Tilman and
+               Thompson, Jennifer and
+               Russel, Michael},
+  title     = {Top Quark Tagging Reference Dataset},
+  month     = mar,
+  year      = 2019,
+  publisher = {Zenodo},
+  version   = {v0 (2018\_03\_27)},
+  doi       = {10.5281/zenodo.2603256},
+  url       = {https://doi.org/10.5281/zenodo.2603256}
+}
+
+
+@article{antikt,
+  doi       = {10.1088/1126-6708/2008/04/063},
+  url       = {https://dx.doi.org/10.1088/1126-6708/2008/04/063},
+  year      = {2008},
+  month     = {apr},
+  publisher = {},
+  volume    = {2008},
+  number    = {04},
+  pages     = {063},
+  author    = {Matteo Cacciari and  Gavin P. Salam and  Gregory Soyez},
+  title     = {The anti-kt jet clustering algorithm},
+  journal   = {Journal of High Energy Physics},
+  abstract  = {The kt and Cambridge/Aachen inclusive jet finding algorithms for hadron-hadron collisions can be seen as belonging to a broader class of sequential recombination jet algorithms, parametrised by the power of the energy scale in the distance measure. We examine some properties of a new member of this class, for which the power is negative. This ``anti-kt'' algorithm essentially behaves like an idealised cone algorithm, in that jets with only soft fragmentation are conical, active and passive areas are equal, the area anomalous dimensions are zero, the non-global logarithms are those of a rigid boundary and the Milan factor is universal.  None of these properties hold for existing sequential recombination algorithms, nor for cone algorithms with split-merge steps, such as SISCone. They are however the identifying characteristics of the collinear unsafe plain ``iterative cone'' algorithm, for which the anti-kt algorithm provides a natural, fast, infrared and collinear safe replacement.}
+}
+
+@article{dataset_top,
+  title     = {The Machine Learning landscape of top taggers},
+  volume    = {7},
+  issn      = {2542-4653},
+  url       = {http://dx.doi.org/10.21468/SciPostPhys.7.1.014},
+  doi       = {10.21468/scipostphys.7.1.014},
+  number    = {1},
+  journal   = {SciPost Physics},
+  publisher = {Stichting SciPost},
+  author    = {Kasieczka, Gregor and Plehn, Tilman and Butter, Anja and Cranmer, Kyle and Debnath, Dipsikha and Dillon, Barry M. and Fairbairn, Malcolm and Faroughy, Darius A. and Fedorko, Wojtek and Gay, Christophe and Gouskos, Loukas and Kamenik, Jernej Fesel and Komiske, Patrick and Leiss, Simon and Lister, Alison and Macaluso, Sebastian and Metodiev, Eric and Moore, Liam and Nachman, Benjamin and Nordström, Karl and Pearkes, Jannicke and Qu, Huilin and Rath, Yannik and Rieger, Marcel and Shih, David and Thompson, Jennifer and Varma, Sreedevi},
+  year      = {2019},
+  month     = jul
+}
+
+@misc{dataset_jetnet,
+  title         = {Particle Cloud Generation with Message Passing Generative Adversarial Networks},
+  author        = {Raghav Kansal and Javier Duarte and Hao Su and Breno Orzari and Thiago Tomei and Maurizio Pierini and Mary Touranakou and Jean-Roch Vlimant and Dimitrios Gunopulos},
+  year          = {2022},
+  eprint        = {2106.11535},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/2106.11535}
+}
+
+@article{mg5,
+  author        = {Alwall, J. and Frederix, R. and Frixione, S. and Hirschi, V. and Maltoni, F. and Mattelaer, O. and Shao, H. -S. and Stelzer, T. and Torrielli, P. and Zaro, M.},
+  title         = {{The automated computation of tree-level and next-to-leading order differential cross sections, and their matching to parton shower simulations}},
+  eprint        = {1405.0301},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph},
+  reportnumber  = {CERN-PH-TH-2014-064, CP3-14-18, LPN14-066, MCNET-14-09, ZU-TH-14-14},
+  doi           = {10.1007/JHEP07(2014)079},
+  journal       = {JHEP},
+  volume        = {07},
+  pages         = {079},
+  year          = {2014}
+}
+
+@misc{delphes1,
+  title         = {Delphes, a framework for fast simulation of a generic collider experiment},
+  author        = {S. Ovyn and X. Rouby and V. Lemaitre},
+  year          = {2010},
+  eprint        = {0903.2225},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph}
+}
+
+@article{delphes2,
+  author        = {de Favereau, J. and Delaere, C. and Demin, P. and Giammanco, A. and Lema\^\i{}tre, V. and Mertens, A. and Selvaggi, M.},
+  collaboration = {DELPHES 3},
+  title         = {{DELPHES 3, A modular framework for fast simulation of a generic collider experiment}},
+  eprint        = {1307.6346},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ex},
+  doi           = {10.1007/JHEP02(2014)057},
+  journal       = {JHEP},
+  volume        = {02},
+  pages         = {057},
+  year          = {2014}
+}
+
+@misc{pythia1,
+  title         = {A comprehensive guide to the physics and usage of PYTHIA 8.3},
+  author        = {Christian Bierlich and Smita Chakraborty and Nishita Desai and Leif Gellersen and Ilkka Helenius and Philip Ilten and Leif Lönnblad and Stephen Mrenna and Stefan Prestel and Christian T. Preuss and Torbjörn Sjöstrand and Peter Skands and Marius Utheim and Rob Verheyen},
+  year          = {2022},
+  eprint        = {2203.11601},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph}
+}
+
+@article{hvt,
+  author        = {Pappadopulo, Duccio and Thamm, Andrea and Torre, Riccardo and Wulzer, Andrea},
+  title         = {{Heavy Vector Triplets: Bridging Theory and Data}},
+  eprint        = {1402.4431},
+  archiveprefix = {arXiv},
+  primaryclass  = {hep-ph},
+  doi           = {10.1007/JHEP09(2014)060},
+  journal       = {JHEP},
+  volume        = {09},
+  pages         = {060},
+  year          = {2014}
+}
+
+
+@article{fastjet,
+  abstract      = {FastJet is a C++ package that provides a broad range of jet finding and analysis tools. It includes efficient native implementations of all widely used 2→1 sequential recombination jet algorithms for pp and e+e−collisions, as well as access to 3rd party jet algorithms through a plugin mechanism, including all currently used cone algorithms. FastJet also provides means to facilitate the manipulation of jet substructure, including some common boosted heavy-object taggers, as well as tools for estimation of pileup and underlying-event noise levels, determination of jet areas and subtraction or suppression of noise in jets.},
+  author        = {Cacciari, Matteo and Salam, Gavin P. and Soyez, Gregory},
+  date          = {2012/03/16},
+  date-added    = {2023-11-05 14:33:21 +0800},
+  date-modified = {2023-11-05 14:33:21 +0800},
+  doi           = {10.1140/epjc/s10052-012-1896-2},
+  id            = {Cacciari2012},
+  isbn          = {1434-6052},
+  journal       = {The European Physical Journal C},
+  number        = {3},
+  pages         = {1896},
+  title         = {FastJet user manual},
+  url           = {https://doi.org/10.1140/epjc/s10052-012-1896-2},
+  volume        = {72},
+  year          = {2012},
+  bdsk-url-1    = {https://doi.org/10.1140/epjc/s10052-012-1896-2}
+}
+
+
+%%% quantum circuit
+@article{uso1,
+  title     = {An efficient quantum algorithm for preparation of uniform quantum superposition states},
+  volume    = {23},
+  issn      = {1573-1332},
+  url       = {http://dx.doi.org/10.1007/s11128-024-04258-4},
+  doi       = {10.1007/s11128-024-04258-4},
+  number    = {2},
+  journal   = {Quantum Information Processing},
+  publisher = {Springer Science and Business Media LLC},
+  author    = {Shukla, Alok and Vedula, Prakash},
+  year      = {2024},
+  month     = jan
+}
+
+@article{uso2,
+  title     = {Encoding Electronic Spectra in Quantum Circuits with Linear T Complexity},
+  volume    = {8},
+  issn      = {2160-3308},
+  url       = {http://dx.doi.org/10.1103/PhysRevX.8.041015},
+  doi       = {10.1103/physrevx.8.041015},
+  number    = {4},
+  journal   = {Physical Review X},
+  publisher = {American Physical Society (APS)},
+  author    = {Babbush, Ryan and Gidney, Craig and Berry, Dominic W. and Wiebe, Nathan and McClean, Jarrod and Paler, Alexandru and Fowler, Austin and Neven, Hartmut},
+  year      = {2018},
+  month     = oct
+}
+
+
+
+@article{q_kernel1,
+  abstract      = {Machine learning and quantum computing are two technologies that each have the potential to alter how computation is performed to address previously untenable problems. Kernel methods for machine learning are ubiquitous in pattern recognition, with support vector machines (SVMs) being the best known method for classification problems. However, there are limitations to the successful solution to such classification problems when the feature space becomes large, and the kernel functions become computationally expensive to estimate. A core element in the computational speed-ups enabled by quantum algorithms is the exploitation of an exponentially large quantum state space through controllable entanglement and interference. Here we propose and experimentally implement two quantum algorithms on a superconducting processor. A key component in both methods is the use of the quantum state space as feature space. The use of a quantum-enhanced feature space that is only efficiently accessible on a quantum computer provides a possible path to quantum advantage. The algorithms solve a problem of supervised learning: the construction of a classifier. One method, the quantum variational classifier, uses a variational quantum circuit1,2 to classify the data in a way similar to the method of conventional SVMs. The other method, a quantum kernel estimator, estimates the kernel function on the quantum computer and optimizes a classical SVM. The two methods provide tools for exploring the applications of noisy intermediate-scale quantum computers3 to machine learning.},
+  author        = {Havl{\'\i}{\v c}ek, Vojt{\v e}ch and C{\'o}rcoles, Antonio D. and Temme, Kristan and Harrow, Aram W. and Kandala, Abhinav and Chow, Jerry M. and Gambetta, Jay M.},
+  date          = {2019/03/01},
+  date-added    = {2024-07-04 14:04:55 +0800},
+  date-modified = {2024-07-04 14:04:55 +0800},
+  doi           = {10.1038/s41586-019-0980-2},
+  id            = {Havl{\'\i}{\v c}ek2019},
+  isbn          = {1476-4687},
+  journal       = {Nature},
+  number        = {7747},
+  pages         = {209--212},
+  title         = {Supervised learning with quantum-enhanced feature spaces},
+  url           = {https://doi.org/10.1038/s41586-019-0980-2},
+  volume        = {567},
+  year          = {2019},
+  bdsk-url-1    = {https://doi.org/10.1038/s41586-019-0980-2}
+}
+
+
+@misc{q_kernel2,
+  title         = {Supervised quantum machine learning models are kernel methods},
+  author        = {Maria Schuld},
+  year          = {2021},
+  eprint        = {2101.11020},
+  archiveprefix = {arXiv},
+  primaryclass  = {quant-ph},
+  url           = {https://arxiv.org/abs/2101.11020}
+}
+
+@misc{q_decomp1,
+  title         = {Decomposition of Multi-controlled Special Unitary Single-Qubit Gates},
+  author        = {Rafaella Vale and Thiago Melo D. Azevedo and Ismael C. S. Araújo and Israel F. Araujo and Adenilton J. da Silva},
+  year          = {2023},
+  eprint        = {2302.06377},
+  archiveprefix = {arXiv},
+  primaryclass  = {quant-ph},
+  url           = {https://arxiv.org/abs/2302.06377}
+}
+
+@article{q_decomp2,
+  title     = {Linear-depth quantum circuits for $n$-qubit Toffoli gates with no ancilla},
+  author    = {Saeedi, Mehdi and Pedram, Massoud},
+  journal   = {Phys. Rev. A},
+  volume    = {87},
+  issue     = {6},
+  pages     = {062318},
+  numpages  = {5},
+  year      = {2013},
+  month     = {Jun},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevA.87.062318},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevA.87.062318}
+}
+
+
+@article{q_decomp3,
+  title     = {Linear-depth quantum circuits for multiqubit controlled gates},
+  volume    = {106},
+  issn      = {2469-9934},
+  url       = {http://dx.doi.org/10.1103/PhysRevA.106.042602},
+  doi       = {10.1103/physreva.106.042602},
+  number    = {4},
+  journal   = {Physical Review A},
+  publisher = {American Physical Society (APS)},
+  author    = {da Silva, Adenilton J. and Park, Daniel K.},
+  year      = {2022},
+  month     = oct
+}
+
+@inbook{NC,
+  title     = {Controlled operations},
+  booktitle = {Quantum Computation and Quantum Information},
+  author    = {Nielsen, Michael A and Chuang, Isaac L},
+  publisher = {Cambridge University Press},
+  chapter   = {4.3 Controlled operations - Figure 4.10},
+  year      = 2007
+}
+
+@article{strong_ent,
+  title     = {Circuit-centric quantum classifiers},
+  author    = {Schuld, Maria and Bocharov, Alex and Svore, Krysta M. and Wiebe, Nathan},
+  journal   = {Phys. Rev. A},
+  volume    = {101},
+  issue     = {3},
+  pages     = {032308},
+  numpages  = {8},
+  year      = {2020},
+  month     = {Mar},
+  publisher = {American Physical Society},
+  doi       = {10.1103/PhysRevA.101.032308},
+  url       = {https://link.aps.org/doi/10.1103/PhysRevA.101.032308}
+}
+
+@article{reupload,
+  doi       = {10.22331/q-2020-02-06-226},
+  url       = {https://doi.org/10.22331/q-2020-02-06-226},
+  title     = {Data re-uploading for a universal quantum classifier},
+  author    = {P{\'{e}}rez-Salinas, Adri{\'{a}}n and Cervera-Lierta, Alba and Gil-Fuster, Elies and Latorre, Jos{\'{e}} I.},
+  journal   = {{Quantum}},
+  issn      = {2521-327X},
+  publisher = {{Verein zur F{\"{o}}rderung des Open Access Publizierens in den Quantenwissenschaften}},
+  volume    = {4},
+  pages     = {226},
+  month     = feb,
+  year      = {2020}
+}
+
+%%% framework
+@misc{pytorch,
+  author = {PyTorch Team},
+  title  = {PyTorch},
+  url    = {https://pytorch.org}
+}
+
+@inproceedings{pygeo,
+  title     = {Fast Graph Representation Learning with {PyTorch Geometric}},
+  author    = {Fey, Matthias and Lenssen, Jan E.},
+  booktitle = {ICLR Workshop on Representation Learning on Graphs and Manifolds},
+  year      = {2019}
+}
+
+@misc{pennylane,
+  title         = {PennyLane: Automatic differentiation of hybrid quantum-classical computations},
+  author        = {Ville Bergholm and Josh Izaac and Maria Schuld and Christian Gogolin and Shahnawaz Ahmed and Vishnu Ajith and M. Sohaib Alam and Guillermo Alonso-Linaje and B. AkashNarayanan and Ali Asadi and Juan Miguel Arrazola and Utkarsh Azad and Sam Banning and Carsten Blank and Thomas R Bromley and Benjamin A. Cordier and Jack Ceroni and Alain Delgado and Olivia Di Matteo and Amintor Dusko and Tanya Garg and Diego Guala and Anthony Hayes and Ryan Hill and Aroosa Ijaz and Theodor Isacsson and David Ittah and Soran Jahangiri and Prateek Jain and Edward Jiang and Ankit Khandelwal and Korbinian Kottmann and Robert A. Lang and Christina Lee and Thomas Loke and Angus Lowe and Keri McKiernan and Johannes Jakob Meyer and J. A. Montañez-Barrera and Romain Moyard and Zeyue Niu and Lee James O'Riordan and Steven Oud and Ashish Panigrahi and Chae-Yeun Park and Daniel Polatajko and Nicolás Quesada and Chase Roberts and Nahum Sá and Isidor Schoch and Borun Shi and Shuli Shu and Sukin Sim and Arshpreet Singh and Ingrid Strandberg and Jay Soni and Antal Száva and Slimane Thabet and Rodrigo A. Vargas-Hernández and Trevor Vincent and Nicola Vitucci and Maurice Weber and David Wierichs and Roeland Wiersema and Moritz Willmann and Vincent Wong and Shaoming Zhang and Nathan Killoran},
+  year          = {2022},
+  eprint        = {1811.04968},
+  archiveprefix = {arXiv},
+  primaryclass  = {quant-ph}
+}
+
+@misc{relu,
+  title         = {Deep Learning using Rectified Linear Units (ReLU)},
+  author        = {Abien Fred Agarap},
+  year          = {2019},
+  eprint        = {1803.08375},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.NE},
+  url           = {https://arxiv.org/abs/1803.08375}
+}
+
+@misc{ibmq,
+  title         = {Quantum computing with {Q}iskit},
+  author        = {Javadi-Abhari, Ali and Treinish, Matthew and Krsulich, Kevin and Wood, Christopher J. and Lishman, Jake and Gacon, Julien and Martiel, Simon and Nation, Paul D. and Bishop, Lev S. and Cross, Andrew W. and Johnson, Blake R. and Gambetta, Jay M.},
+  year          = {2024},
+  doi           = {10.48550/arXiv.2405.08810},
+  eprint        = {2405.08810},
+  archiveprefix = {arXiv},
+  primaryclass  = {quant-ph}
+}
+
+@misc{adam,
+  title         = {Adam: A Method for Stochastic Optimization},
+  author        = {Diederik P. Kingma and Jimmy Ba},
+  year          = {2017},
+  eprint        = {1412.6980},
+  archiveprefix = {arXiv},
+  primaryclass  = {cs.LG},
+  url           = {https://arxiv.org/abs/1412.6980}
+}
